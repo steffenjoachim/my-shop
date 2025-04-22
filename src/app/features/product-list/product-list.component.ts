@@ -1,13 +1,14 @@
 import { Component, signal } from '@angular/core';
 import { Product } from '../../shared/models/products.model';
+import { ProductCardComponent } from "./product-card/product-card.component";
 
 @Component({
   selector: 'app-product-list',
-  imports: [],
+  imports: [ProductCardComponent],
   template: `
     <article class="p-8 grid grid-cols-2 gap-4">
       @for (product of products(); track product.id) {
-        {{ product.title }}
+        <app-product-card [product]="product" />
       }
     </article>
   `,
