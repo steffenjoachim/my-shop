@@ -1,1 +1,19 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #3490dc;
+    --secondary-color: #ffed4a;
+    --accent-color: #e3342f;
+    --background-color: #f8fafc;
+    --text-color: #333;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
