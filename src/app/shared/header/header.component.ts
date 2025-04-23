@@ -1,15 +1,20 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { PrimaryButtonComponent } from "../primary-button/primary-button.component";
+import { CartService } from '../services/cart.service';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-header',
-  imports: [PrimaryButtonComponent],
+  imports: [PrimaryButtonComponent, 
+            RouterLink],
   template: `
     <article class="bg-slate-100 px-4 py-3 shadow-md flex justify-between items-center">
-      <span class="font-bold text-2xl">My Store</span>
+      <h1 class="font-bold text-4xl"
+            routerLink="/">My Store</h1>
       <app-primary-button 
-        label="Cart" 
-        (btnClicked)="onCartClick()" />
+        [label]="'Cart (' + cartService.cart().length + ')'" 
+        (btnClicked)="onCartClick()" 
+        routerLink="/cart"/>
 </article>
   `,
   styles: `
@@ -17,6 +22,8 @@ import { PrimaryButtonComponent } from "../primary-button/primary-button.compone
   `
 })
 export class HeaderComponent {
+
+  cartService = inject(CartService);
 
 
   onCartClick() {
