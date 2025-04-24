@@ -19,11 +19,14 @@ src/
 │   ├── app.component.ts          # Root component
 │   ├── app.config.ts             # Application configuration
 │   ├── app.routes.ts             # Application routes
-│   ├── features/
+│   ├── home/                     # Home module
 │   │   └── product-list/
 │   │       ├── product-list.component.ts  # Product list component
 │   │       └── product-card/
 │   │           └── product-card.component.ts  # Product card component
+│   ├── features/
+│   │   └── cart/
+│   │       └── cart.component.ts         # Cart component
 │   ├── shared/
 │       ├── header/
 │       │   └── header.component.ts  # Header component
@@ -101,6 +104,10 @@ ng test
 ### ProductListComponent
 
 - Renders a list of products using the `ProductCardComponent`.
+
+### CartComponent
+
+- Displays the items added to the cart.
 
 ### HeaderComponent
 
