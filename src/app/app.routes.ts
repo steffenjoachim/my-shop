@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { ProductsListComponent } from './features/product-list/product-list.component';
+import { ProductsListComponent } from './home/product-list/product-list.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: ProductsListComponent },
