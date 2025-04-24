@@ -1,46 +1,53 @@
 # MyShop
 
-MyShop is a simple e-commerce application built with Angular. It showcases a product list with individual product cards, allowing users to view product details and add items to their cart.
+MyShop is a simple e-commerce application built with Angular for the frontend and a placeholder backend folder for future server-side development.
 
 ## Features
 
-- **Product List**: Displays a list of products with their title, price, image, and stock status.
-- **Product Card**: Each product is displayed in a card format with an "Add to Cart" button.
-- **Header**: Includes a header with a cart button.
-- **Dynamic Stock Status**: Shows stock availability with color-coded indicators (green for in-stock, red for out-of-stock).
+- **Frontend**: Built with Angular, showcasing a product list, product cards, and a cart system.
+- **Backend**: Placeholder folder for future backend implementation.
 
 ## Project Structure
 
 The project is organized as follows:
 
 ```
-src/
-├── app/
-│   ├── app.component.ts          # Root component
-│   ├── app.config.ts             # Application configuration
-│   ├── app.routes.ts             # Application routes
-│   ├── home/                     # Home module
-│   │   └── product-list/
-│   │       ├── product-list.component.ts  # Product list component
-│   │       └── product-card/
-│   │           └── product-card.component.ts  # Product card component
-│   ├── features/
-│   │   └── cart/
-│   │       └── cart.component.ts         # Cart component
-│   ├── shared/
-│       ├── header/
-│       │   └── header.component.ts  # Header component
-│       ├── primary-button/
-│       │   └── primary-button.component.ts  # Reusable button component
-│       └── models/
-│           └── products.model.ts  # Product model
+my-shop/
+├── backend/                      # Placeholder for backend implementation
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── app.component.ts          # Root component
+│   │   │   ├── app.config.ts             # Application configuration
+│   │   │   ├── app.routes.ts             # Application routes
+│   │   │   ├── features/
+│   │   │   │   └── cart/
+│   │   │   │       └── cart.component.ts         # Cart component
+│   │   │   ├── home/                     # Home module
+│   │   │   │   └── product-list/
+│   │   │   │       ├── product-list.component.ts  # Product list component
+│   │   │   │       └── product-card/
+│   │   │   │           └── product-card.component.ts  # Product card component
+│   │   │   ├── shared/
+│   │   │       ├── header/
+│   │   │       │   └── header.component.ts  # Header component
+│   │   │       ├── primary-button/
+│   │   │       │   └── primary-button.component.ts  # Reusable button component
+│   │   │       └── models/
+│   │   │           └── products.model.ts  # Product model
 ```
 
 ## Technologies Used
 
+### Frontend
+
 - **Angular**: Framework for building the application.
 - **Tailwind CSS**: Utility-first CSS framework for styling.
 - **TypeScript**: Strongly typed programming language for Angular development.
+
+### Backend
+
+- Currently empty. Placeholder for future backend implementation.
 
 ## Getting Started
 
@@ -60,15 +67,16 @@ Ensure you have the following installed:
    cd my-shop
    ```
 
-2. Install dependencies:
+2. Navigate to the `frontend` folder and install dependencies:
 
    ```bash
+   cd frontend
    npm install
    ```
 
 ### Development Server
 
-Run the development server:
+Run the development server for the frontend:
 
 ```bash
 ng serve
@@ -78,7 +86,7 @@ Navigate to `http://localhost:4200/` in your browser. The app will automatically
 
 ### Building the Project
 
-To build the project for production:
+To build the frontend project for production:
 
 ```bash
 ng build
@@ -88,7 +96,7 @@ The build artifacts will be stored in the `dist/` directory.
 
 ### Running Unit Tests
 
-To execute unit tests:
+To execute unit tests for the frontend:
 
 ```bash
 ng test
@@ -116,6 +124,13 @@ ng test
 ### PrimaryButtonComponent
 
 - A reusable button component with customizable labels and click events.
+
+## Future Plans for Backend
+
+The `backend` folder is currently empty but will be used for server-side development. Potential technologies include:
+
+- **Node.js** with **Express** for REST API development.
+- **MongoDB** or **PostgreSQL** for database management.
 
 ## License
 
