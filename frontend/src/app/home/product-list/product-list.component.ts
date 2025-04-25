@@ -1,51 +1,25 @@
-import { Component, signal } from '@angular/core';
-import { Product } from '../../shared/models/products.model';
-import { ProductCardComponent } from "./product-card/product-card.component";
+import { Component, effect } from '@angular/core';
+import { ProductService } from '../../shared/services/product.service';
+import { ProductCardComponent } from './product-card/product-card.component';
 
 @Component({
   selector: 'app-product-list',
+  standalone: true,
   imports: [ProductCardComponent],
   template: `
     <article class="p-8 grid grid-cols-2 gap-4">
-      @for (product of products(); track product.id) {
+      @for (product of productService.products(); track product.id) {
         <app-product-card [product]="product" />
       }
     </article>
   `,
-  styles: ``
 })
-
 export class ProductsListComponent {
-  products = signal<Product[]>([
-    {
-      id: 1,
-      title: 'Fjallraven - Foldsack No. 1 Backpack, Fits 15 Laptops',
-      price: 109.95,
-      image: 'https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg',
-      stock: 10,
-    },
-    {
-      id: 2,
-      title: 'Mens Casual Premium Slim Fit T-Shirts ',
-      price: 22.3,
-      image:
-        'https://fakestoreapi.com/img/71-3HjGNDUL._AC_SY879._SX._UX._SY._UY_.jpg',
-      stock: 0,
-    },
-    {
-      id: 3,
-      title: 'Mens Cotton Jacket',
-      price: 55.99,
-
-      image: 'https://fakestoreapi.com/img/71li-ujtlUL._AC_UX679_.jpg',
-      stock: 5,
-    },
-    {
-      id: 4,
-      title: 'Mens Casual Slim Fit',
-      price: 15.99,
-      image: 'https://fakestoreapi.com/img/71YXzeOuslL._AC_UY879_.jpg',
-      stock: 7,
-    },
-  ]);
+  constructor(public productService: ProductService) {
+    // Effekt: wird automatisch aufgerufen, wenn sich das Signal ändert
+    effect(() => {
+      this.productService.products(); // ← Zugriff triggert Reaktion bei Änderung
+      // Kein extra Code nötig, einfach durch die Nutzung
+    });
+  }
 }
