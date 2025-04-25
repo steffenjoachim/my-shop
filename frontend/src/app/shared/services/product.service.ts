@@ -3,10 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { timer } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { Product } from '../models/products.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
-  private apiUrl = 'http://127.0.0.1:8000/api/products/';
+  private apiUrl = `${environment.apiBaseUrl}products/`;
   private _products = signal<Product[]>([]);
   public products = computed(() => this._products());
 
