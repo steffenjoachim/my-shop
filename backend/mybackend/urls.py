@@ -26,6 +26,6 @@ router.register(r'products', ProductViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
-    path("api/", include("shop.urls")),
+    path("api/", include('shop.urls')),
     path('', RedirectView.as_view(url='http://localhost:4200'))
 ]

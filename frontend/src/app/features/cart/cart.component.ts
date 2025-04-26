@@ -56,15 +56,25 @@ export class CartComponent {
   totalPrice = this.cartService.totalPrice;
 
   remove(product: CartItem) {
-    this.cartService.removeFromCart(product);
+    this.cartService.removeFromCart(product.id);
   }
 
   increase(id: number) {
-    this.cartService.updateQuantity(id, +1);
+    const item = this.products().find(p => p.id === id);
+    if (item) {
+      this.cartService.updateQuantity(id, item.quantity + 1);
+    }
   }
 
   decrease(id: number) {
-    this.cartService.updateQuantity(id, -1);
+    const item = this.products().find(p => p.id === id);
+    if (item) {
+      if (item.quantity === 1) {
+        this.cartService.removeFromCart(id);
+      } else {
+        this.cartService.updateQuantity(id, item.quantity - 1);
+      }
+    }
   }
 
   totalRounded = computed(() => {
