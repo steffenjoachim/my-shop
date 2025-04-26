@@ -1,5 +1,7 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, effect } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Product } from '../../shared/models/products.model';
+import { environment } from '../../../environments/environment';
 
 export interface CartItem extends Product {
   quantity: number;
@@ -7,38 +9,72 @@ export interface CartItem extends Product {
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
-  cart = signal<CartItem[]>([]);
+  private apiUrl = `${environment.apiBaseUrl}cart/`;
 
-  addToCart(product: Product) {
-    const current = this.cart();
-    const existing = current.find(p => p.id === product.id);
+  private readonly _cart = signal<CartItem[]>([]);
+  public readonly cart = this._cart.asReadonly();
 
-    if (existing) {
-      this.cart.set(
-        current.map(p =>
-          p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p
-        )
-      );
-    } else {
-      this.cart.set([...current, { ...product, quantity: 1 }]);
-    }
+  public readonly totalPrice = signal(0); // wird automatisch berechnet
+
+  constructor(private http: HttpClient) {
+    this.loadCart();
+
+    // Automatisches Berechnen von totalPrice bei jeder Cart-Änderung
+    effect(() => {
+      const items = this._cart();
+      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      this.totalPrice.set(total);
+    });
   }
 
-  removeFromCart(product: Product) {
-    this.cart.set(this.cart().filter(p => p.id !== product.id));
+  loadCart(): void {
+    this.http
+      .get<CartItem[]>(this.apiUrl, { withCredentials: true })
+      .subscribe({
+        next: (data) => {
+          console.log('[CartService] loadCart →', data);
+          this._cart.set(data);
+        },
+        error: (err) => console.error('[CartService] loadCart ERROR', err),
+      });
   }
 
-  updateQuantity(productId: number, amount: number) {
-    this.cart.set(
-      this.cart().map(item =>
-        item.id === productId
-          ? { ...item, quantity: Math.max(item.quantity + amount, 1) }
-          : item
+  addToCart(productId: number): void {
+    console.log('[CartService] addToCart(', productId, ')');
+    this.http
+      .post(`${this.apiUrl}add/${productId}/`, {}, { withCredentials: true })
+      .subscribe({
+        next: (res) => {
+          console.log('[CartService] addToCart RESPONSE →', res);
+          this.loadCart();
+        },
+        error: (err) => console.error('[CartService] addToCart ERROR', err),
+      });
+  }
+
+  removeFromCart(productId: number): void {
+    this.http
+      .delete(`${this.apiUrl}remove/${productId}/`, {
+        withCredentials: true,
+      })
+      .subscribe({
+        next: () => this.loadCart(),
+        error: (err) =>
+          console.error('Fehler beim Entfernen aus dem Warenkorb', err),
+      });
+  }
+
+  updateQuantity(productId: number, quantity: number): void {
+    this.http
+      .post(
+        `${this.apiUrl}update/${productId}/`,
+        { quantity },
+        { withCredentials: true }
       )
-    );
+      .subscribe({
+        next: () => this.loadCart(),
+        error: (err) =>
+          console.error('Fehler beim Aktualisieren der Produktmenge', err),
+      });
   }
-
-  totalPrice = computed(() =>
-    this.cart().reduce((sum, item) => sum + item.price * item.quantity, 0)
-  );
 }

@@ -33,3 +33,24 @@ class CartView(APIView):
                 "quantity": quantity
             })
         return Response(items)
+
+class RemoveFromCartView(APIView):
+    def delete(self, request, product_id):
+        cart = request.session.get('cart', {})
+        if str(product_id) in cart:
+            del cart[str(product_id)]
+            request.session['cart'] = cart
+            request.session.modified = True
+        return Response({'cart': cart}, status=status.HTTP_200_OK)
+
+class UpdateCartItemView(APIView):
+    def post(self, request, product_id):
+        quantity = request.data.get('quantity')
+        if quantity is None or int(quantity) < 1:
+            return Response({'error': 'Ungültige Menge'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cart = request.session.get('cart', {})
+        cart[str(product_id)] = int(quantity)
+        request.session['cart'] = cart
+        request.session.modified = True
+        return Response({'cart': cart}, status=status.HTTP_200_OK)

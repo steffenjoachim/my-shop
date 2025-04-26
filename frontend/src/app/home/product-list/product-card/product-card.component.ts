@@ -18,7 +18,7 @@ import { inject } from '@angular/core';
         <app-primary-button 
             class="absolute bottom-3 left-5 w-[90%]"
             label="Add to cart" 
-            (btnClicked)="cartService.addToCart(product())"
+            (btnClicked)="cartService.addToCart(product().id)"
             [disabled]="product().stock === 0" />
       </div>
       <span class="absolute top-2 right-3 text-sm font-bold"
