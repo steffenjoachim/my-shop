@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
-import { CartService } from '../../shared/services/cart.service';
-import { CartItem } from '../../shared/services/cart.service';
+import { CartService, CartItem } from '../../shared/services/cart.service';
+import { AuthService } from '../../shared/services/auth.service'; 
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-cart',
@@ -45,13 +46,25 @@ import { CartItem } from '../../shared/services/cart.service';
         <div class="text-xl font-semibold text-right">
           Total: {{ totalRounded() }} €
         </div>
+
+        <div class="text-right mt-6">
+          <button
+            class="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-600 transition"
+            (click)="proceedToCheckout()"
+          >
+            Proceed to Checkout
+          </button>
+        </div>
       }
     </article>
   `,
   styles: ``,
 })
 export class CartComponent {
-  cartService = inject(CartService);
+  private cartService = inject(CartService);
+  private router = inject(Router);
+  private authService = inject(AuthService);
+
   products = this.cartService.cart;
   totalPrice = this.cartService.totalPrice;
 
@@ -74,6 +87,16 @@ export class CartComponent {
       } else {
         this.cartService.updateQuantity(id, item.quantity - 1);
       }
+    }
+  }
+
+  proceedToCheckout() {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/checkout']);
+    } else {
+      this.router.navigate(['/login'], {
+        queryParams: { redirectTo: '/checkout' }, // optional redirect nach Login
+      });
     }
   }
 
