@@ -8,8 +8,8 @@ import { RouterLink } from '@angular/router';
   standalone: true,
   imports: [PrimaryButtonComponent, RouterLink],
   template: `
-    <article class="bg-slate-100 px-8 py-3 shadow-md flex justify-between items-center">
-      <h1 class="font-bold text-4xl" routerLink="/">My Store</h1>
+    <article class="bg-slate-50 px-8 py-3 shadow-md flex justify-between items-center">
+      <h1 class="font-bold text-4xl text-shadow-lg" routerLink="/">My Store</h1>
 
       <app-primary-button
         [label]="'Cart (' + cartCount() + ')'"

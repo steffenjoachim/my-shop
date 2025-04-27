@@ -11,4 +11,29 @@ export const routes: Routes = [
         (m) => m.CartComponent
       ),
   },
+  {
+    path: 'login',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/login/login.component').then(
+        (m) => m.LoginComponent
+      ),
+  },
+  {
+    path: 'register',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/register/register.component').then(
+        (m) => m.RegisterComponent
+      ),
+  },
+  {
+    path: 'checkout',
+    pathMatch: 'full',
+
+    loadComponent: () =>
+      import('./features/checkout/checkout.component').then(
+        (m) => m.CheckoutComponent
+      ),
+  },
 ];
