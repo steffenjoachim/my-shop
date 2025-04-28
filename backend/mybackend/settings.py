@@ -113,31 +113,33 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Erlaubt das Setzen und Mitgeben von Session-Cookies
 CORS_ALLOW_CREDENTIALS = True
 
-# Hosts, die CORS-zugriff haben
+# Hosts, die CORS-Zugriff haben (z. B. Angular Dev Server)
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",     # Angular Dev Server
-    # später z.B. "https://your-production-domain.com"
+    "http://localhost:4200",
 ]
 
-# Optional: wenn du alle Origins (nur für Entwicklung!) erlauben willst:
-# CORS_ALLOW_ALL_ORIGINS = True
+# -------------------------------------------------------------------
+# CSRF Settings für Angular
+# -------------------------------------------------------------------
+# CSRF-Cookie wird explizit benannt wie Angular es erwartet
+CSRF_COOKIE_NAME = "XSRF-TOKEN"
+CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
+
+# Damit Angular es lesen kann (kein HttpOnly)
+CSRF_COOKIE_HTTPONLY = False
+
+# Cookie-Einstellungen für Cross-Origin (CORS + Credentials)
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = True
+
+CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SECURE = True
 
 # -------------------------------------------------------------------
 # REST Framework (optional Erweiterungen)
 # -------------------------------------------------------------------
 REST_FRAMEWORK = {
-    # z.B. Standard-Permission
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ]
 }
-
-
-# Session-Cookie auch in Dev als Secure markieren,
-# damit SameSite=None funktioniert
-SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SECURE = True
-
-# Gleiches für CSRF-Cookie, falls du CSRF nutzt:
-CSRF_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SECURE = True

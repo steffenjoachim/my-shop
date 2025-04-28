@@ -6,6 +6,10 @@ from .models import Product
 from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ModelViewSet
 from .serializers import ProductSerializer
+from django.db import transaction
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from .models import Product
 
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.all()
@@ -54,3 +58,33 @@ class UpdateCartItemView(APIView):
         request.session['cart'] = cart
         request.session.modified = True
         return Response({'cart': cart}, status=status.HTTP_200_OK)
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class PlaceOrderView(APIView):
+    def post(self, request):
+        cart = request.session.get('cart', {})
+        updated_products = []
+
+        for pid, qty in cart.items():
+            try:
+                product = Product.objects.get(pk=pid)
+                if product.stock >= qty:
+                    product.stock -= qty
+                    product.save()
+                    updated_products.append({
+                        "id": product.id,
+                        "title": product.title,
+                        "stock": product.stock
+                    })
+                else:
+                    return Response({"error": f"Nicht genug Lager für {product.title}"}, status=400)
+            except Product.DoesNotExist:
+                continue
+
+        request.session['cart'] = {}
+        request.session.modified = True
+
+        return Response({
+            "message": "Bestellung erfolgreich",
+            "updated_products": updated_products
+        }, status=200)
