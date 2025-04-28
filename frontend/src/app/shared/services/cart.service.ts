@@ -52,6 +52,10 @@ export class CartService {
       });
   }
 
+  clearCart() {
+    this._cart.set([]);
+  }
+
   removeFromCart(productId: number): void {
     this.http
       .delete(`${this.apiUrl}remove/${productId}/`, {
