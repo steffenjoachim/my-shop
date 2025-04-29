@@ -1,19 +1,20 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Product
-from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ModelViewSet
-from .serializers import ProductSerializer
-from django.db import transaction
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
+from django.http import HttpResponse
+
 from .models import Product
+from .serializers import ProductSerializer
+
 
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+
 
 class AddToCartView(APIView):
     def post(self, request, product_id):
@@ -22,6 +23,7 @@ class AddToCartView(APIView):
         request.session['cart'] = cart
         request.session.modified = True
         return Response({'cart': cart}, status=status.HTTP_200_OK)
+
 
 class CartView(APIView):
     def get(self, request):
@@ -38,6 +40,7 @@ class CartView(APIView):
             })
         return Response(items)
 
+
 class RemoveFromCartView(APIView):
     def delete(self, request, product_id):
         cart = request.session.get('cart', {})
@@ -46,6 +49,7 @@ class RemoveFromCartView(APIView):
             request.session['cart'] = cart
             request.session.modified = True
         return Response({'cart': cart}, status=status.HTTP_200_OK)
+
 
 class UpdateCartItemView(APIView):
     def post(self, request, product_id):
@@ -58,7 +62,8 @@ class UpdateCartItemView(APIView):
         request.session['cart'] = cart
         request.session.modified = True
         return Response({'cart': cart}, status=status.HTTP_200_OK)
-    
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class PlaceOrderView(APIView):
     def post(self, request):
@@ -88,3 +93,9 @@ class PlaceOrderView(APIView):
             "message": "Bestellung erfolgreich",
             "updated_products": updated_products
         }, status=200)
+
+
+# ✅ CSRF-Cookie-Setz-Endpunkt für Angular
+@ensure_csrf_cookie
+def get_csrf_token(request):
+    return HttpResponse(status=200)

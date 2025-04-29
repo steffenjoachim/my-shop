@@ -1,11 +1,21 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
-import { routes } from './app.routes';
+// app.config.ts
+import { 
+  provideHttpClient,
+  withInterceptors,
+  withXsrfConfiguration,
+
+} from '@angular/common/http';
+import { ApplicationConfig } from '@angular/core';
+import { csrfInterceptor } from './shared/interceptors/csrf.interceptor';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideZoneChangeDetection({ eventCoalescing: true }), 
-              provideRouter(routes),
-              provideHttpClient(),
-            ],
+  providers: [
+    provideHttpClient(
+      withXsrfConfiguration({
+        cookieName: 'XSRF-TOKEN',
+        headerName: 'X-XSRF-TOKEN'
+      }),
+      withInterceptors([csrfInterceptor]),
+    ),
+  ]
 };

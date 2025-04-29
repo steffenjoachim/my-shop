@@ -2,12 +2,11 @@ import { Component, computed, inject } from '@angular/core';
 import { PrimaryButtonComponent } from '../primary-button/primary-button.component';
 import { CartService } from '../services/cart.service';
 import { RouterLink } from '@angular/router';
-import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [PrimaryButtonComponent, RouterLink, NgIf],
+  imports: [PrimaryButtonComponent, RouterLink],
   template: `
     <article class="bg-slate-50 px-8 py-3 shadow-md flex justify-between items-center">
       <h1 class="font-bold text-4xl text-shadow-lg" routerLink="/">My Store</h1>
