@@ -1,15 +1,15 @@
 import { Component, computed, inject } from '@angular/core';
 import { CartService, CartItem } from '../../shared/services/cart.service';
 import { AuthService } from '../../shared/services/auth.service'; 
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-cart',
   standalone: true,
-  imports: [],
+  imports: [RouterModule],
   template: `
     <article class="container mx-auto mt-4 p-4 bg-white rounded shadow">
-      <h2 class="text-3xl font-bold mb-4">Cart</h2>
+      <h2 class="text-3xl font-bold mb-4">Cart</h2>  
 
       @if (products().length === 0) {
         <p class="text-gray-500">Your cart is currently empty.</p>
