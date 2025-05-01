@@ -1,20 +1,23 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpRequest, HttpHandlerFn, HttpEvent } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
-// Ersetzen Sie die gesamte Datei durch:
-export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-    const csrfToken = getCookie('XSRF-TOKEN');
-    if (csrfToken !== null && csrfToken !== undefined) {
-      req = req.clone({
-        headers: req.headers.set('X-XSRF-TOKEN', csrfToken),
-        withCredentials: true
-      });
-    }
+export function csrfInterceptor(
+  req: HttpRequest<any>,
+  next: HttpHandlerFn
+): Observable<HttpEvent<any>> {
+  const csrfToken = getCookie('csrftoken');
+
+  if (csrfToken && req.method !== 'GET' && req.method !== 'HEAD') {
+    const cloned = req.clone({
+      headers: req.headers.set('X-CSRFToken', csrfToken),
+    });
+    return next(cloned);
   }
+
   return next(req);
-};
+}
 
 function getCookie(name: string): string | null {
-  /* Cookie-Logik unverändert lassen */
-  return null; // Replace with actual cookie retrieval logic
+  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[2]) : null;
 }
