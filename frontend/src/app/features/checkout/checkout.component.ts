@@ -28,86 +28,104 @@ interface PlaceOrderResponse {
     <div class="p-8 max-w-3xl mx-auto">
       <h1 class="text-3xl font-bold mb-6">Checkout</h1>
 
-      <!-- Shipping and Billing Address -->
       @if (cartItems().length) {
-      <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-2">Shipping and Billing Address</h2>
-        <form class="space-y-2">
-          <input
-            class="w-full border p-2 rounded"
-            placeholder="Full Name"
-            [(ngModel)]="address.name"
-            name="name"
-          />
-          <input
-            class="w-full border p-2 rounded"
-            placeholder="Street, House Number"
-            [(ngModel)]="address.street"
-            name="street"
-          />
-          <input
-            class="w-full border p-2 rounded"
-            placeholder="ZIP Code, City"
-            [(ngModel)]="address.city"
-            name="city"
-          />
+        <form #form="ngForm" (ngSubmit)="onPlaceOrder()" class="space-y-6">
+          <section>
+            <h2 class="text-xl font-semibold mb-2">Shipping and Billing Address</h2>
+
+            <input
+              class="w-full border p-2 rounded"
+              placeholder="Full Name"
+              [(ngModel)]="address.name"
+              name="name"
+              required
+            />
+
+            <input
+              class="w-full border p-2 rounded mt-2"
+              placeholder="Street, House Number"
+              [(ngModel)]="address.street"
+              name="street"
+              required
+            />
+
+            <div class="flex space-x-2 pt-2">
+              <input
+                class="w-1/3 border p-2 rounded"
+                placeholder="ZIP Code"
+                [(ngModel)]="address.zip"
+                name="zip"
+                required
+              />
+              <input
+                class="w-2/3 border p-2 rounded"
+                placeholder="City"
+                [(ngModel)]="address.city"
+                name="city"
+                required
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 class="text-xl font-semibold mb-2">Payment Method</h2>
+            <select
+              class="w-full border p-2 rounded"
+              [(ngModel)]="paymentMethod"
+              name="payment"
+              required
+            >
+              <option value="paypal">PayPal</option>
+              <option value="creditcard">Credit Card</option>
+              <option value="invoice">Invoice</option>
+            </select>
+          </section>
+
+          <div class="space-y-4">
+            @for (item of cartItems(); track item.id) {
+              <div class="flex justify-between items-center border-b pb-2">
+                <span>{{ item.title }} x{{ item.quantity }}</span>
+                <span class="font-medium">
+                  {{ item.price * item.quantity | currency }}
+                </span>
+              </div>
+            }
+          </div>
+
+          <div class="text-right font-semibold text-xl">
+            Total: {{ total() | currency }}
+          </div>
+
+          @if (isLoggedIn()) {
+            <app-primary-button
+              label="Place Order"
+              type="submit"
+              [disabled]="!form.valid"
+            />
+          } @else {
+            <div class="mt-6 border-t pt-4 text-sm text-gray-600">
+              <p>
+                Um die Bestellung abzuschließen, bitte
+                <a routerLink="/login" class="text-blue-500 hover:underline"
+                  >einloggen</a
+                >
+                oder
+                <a routerLink="/register" class="text-blue-500 hover:underline"
+                  >registrieren</a
+                >.
+              </p>
+            </div>
+          }
         </form>
-      </section>
-      <!-- Payment Method -->
-      <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-2">Payment Method</h2>
-        <select
-          class="w-full border p-2 rounded"
-          [(ngModel)]="paymentMethod"
-          name="payment"
-        >
-          <option value="paypal">PayPal</option>
-          <option value="creditcard">Credit Card</option>
-          <option value="invoice">Invoice</option>
-        </select>
-      </section>
-
-      <!-- Warenkorb -->
-      <div class="space-y-4 mb-6">
-        @for (item of cartItems(); track item.id) {
-        <div class="flex justify-between items-center border-b pb-2">
-          <span>{{ item.title }} x{{ item.quantity }}</span>
-          <span class="font-medium">
-            {{ item.price * item.quantity | currency }}
-          </span>
-        </div>
-        }
-      </div>
-
-      <div class="text-right font-semibold text-xl mb-6">
-        Total: {{ total() | currency }}
-      </div>
-
       }
 
-      <!-- Button oder Hinweis je nach Login -->
-      @if (isLoggedIn()) {
-      <app-primary-button label="Place Order" (btnClicked)="onPlaceOrder()" />
-      } @else {
-      <div class="mt-10 border-t pt-6 text-sm text-gray-600">
-        <p>
-          Um die Bestellung abzuschließen, bitte
-          <a routerLink="/login" class="text-blue-500 hover:underline"
-            >einloggen</a
-          >
-          oder
-          <a routerLink="/register" class="text-blue-500 hover:underline"
-            >registrieren</a
-          >.
-        </p>
-      </div>
-      }
+      <app-popup-alert
+        [message]="successMessage"
+        [type]="'success'"
+        [visible]="showSuccessAlert"
+      ></app-popup-alert>
+      
     </div>
-    <app-popup-alert
-      [message]="successMessage"
-      [type]="'success'"
-      [visible]="showSuccessAlert"
-    ></app-popup-alert>
   `,
   styles: ``,
 })
@@ -115,9 +133,6 @@ export class CheckoutComponent {
   private cartService = inject(CartService);
   private auth = inject(AuthService);
   private http = inject(HttpClient);
-
-  successMessage = '';
-  showSuccessAlert = false;
 
   cartItems = computed(() => this.cartService.cart());
   total = computed(() =>
@@ -130,10 +145,14 @@ export class CheckoutComponent {
   address = {
     name: '',
     street: '',
+    zip: '',
     city: '',
   };
 
   paymentMethod = 'paypal';
+
+  successMessage = '';
+  showSuccessAlert = false;
 
   onPlaceOrder() {
     const payload = {
@@ -150,12 +169,11 @@ export class CheckoutComponent {
       .subscribe({
         next: (res: PlaceOrderResponse) => {
           this.cartService.clearCart();
-          this.successMessage = 'Vielen Dank für Ihre Bestellung!';
+          this.successMessage = `Thank you for your order! <br> Check your email for confirmation.`;
           this.showSuccessAlert = true;
         },
         error: (err: any) => {
           console.error('Fehler bei Bestellung:', err);
-          // Optional: Fehler-Alert anzeigen
         },
       });
   }

@@ -19,7 +19,6 @@ import { RouterLink } from '@angular/router';
 
         <app-primary-button
           [label]="'Cart (' + cartCount() + ')'"
-          (btnClicked)="onCartClick()"
           routerLink="/cart"
         />
       </div>
@@ -32,8 +31,4 @@ export class HeaderComponent {
   cartCount = computed(() =>
     this.cartService.cart().reduce((sum, item) => sum + item.quantity, 0)
   );
-
-  onCartClick() {
-    console.log('Cart clicked!');
-  }
 }

@@ -32,7 +32,6 @@ export class CartService {
       .get<CartItem[]>(this.apiUrl, { withCredentials: true })
       .subscribe({
         next: (data) => {
-          console.log('[CartService] loadCart →', data);
           this._cart.set(data);
         },
         error: (err) => console.error('[CartService] loadCart ERROR', err),
@@ -40,12 +39,10 @@ export class CartService {
   }
 
   addToCart(productId: number): void {
-    console.log('[CartService] addToCart(', productId, ')');
     this.http
       .post(`${this.apiUrl}add/${productId}/`, {}, { withCredentials: true })
       .subscribe({
         next: (res) => {
-          console.log('[CartService] addToCart RESPONSE →', res);
           this.loadCart();
         },
         error: (err) => console.error('[CartService] addToCart ERROR', err),
