@@ -36,6 +36,7 @@ class CartView(APIView):
                 "title": product.title,
                 "price": str(product.price),
                 "image": product.image,
+                "stock": product.stock,
                 "quantity": quantity
             })
         return Response(items)
