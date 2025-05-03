@@ -11,7 +11,7 @@ import { RouterLink } from '@angular/router';
   template: `
     @if (visible) {
     <div
-      class="flex justify-center items-center bg-white border rounded shadow-lg p-4"
+      class="flex justify-center items-center bg-white border rounded shadow-lg p-4 mt-2"
       [ngClass]="{
         'border-green-500 text-green-700': type === 'success',
         'border-red-500 text-red-700': type === 'error',
