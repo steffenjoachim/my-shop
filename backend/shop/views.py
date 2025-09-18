@@ -6,6 +6,8 @@ from rest_framework.viewsets import ModelViewSet
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.http import HttpResponse
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
 
 from .models import Product
 from .serializers import ProductSerializer
@@ -99,4 +101,7 @@ class PlaceOrderView(APIView):
 # ✅ CSRF-Cookie-Setz-Endpunkt für Angular
 @ensure_csrf_cookie
 def get_csrf_token(request):
-    return HttpResponse(status=200)
+    # Gibt zusätzlich zum Cookie auch den Token im Body zurück,
+    # damit Frontends auf anderer Origin den Token nutzen können
+    token = get_token(request)
+    return JsonResponse({"csrfToken": token}, status=200)
