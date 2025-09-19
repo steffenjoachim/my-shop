@@ -3,18 +3,29 @@ import { CartService, CartItem } from '../../shared/services/cart.service';
 import { AuthService } from '../../shared/services/auth.service';
 import { Router, RouterModule } from '@angular/router';
 import { PopupAlertComponent } from '../../shared/popup-alert/popup-alert.component';
+import { PrimaryButtonComponent } from '../../shared/primary-button/primary-button.component';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-cart',
   standalone: true,
-  imports: [RouterModule, PopupAlertComponent, CommonModule],
+  imports: [
+    RouterModule,
+    PopupAlertComponent,
+    CommonModule,
+    PrimaryButtonComponent,
+  ],
   template: `
     <article class="container mx-auto mt-4 p-4 bg-white rounded shadow">
       <h2 class="text-3xl font-bold mb-4">Cart</h2>
 
       @if (products().length === 0) {
-      <p class="text-gray-500">Your cart is currently empty.</p>
+      <p class="text-gray-500 mb-8">Your cart is currently empty.</p>
+      <app-primary-button
+        class="mt-8"
+        [label]="'Zurück zum Shop'"
+        routerLink="/"
+      />
       } @else {
       <div class="space-y-2 mb-4 border-b">
         @for (product of products(); track product.id) {
@@ -63,13 +74,16 @@ import { CommonModule } from '@angular/common';
         Total: {{ totalRounded() }} €
       </div>
 
-      <div class="text-right mt-6">
-        <button
-          class="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-600 transition"
+      <div class="flex justify-between mt-6">
+        <app-primary-button
+          class="ml-4"
+          [label]="'Weiter einkaufen'"
+          routerLink="/"
+        />
+        <app-primary-button
+          [label]="'Proceed to Checkout'"
           (click)="proceedToCheckout()"
-        >
-          Proceed to Checkout
-        </button>
+        />
       </div>
       }
 
