@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { PrimaryButtonComponent } from '../primary-button/primary-button.component';
+import { PrimaryButtonComponent } from '../primary-button/primary-button';
 import { CartService } from '../services/cart.service';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -18,11 +18,22 @@ import { CommonModule } from '@angular/common';
       <div class="flex items-center gap-4">
         <nav class="text-sm text-gray-600 space-x-4">
           @if (!isLoggedIn()) {
-          <a routerLink="/login" class="hover:underline text-lg font-bold mr-4">Login</a>
-          <a routerLink="/register" class="hover:underline text-lg font-bold mr-4">Registrieren</a>
+          <a routerLink="/login" class="hover:underline text-lg font-bold mr-4"
+            >Login</a
+          >
+          <a
+            routerLink="/register"
+            class="hover:underline text-lg font-bold mr-4"
+            >Registrieren</a
+          >
           } @else {
-          <span class="text-gray-700 text-lg font-bold mr-4">{{ user()?.username }}</span>
-          <button (click)="onLogout()" class="hover:underline text-red-600 text-lg font-bold mr-4">
+          <span class="text-gray-700 text-lg font-bold mr-4">{{
+            user()?.username
+          }}</span>
+          <button
+            (click)="onLogout()"
+            class="hover:underline text-red-600 text-lg font-bold mr-4"
+          >
             Logout
           </button>
           }

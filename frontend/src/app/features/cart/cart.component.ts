@@ -2,8 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CartService, CartItem } from '../../shared/services/cart.service';
 import { AuthService } from '../../shared/services/auth.service';
 import { Router, RouterModule } from '@angular/router';
-import { PopupAlertComponent } from '../../shared/popup-alert/popup-alert.component';
-import { PrimaryButtonComponent } from '../../shared/primary-button/primary-button.component';
+import { PopupAlertComponent } from '../../shared/popup-alert/popup';
+import { PrimaryButton } from '../../shared/primary-button/primary-button';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
     RouterModule,
     PopupAlertComponent,
     CommonModule,
-    PrimaryButtonComponent,
+    PrimaryButton,
   ],
   template: `
     <article class="container mx-auto mt-4 p-4 bg-white rounded shadow">

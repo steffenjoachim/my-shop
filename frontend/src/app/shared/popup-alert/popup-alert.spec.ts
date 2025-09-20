@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { PopupAlertComponent } from './popup-alert.component';
+import { PopupAlertComponent } from './popup';
 
 describe('PopupAlertComponent', () => {
   let component: PopupAlertComponent;
@@ -8,9 +8,8 @@ describe('PopupAlertComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PopupAlertComponent]
-    })
-    .compileComponents();
+      imports: [PopupAlertComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(PopupAlertComponent);
     component = fixture.componentInstance;

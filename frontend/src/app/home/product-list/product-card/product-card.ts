@@ -1,32 +1,39 @@
 import { Component, Input, computed, inject, signal } from '@angular/core';
 import { Product } from '../../../shared/models/products.model';
-import { PrimaryButtonComponent } from '../../../shared/primary-button/primary-button.component';
+import { PrimaryButtonComponent } from '../../../shared/primary-button/primary-button';
 import { CartService } from '../../../shared/services/cart.service';
-import { PopupAlertComponent } from '../../../shared/popup-alert/popup-alert.component';
+import { PopupAlertComponent } from '../../../shared/popup-alert/popup';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-product-card',
   standalone: true,
-  imports: [PrimaryButtonComponent, 
-            PopupAlertComponent, 
-            CommonModule],
+  imports: [PrimaryButtonComponent, PopupAlertComponent, CommonModule],
   template: `
-    <section class="h-[300px] bg-white shadow-md rounded-xl p-6 flex flex-col gap-6 relative">
+    <section
+      class="h-[300px] bg-white shadow-md rounded-xl p-6 flex flex-col gap-6 relative"
+    >
       <div class="mx-auto">
-        <img [src]="product.image" alt="" class="w-[200px] h-[100px] object-contain" />
+        <img
+          [src]="product.image"
+          alt=""
+          class="w-[200px] h-[100px] object-contain"
+        />
       </div>
 
       <div class="flex flex-col mt-2">
         <span class="font-bold text-md">{{ product.title }}</span>
         <span class="text-sm">{{ '€' + product.price }}</span>
+        <div class="flex justify-between items-center mt-4">
+          <app-primary-button
+            label="Add to cart"
+            (btnClicked)="handleAddToCart()"
+            [disabled]="stock === 0 || quantityInCart() >= stock"
+          />
 
-        <app-primary-button
-          class="absolute bottom-3 left-5 w-[90%]"
-          label="Add to cart"
-          (btnClicked)="handleAddToCart()"
-          [disabled]="stock === 0 || quantityInCart() >= stock"
-        />
+          <app-primary-button label="Details" (btnClicked)="goToDetail()" />
+        </div>
       </div>
 
       <span
@@ -37,18 +44,15 @@ import { CommonModule } from '@angular/common';
         }"
       >
         @if (stock > 0 && stock <= 10) {
-          {{ stock }} left
-        } @else if (stock === 0) {
-          Out of stock
-        }
+        {{ stock }} left } @else if (stock === 0) { Out of stock }
       </span>
-@if (showWarning()) {
-        <app-popup-alert
-          [message]="'Du hast bereits alle verfügbaren Artikel im Warenkorb.'"
-          [type]="'info'"
-          [visible]="showWarning()"
-        />
-}
+      @if (showWarning()) {
+      <app-popup-alert
+        [message]="'Du hast bereits alle verfügbaren Artikel im Warenkorb.'"
+        [type]="'info'"
+        [visible]="showWarning()"
+      />
+      }
     </section>
   `,
   styles: ``,
@@ -57,6 +61,7 @@ export class ProductCardComponent {
   @Input() product!: Product;
 
   cartService = inject(CartService);
+  router = inject(Router);
 
   // Signale für Feedback
   showWarning = signal(false);
@@ -67,7 +72,7 @@ export class ProductCardComponent {
   }
 
   quantityInCart = computed(() => {
-    const item = this.cartService.cart().find(p => p.id === this.product?.id);
+    const item = this.cartService.cart().find((p) => p.id === this.product?.id);
     return item?.quantity ?? 0;
   });
 
@@ -79,5 +84,9 @@ export class ProductCardComponent {
     }
 
     this.cartService.addToCart(this.product.id);
+  }
+
+  goToDetail() {
+    this.router.navigate(['/products', this.product.id]);
   }
 }
