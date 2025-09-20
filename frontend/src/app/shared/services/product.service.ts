@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { timer } from 'rxjs';
+import { timer, Observable } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { Product } from '../models/products.model';
 import { environment } from '../../../environments/environment';
@@ -23,5 +23,19 @@ export class ProductService {
   loadProducts(): void {
     this.http.get<Product[]>(this.apiUrl)
       .subscribe(data => this._products.set(data));
+  }
+
+  /**
+   * Lokale Suche in bereits geladenen Produkten.
+   */
+  getProductById(id: number): Product | null {
+  return this._products().find(p => p.id === id) ?? null;
+}
+
+  /**
+   * Einzelnes Produkt direkt vom Server nachladen.
+   */
+  fetchProductById(id: number): Observable<Product> {
+    return this.http.get<Product>(`${this.apiUrl}${id}`);
   }
 }

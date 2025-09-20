@@ -12,7 +12,7 @@ import { Component, input, output } from '@angular/core';
   `,
   styles: ``
 })
-export class PrimaryButtonComponent {
+export class PrimaryButton {
   label = input('');
   disabled = input<boolean>(false);
   btnClicked = output();

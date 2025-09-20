@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
-import { HeaderComponent } from './shared/header/header.component';
-import { ProductsListComponent } from './home/product-list/product-list.component';
+import { HeaderComponent } from './shared/header/header';
+import { ProductsList } from './home/product-list/product-list';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [HeaderComponent, RouterOutlet],
+  imports: [HeaderComponent, RouterOutlet, ProductsList],
   template: `
     <app-header />
     <router-outlet></router-outlet>

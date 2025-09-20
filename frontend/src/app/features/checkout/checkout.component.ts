@@ -2,8 +2,8 @@ import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
-import { PrimaryButtonComponent } from '../../shared/primary-button/primary-button.component';
-import { PopupAlertComponent } from '../../shared/popup-alert/popup-alert.component';
+import { PrimaryButtonComponent } from '../../shared/primary-button/primary-button';
+import { PopupAlertComponent } from '../../shared/popup-alert/popup';
 import { AuthService } from '../../shared/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -29,94 +29,96 @@ interface PlaceOrderResponse {
       <h1 class="text-3xl font-bold mb-6">Checkout</h1>
 
       @if (cartItems().length) {
-        <form #form="ngForm" (ngSubmit)="onPlaceOrder()" class="space-y-6">
-          <section>
-            <h2 class="text-xl font-semibold mb-2">Shipping and Billing Address</h2>
+      <form #form="ngForm" (ngSubmit)="onPlaceOrder()" class="space-y-6">
+        <section>
+          <h2 class="text-xl font-semibold mb-2">
+            Shipping and Billing Address
+          </h2>
 
+          <input
+            class="w-full border p-2 rounded"
+            placeholder="Full Name"
+            [(ngModel)]="address.name"
+            name="name"
+            required
+          />
+
+          <input
+            class="w-full border p-2 rounded mt-2"
+            placeholder="Street, House Number"
+            [(ngModel)]="address.street"
+            name="street"
+            required
+          />
+
+          <div class="flex space-x-2 pt-2">
             <input
-              class="w-full border p-2 rounded"
-              placeholder="Full Name"
-              [(ngModel)]="address.name"
-              name="name"
+              class="w-1/3 border p-2 rounded"
+              placeholder="ZIP Code"
+              [(ngModel)]="address.zip"
+              name="zip"
               required
             />
-
             <input
-              class="w-full border p-2 rounded mt-2"
-              placeholder="Street, House Number"
-              [(ngModel)]="address.street"
-              name="street"
+              class="w-2/3 border p-2 rounded"
+              placeholder="City"
+              [(ngModel)]="address.city"
+              name="city"
               required
             />
-
-            <div class="flex space-x-2 pt-2">
-              <input
-                class="w-1/3 border p-2 rounded"
-                placeholder="ZIP Code"
-                [(ngModel)]="address.zip"
-                name="zip"
-                required
-              />
-              <input
-                class="w-2/3 border p-2 rounded"
-                placeholder="City"
-                [(ngModel)]="address.city"
-                name="city"
-                required
-              />
-            </div>
-          </section>
-
-          <section>
-            <h2 class="text-xl font-semibold mb-2">Payment Method</h2>
-            <select
-              class="w-full border p-2 rounded"
-              [(ngModel)]="paymentMethod"
-              name="payment"
-              required
-            >
-              <option value="paypal">PayPal</option>
-              <option value="creditcard">Credit Card</option>
-              <option value="invoice">Invoice</option>
-            </select>
-          </section>
-
-          <div class="space-y-4">
-            @for (item of cartItems(); track item.id) {
-              <div class="flex justify-between items-center border-b pb-2">
-                <span>{{ item.title }} x{{ item.quantity }}</span>
-                <span class="font-medium">
-                  {{ item.price * item.quantity | currency }}
-                </span>
-              </div>
-            }
           </div>
+        </section>
 
-          <div class="text-right font-semibold text-xl">
-            Total: {{ total() | currency }}
+        <section>
+          <h2 class="text-xl font-semibold mb-2">Payment Method</h2>
+          <select
+            class="w-full border p-2 rounded"
+            [(ngModel)]="paymentMethod"
+            name="payment"
+            required
+          >
+            <option value="paypal">PayPal</option>
+            <option value="creditcard">Credit Card</option>
+            <option value="invoice">Invoice</option>
+          </select>
+        </section>
+
+        <div class="space-y-4">
+          @for (item of cartItems(); track item.id) {
+          <div class="flex justify-between items-center border-b pb-2">
+            <span>{{ item.title }} x{{ item.quantity }}</span>
+            <span class="font-medium">
+              {{ item.price * item.quantity | currency }}
+            </span>
           </div>
-
-          @if (isLoggedIn()) {
-            <app-primary-button
-              label="Place Order"
-              type="submit"
-              [disabled]="!form.valid"
-            />
-          } @else {
-            <div class="mt-6 border-t pt-4 text-sm text-gray-600">
-              <p>
-                Um die Bestellung abzuschließen, bitte
-                <a routerLink="/login" class="text-blue-500 hover:underline"
-                  >einloggen</a
-                >
-                oder
-                <a routerLink="/register" class="text-blue-500 hover:underline"
-                  >registrieren</a
-                >.
-              </p>
-            </div>
           }
-        </form>
+        </div>
+
+        <div class="text-right font-semibold text-xl">
+          Total: {{ total() | currency }}
+        </div>
+
+        @if (isLoggedIn()) {
+        <app-primary-button
+          label="Place Order"
+          type="submit"
+          [disabled]="!form.valid"
+        />
+        } @else {
+        <div class="mt-6 border-t pt-4 text-sm text-gray-600">
+          <p>
+            Um die Bestellung abzuschließen, bitte
+            <a routerLink="/login" class="text-blue-500 hover:underline"
+              >einloggen</a
+            >
+            oder
+            <a routerLink="/register" class="text-blue-500 hover:underline"
+              >registrieren</a
+            >.
+          </p>
+        </div>
+        }
+      </form>
       }
 
       <app-popup-alert
@@ -124,7 +126,6 @@ interface PlaceOrderResponse {
         [type]="'success'"
         [visible]="showSuccessAlert"
       ></app-popup-alert>
-      
     </div>
   `,
   styles: ``,
