@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { PrimaryButtonComponent } from '../primary-button/primary-button';
+import { PrimaryButton } from '../primary-button/primary-button';
 import { CartService } from '../services/cart.service';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, PrimaryButtonComponent, RouterLink],
+  imports: [CommonModule, PrimaryButton, RouterLink],
   template: `
     <article
       class="bg-slate-50 px-8 py-3 shadow-md flex justify-between items-center"
@@ -47,7 +47,7 @@ import { CommonModule } from '@angular/common';
     </article>
   `,
 })
-export class HeaderComponent {
+export class Header {
   private cartService = inject(CartService);
   private auth = inject(AuthService);
 

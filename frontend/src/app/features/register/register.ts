@@ -4,12 +4,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ToastService } from '../../shared/services/toast.service';
-import { ToastContainerComponent } from '../../shared/toast/toast.component';
+import { Toast } from '../../shared/toast/toast';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ToastContainerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, Toast],
   template: `
     <section class="max-w-sm mx-auto mt-8 p-4 bg-white rounded shadow">
       <h2 class="text-2xl font-bold mb-4">Register</h2>
@@ -42,7 +42,7 @@ import { ToastContainerComponent } from '../../shared/toast/toast.component';
       }
 
       <!-- Inline Toasts direkt unter der Karte -->
-      <app-toast-container [inline]="true" />
+      <app-toast [inline]="true" />
 
       <p class="text-sm mt-4 text-center">
         Already have an account?
@@ -51,7 +51,7 @@ import { ToastContainerComponent } from '../../shared/toast/toast.component';
     </section>
   `,
 })
-export class RegisterComponent {
+export class Register {
   auth = inject(AuthService);
   toast = inject(ToastService);
   username = '';

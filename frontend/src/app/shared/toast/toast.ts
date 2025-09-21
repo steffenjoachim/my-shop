@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ToastService } from '../services/toast.service';
 
 @Component({
-  selector: 'app-toast-container',
+  selector: 'app-toast',
   standalone: true,
   imports: [CommonModule],
   template: `
@@ -40,7 +40,7 @@ import { ToastService } from '../services/toast.service';
     }
   `,
 })
-export class ToastContainerComponent {
+export class Toast {
   private toast = inject(ToastService);
   messages = computed(() => this.toast.messages());
   @Input() inline = false;
