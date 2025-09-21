@@ -2,8 +2,8 @@ import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
-import { PrimaryButtonComponent } from '../../shared/primary-button/primary-button';
-import { PopupAlertComponent } from '../../shared/popup-alert/popup';
+import { PrimaryButton } from '../../shared/primary-button/primary-button';
+import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { AuthService } from '../../shared/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -20,9 +20,9 @@ interface PlaceOrderResponse {
   imports: [
     CommonModule,
     RouterLink,
-    PrimaryButtonComponent,
+    PrimaryButton,
     FormsModule,
-    PopupAlertComponent,
+    PopupAlert,
   ],
   template: `
     <div class="p-8 max-w-3xl mx-auto">
@@ -130,7 +130,7 @@ interface PlaceOrderResponse {
   `,
   styles: ``,
 })
-export class CheckoutComponent {
+export class Checkout {
   private cartService = inject(CartService);
   private auth = inject(AuthService);
   private http = inject(HttpClient);

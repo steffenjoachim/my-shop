@@ -29,7 +29,7 @@ import { RouterLink } from '@angular/router';
   `,
   styles: [],
 })
-export class PopupAlertComponent {
+export class PopupAlert {
   @Input() message = '';
   @Input() type: 'success' | 'error' | 'info' = 'info';
   @Input() visible = false;

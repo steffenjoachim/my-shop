@@ -1,11 +1,11 @@
 import { Component, effect } from '@angular/core';
 import { ProductService } from '../../shared/services/product.service';
-import { ProductCardComponent } from './product-card/product-card';
+import { ProductCard } from './product-card/product-card';
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [ProductCardComponent],
+  imports: [ProductCard ],
   template: `
     <article class="p-8 grid grid-cols-2 gap-4">
       @for (product of productService.products(); track product.id) {

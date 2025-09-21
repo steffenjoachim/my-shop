@@ -2,19 +2,14 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CartService, CartItem } from '../../shared/services/cart.service';
 import { AuthService } from '../../shared/services/auth.service';
 import { Router, RouterModule } from '@angular/router';
-import { PopupAlertComponent } from '../../shared/popup-alert/popup';
+import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { PrimaryButton } from '../../shared/primary-button/primary-button';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-cart',
   standalone: true,
-  imports: [
-    RouterModule,
-    PopupAlertComponent,
-    CommonModule,
-    PrimaryButton,
-  ],
+  imports: [RouterModule, PopupAlert, CommonModule, PrimaryButton],
   template: `
     <article class="container mx-auto mt-4 p-4 bg-white rounded shadow">
       <h2 class="text-3xl font-bold mb-4">Cart</h2>
@@ -96,7 +91,7 @@ import { CommonModule } from '@angular/common';
   `,
   styles: ``,
 })
-export class CartComponent {
+export class Cart {
   private cartService = inject(CartService);
   private router = inject(Router);
   private authService = inject(AuthService);

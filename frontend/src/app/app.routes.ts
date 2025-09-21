@@ -7,27 +7,25 @@ export const routes: Routes = [
     path: 'cart',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/cart/cart.component').then((m) => m.CartComponent),
+      import('./features/cart/cart.').then((m) => m.Cart),
   },
   {
     path: 'login',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/login/login').then((m) => m.LoginComponent),
+      import('./features/login/login').then((m) => m.Login),
   },
   {
     path: 'register',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/register/register').then((m) => m.RegisterComponent),
+      import('./features/register/register').then((m) => m.Register),
   },
   {
     path: 'checkout',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/checkout/checkout.component').then(
-        (m) => m.CheckoutComponent
-      ),
+      import('./features/checkout/checkout').then((m) => m.Checkout),
   },
   {
     path: 'products/:id',
