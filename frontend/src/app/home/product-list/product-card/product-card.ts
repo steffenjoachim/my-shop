@@ -16,7 +16,7 @@ import { Router } from '@angular/router';
     >
       <div class="mx-auto">
         <img
-          [src]="product.image"
+          [src]="product.main_image"
           alt=""
           class="w-[200px] h-[100px] object-contain"
         />
