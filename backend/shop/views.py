@@ -5,7 +5,6 @@ from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
-from django.http import HttpResponse
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 
@@ -20,16 +19,16 @@ class ProductViewSet(ModelViewSet):
 
 class AddToCartView(APIView):
     def post(self, request, product_id):
-        cart = request.session.get('cart', {})
+        cart = request.session.get("cart", {})
         cart[str(product_id)] = cart.get(str(product_id), 0) + 1
-        request.session['cart'] = cart
+        request.session["cart"] = cart
         request.session.modified = True
-        return Response({'cart': cart}, status=status.HTTP_200_OK)
+        return Response({"cart": cart}, status=status.HTTP_200_OK)
 
 
 class CartView(APIView):
     def get(self, request):
-        cart = request.session.get('cart', {})
+        cart = request.session.get("cart", {})
         items = []
         for pid, quantity in cart.items():
             product = get_object_or_404(Product, id=pid)
@@ -37,40 +36,40 @@ class CartView(APIView):
                 "id": product.id,
                 "title": product.title,
                 "price": str(product.price),
-                "image": product.image,
+                "main_image": product.main_image,
                 "stock": product.stock,
-                "quantity": quantity
+                "quantity": quantity,
             })
         return Response(items)
 
 
 class RemoveFromCartView(APIView):
     def delete(self, request, product_id):
-        cart = request.session.get('cart', {})
+        cart = request.session.get("cart", {})
         if str(product_id) in cart:
             del cart[str(product_id)]
-            request.session['cart'] = cart
+            request.session["cart"] = cart
             request.session.modified = True
-        return Response({'cart': cart}, status=status.HTTP_200_OK)
+        return Response({"cart": cart}, status=status.HTTP_200_OK)
 
 
 class UpdateCartItemView(APIView):
     def post(self, request, product_id):
-        quantity = request.data.get('quantity')
+        quantity = request.data.get("quantity")
         if quantity is None or int(quantity) < 1:
-            return Response({'error': 'Ungültige Menge'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Ungültige Menge"}, status=status.HTTP_400_BAD_REQUEST)
 
-        cart = request.session.get('cart', {})
+        cart = request.session.get("cart", {})
         cart[str(product_id)] = int(quantity)
-        request.session['cart'] = cart
+        request.session["cart"] = cart
         request.session.modified = True
-        return Response({'cart': cart}, status=status.HTTP_200_OK)
+        return Response({"cart": cart}, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name="dispatch")
 class PlaceOrderView(APIView):
     def post(self, request):
-        cart = request.session.get('cart', {})
+        cart = request.session.get("cart", {})
         updated_products = []
 
         for pid, qty in cart.items():
@@ -82,26 +81,27 @@ class PlaceOrderView(APIView):
                     updated_products.append({
                         "id": product.id,
                         "title": product.title,
-                        "stock": product.stock
+                        "stock": product.stock,
                     })
                 else:
-                    return Response({"error": f"Nicht genug Lager für {product.title}"}, status=400)
+                    return Response(
+                        {"error": f"Nicht genug Lager für {product.title}"},
+                        status=400,
+                    )
             except Product.DoesNotExist:
                 continue
 
-        request.session['cart'] = {}
+        request.session["cart"] = {}
         request.session.modified = True
 
-        return Response({
-            "message": "Bestellung erfolgreich",
-            "updated_products": updated_products
-        }, status=200)
+        return Response(
+            {"message": "Bestellung erfolgreich", "updated_products": updated_products},
+            status=200,
+        )
 
 
 # ✅ CSRF-Cookie-Setz-Endpunkt für Angular
 @ensure_csrf_cookie
 def get_csrf_token(request):
-    # Gibt zusätzlich zum Cookie auch den Token im Body zurück,
-    # damit Frontends auf anderer Origin den Token nutzen können
     token = get_token(request)
     return JsonResponse({"csrfToken": token}, status=200)

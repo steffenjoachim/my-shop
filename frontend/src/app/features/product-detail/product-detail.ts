@@ -12,10 +12,10 @@ import { ProductService } from '../../shared/services/product.service';
     <section class="max-w-2xl mx-auto mt-6 bg-white shadow-md rounded-xl p-6">
       @if (product) {
         <h2 class="text-2xl font-bold mb-4">{{ product.title }}</h2>
-        <img [src]="product.image" alt="" class="w-[300px] h-[150px] object-contain mb-4" />
+        <!-- <img [src]="product.main_image" alt="" class="w-[300px] h-[150px] object-contain mb-4" /> -->
         <p class="mb-2">Preis: €{{ product.price }}</p>
         <p class="mb-2">Bestand: {{ product.stock }}</p>
-        <!-- <p class="text-gray-600">{{ product.description }}</p> -->
+        <p class="text-gray-600">{{ product.description }}</p>
       } @else {
         <p>Lade Produktdetails...</p>
       }
