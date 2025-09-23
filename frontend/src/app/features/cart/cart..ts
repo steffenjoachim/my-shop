@@ -27,7 +27,7 @@ import { CommonModule } from '@angular/common';
         <div
           class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b"
         >
-          <img class="w-16 h-16 object-contain sm:mr-4" [src]="product.image" />
+          <img class="w-16 h-16 object-contain sm:mr-4" [src]="product.main_image" />
 
           <div class="flex-1">
             <span class="block font-medium text-lg">{{ product.title }}</span>
