@@ -100,7 +100,7 @@ class PlaceOrderView(APIView):
         )
 
 
-# ✅ CSRF-Cookie-Setz-Endpunkt für Angular
+#CSRF-Cookie-Setz-Endpunkt für Angular
 @ensure_csrf_cookie
 def get_csrf_token(request):
     token = get_token(request)
