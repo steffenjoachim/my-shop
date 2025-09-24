@@ -1,11 +1,3 @@
-# from django.db import models
-
-# class Product(models.Model):
-#     title = models.CharField(max_length=255)
-#     price = models.DecimalField(max_digits=10, decimal_places=2)
-#     stock = models.PositiveIntegerField()
-#     image = models.URLField()
-
 from django.db import models
 
 
@@ -34,14 +26,29 @@ class AttributeType(models.Model):
         return f"{self.category.name} - {self.name}"
 
 
+class AttributeValue(models.Model):
+    attribute_type = models.ForeignKey(
+        AttributeType,
+        related_name="values",
+        on_delete=models.CASCADE
+    )
+    value = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = ("attribute_type", "value")
+
+    def __str__(self):
+        return f"{self.attribute_type.name}: {self.value}"
+
+
 class Product(models.Model):
     category = models.ForeignKey(
-    "Category",
-    related_name="products",
-    on_delete=models.CASCADE,
-    null=True,
-    blank=True,
-)
+        Category,
+        related_name="products",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -60,17 +67,14 @@ class ProductAttribute(models.Model):
         related_name="attributes",
         on_delete=models.CASCADE
     )
-    attribute_type = models.ForeignKey(
-        AttributeType,
+    value = models.ForeignKey(
+        AttributeValue,
+        related_name="product_attributes",
         on_delete=models.CASCADE
     )
-    value = models.CharField(max_length=255)
-
-    class Meta:
-        unique_together = ("product", "attribute_type")
 
     def __str__(self):
-        return f"{self.product.title}: {self.attribute_type.name} = {self.value}"
+        return f"{self.product.title}: {self.value}"
 
 
 class ProductImage(models.Model):
@@ -93,4 +97,3 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.product.title}"
-
