@@ -5,6 +5,8 @@ import { environment } from '../../../environments/environment';
 
 export interface CartItem extends Product {
   quantity: number;
+  selectedColor?: string;
+  selectedSize?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -14,15 +16,18 @@ export class CartService {
   private readonly _cart = signal<CartItem[]>([]);
   public readonly cart = this._cart.asReadonly();
 
-  public readonly totalPrice = signal(0); // wird automatisch berechnet
+  public readonly totalPrice = signal(0);
 
   constructor(private http: HttpClient) {
     this.loadCart();
 
-    // Automatisches Berechnen von totalPrice bei jeder Cart-Änderung
+    // Gesamtpreis automatisch berechnen
     effect(() => {
       const items = this._cart();
-      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const total = items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
       this.totalPrice.set(total);
     });
   }
@@ -31,31 +36,62 @@ export class CartService {
     this.http
       .get<CartItem[]>(this.apiUrl, { withCredentials: true })
       .subscribe({
-        next: (data) => {
-          this._cart.set(data);
-        },
+        next: (data) => this._cart.set(data),
         error: (err) => console.error('[CartService] loadCart ERROR', err),
       });
   }
 
-  addToCart(productId: number): void {
-    this.http
-      .post(`${this.apiUrl}add/${productId}/`, {}, { withCredentials: true })
-      .subscribe({
-        next: (res) => {
-          this.loadCart();
-        },
-        error: (err) => console.error('[CartService] addToCart ERROR', err),
-      });
+  /**
+   * Überladung: Entweder nur mit Produkt-ID (alte Variante)
+   * oder mit Produkt + Menge + Attributen (neue Variante)
+   */
+  addToCart(productId: number): void;
+  addToCart(
+    product: Product,
+    quantity: number,
+    selectedColor?: string,
+    selectedSize?: string
+  ): void;
+  addToCart(
+    productOrId: number | Product,
+    quantity: number = 1,
+    selectedColor?: string,
+    selectedSize?: string
+  ): void {
+    if (typeof productOrId === 'number') {
+      // Alte Variante → nur productId
+      this.http
+        .post(`${this.apiUrl}add/${productOrId}/`, {}, { withCredentials: true })
+        .subscribe({
+          next: () => this.loadCart(),
+          error: (err) => console.error('[CartService] addToCart ERROR', err),
+        });
+    } else {
+      // Neue Variante → Product + Menge + Attribute
+      const payload = {
+        productId: productOrId.id,
+        quantity,
+        selectedColor,
+        selectedSize,
+      };
+
+      this.http
+        .post(`${this.apiUrl}add/`, payload, { withCredentials: true })
+        .subscribe({
+          next: () => this.loadCart(),
+          error: (err) => console.error('[CartService] addToCart ERROR', err),
+        });
+    }
   }
 
-  clearCart() {
+  clearCart(): void {
     this._cart.set([]);
   }
 
-  removeFromCart(productId: number): void {
+  removeFromCart(productId: number, color?: string, size?: string): void {
     this.http
-      .delete(`${this.apiUrl}remove/${productId}/`, {
+      .request('delete', `${this.apiUrl}remove/`, {
+        body: { productId, color, size },
         withCredentials: true,
       })
       .subscribe({
@@ -65,11 +101,16 @@ export class CartService {
       });
   }
 
-  updateQuantity(productId: number, quantity: number): void {
+  updateQuantity(
+    productId: number,
+    quantity: number,
+    color?: string,
+    size?: string
+  ): void {
     this.http
       .post(
-        `${this.apiUrl}update/${productId}/`,
-        { quantity },
+        `${this.apiUrl}update/`,
+        { productId, quantity, color, size },
         { withCredentials: true }
       )
       .subscribe({
