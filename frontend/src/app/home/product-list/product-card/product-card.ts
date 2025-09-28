@@ -12,8 +12,9 @@ import { Router } from '@angular/router';
   imports: [PrimaryButton, PopupAlert, CommonModule],
   template: `
     <section
-      class="h-[300px] bg-white shadow-md rounded-xl p-6 flex flex-col gap-6 relative"
+      class="bg-white shadow-md rounded-xl p-6 flex flex-col justify-between relative min-h-[320px]"
     >
+      <!-- Bild -->
       <div class="mx-auto">
         <img
           [src]="product.main_image"
@@ -22,20 +23,32 @@ import { Router } from '@angular/router';
         />
       </div>
 
-      <div class="flex flex-col mt-2">
+      <!-- Produktinfos -->
+      <div class="flex flex-col mt-2 flex-grow">
         <span class="font-bold text-md">{{ product.title }}</span>
         <span class="text-sm">{{ '€' + product.price }}</span>
-        <div class="flex justify-between items-center mt-4">
-          <app-primary-button
-            label="Add to cart"
-            (btnClicked)="handleAddToCart()"
-            [disabled]="stock === 0 || quantityInCart() >= stock"
-          />
 
-          <app-primary-button label="Details" (btnClicked)="goToDetail()" />
+        <!-- Details oben -->
+        <div class="mt-3">
+          <app-primary-button
+            class="w-full"
+            label="Details"
+            (btnClicked)="goToDetail()"
+          />
         </div>
       </div>
 
+      <!-- Add to cart Button unten -->
+      <div class="mt-4">
+        <app-primary-button
+          class="w-full"
+          label="Add to cart"
+          (btnClicked)="handleAddToCart()"
+          [disabled]="stock === 0 || quantityInCart() >= stock"
+        />
+      </div>
+
+      <!-- Lagerstatus -->
       <span
         class="absolute top-2 right-3 text-sm font-bold"
         [ngClass]="{
@@ -44,14 +57,19 @@ import { Router } from '@angular/router';
         }"
       >
         @if (stock > 0 && stock <= 10) {
-        {{ stock }} left } @else if (stock === 0) { Out of stock }
+          {{ stock }} left
+        } @else if (stock === 0) {
+          Out of stock
+        }
       </span>
+
+      <!-- Popup -->
       @if (showWarning()) {
-      <app-popup-alert
-        [message]="'Du hast bereits alle verfügbaren Artikel im Warenkorb.'"
-        [type]="'info'"
-        [visible]="showWarning()"
-      />
+        <app-popup-alert
+          [message]="'Du hast bereits alle verfügbaren Artikel im Warenkorb.'"
+          [type]="'info'"
+          [visible]="showWarning()"
+        />
       }
     </section>
   `,
@@ -63,10 +81,8 @@ export class ProductCard {
   cartService = inject(CartService);
   router = inject(Router);
 
-  // Signale für Feedback
   showWarning = signal(false);
 
-  // Computed stock und Menge im Warenkorb
   get stock(): number {
     return this.product?.stock ?? 0;
   }
@@ -82,7 +98,6 @@ export class ProductCard {
       setTimeout(() => this.showWarning.set(false), 3000);
       return;
     }
-
     this.cartService.addToCart(this.product.id);
   }
 
