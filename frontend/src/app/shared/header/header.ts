@@ -10,41 +10,48 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule, PrimaryButton, RouterLink],
   template: `
-    <article
-      class="bg-slate-50 px-8 py-3 shadow-md flex justify-between items-center"
+    <header
+      class="bg-slate-50 px-8 py-3 shadow-md sticky top-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
     >
-      <h1 class="font-bold text-4xl text-shadow-lg" routerLink="/">My Store</h1>
+      <!-- Erste Zeile: Logo -->
+      <h1 class="font-bold text-4xl text-shadow-lg cursor-pointer" routerLink="/">
+        My Store
+      </h1>
 
-      <div class="flex items-center gap-4">
-        <nav class="text-sm text-gray-600 space-x-4">
+      <!-- Zweite Zeile (bei schmalen Bildschirmen darunter) -->
+      <div class="flex items-center justify-between w-full sm:w-auto">
+        <nav class="flex items-center gap-4 text-sm text-gray-600">
           @if (!isLoggedIn()) {
-          <a routerLink="/login" class="hover:underline text-lg font-bold mr-4"
-            >Login</a
-          >
-          <a
-            routerLink="/register"
-            class="hover:underline text-lg font-bold mr-4"
-            >Registrieren</a
-          >
+            <a
+              routerLink="/login"
+              class="hover:underline text-lg font-bold"
+              >Login</a
+            >
+            <a
+              routerLink="/register"
+              class="hover:underline text-lg font-bold"
+              >Registrieren</a
+            >
           } @else {
-          <span class="text-gray-700 text-lg font-bold mr-4">{{
-            user()?.username
-          }}</span>
-          <button
-            (click)="onLogout()"
-            class="hover:underline text-red-600 text-lg font-bold mr-4"
-          >
-            Logout
-          </button>
+            <span class="text-gray-700 text-lg font-bold">
+              {{ user()?.username }}
+            </span>
+            <button
+              (click)="onLogout()"
+              class="hover:underline text-red-600 text-lg font-bold"
+            >
+              Logout
+            </button>
           }
         </nav>
 
         <app-primary-button
           [label]="'Cart (' + cartCount() + ')'"
           routerLink="/cart"
+          class="ml-4"
         />
       </div>
-    </article>
+    </header>
   `,
 })
 export class Header {

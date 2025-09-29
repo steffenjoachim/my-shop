@@ -12,7 +12,7 @@ import { Router } from '@angular/router';
   imports: [PrimaryButton, PopupAlert, CommonModule],
   template: `
     <section
-      class="bg-white shadow-md rounded-xl p-6 flex flex-col justify-between relative min-h-[320px]"
+      class="bg-white shadow-md rounded-xl p-6 flex flex-col justify-between relative min-h-[250px]"
     >
       <!-- Bild -->
       <div class="mx-auto">
@@ -36,16 +36,6 @@ import { Router } from '@angular/router';
             (btnClicked)="goToDetail()"
           />
         </div>
-      </div>
-
-      <!-- Add to cart Button unten -->
-      <div class="mt-4">
-        <app-primary-button
-          class="w-full"
-          label="Add to cart"
-          (btnClicked)="handleAddToCart()"
-          [disabled]="stock === 0 || quantityInCart() >= stock"
-        />
       </div>
 
       <!-- Lagerstatus -->

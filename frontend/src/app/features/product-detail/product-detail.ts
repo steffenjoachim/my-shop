@@ -10,7 +10,7 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   template: `
     @if (product) {
-      <div class="container mx-auto px-4 mt-6">
+      <div class="container mx-auto px-8 mt-6">
         <div class="bg-white rounded-2xl shadow-lg p-6 md:max-w-2xl mx-auto">
           <h1 class="text-3xl font-bold mb-4 text-gray-800">
             {{ product.title }}
@@ -69,8 +69,9 @@ import { environment } from '../../../environments/environment';
 
           <button
             (click)="addToCart()"
+            [disabled]="!canAddToCart()"
             class="mt-4 w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg 
-                   hover:bg-blue-700 transition"
+                   hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             In den Warenkorb
           </button>
@@ -141,6 +142,16 @@ export class ProductDetailComponent {
 
   selectSize(size: string) {
     this.selectedSize.set(size);
+  }
+
+  canAddToCart(): boolean {
+    const needsColor = this.colors().length > 0;
+    const needsSize = this.sizes().length > 0;
+
+    const colorOk = !needsColor || this.selectedColor() !== null;
+    const sizeOk = !needsSize || this.selectedSize() !== null;
+
+    return !!this.product && colorOk && sizeOk;
   }
 
   addToCart() {
