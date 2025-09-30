@@ -4,79 +4,94 @@ import { CartService } from '../../shared/services/cart.service';
 import { Product, ProductAttribute } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { TitleCasePipe, NgFor, NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
+  imports: [TitleCasePipe],
   template: `
     @if (product) {
-      <div class="container mx-auto px-8 mt-6">
-        <div class="bg-white rounded-2xl shadow-lg p-6 md:max-w-2xl mx-auto">
-          <h1 class="text-3xl font-bold mb-4 text-gray-800">
-            {{ product.title }}
-          </h1>
+    <div class="container mx-auto px-8 mt-6">
+      <div class="bg-white rounded-2xl shadow-lg p-6 md:max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-4 text-gray-800">
+          {{ product.title }}
+        </h1>
 
-          @if (product.main_image) {
-            <img
-              [src]="product.main_image"
-              alt="{{ product.title }}"
-              class="w-full max-h-80 object-contain mb-6 rounded"
-            />
+        <!-- Hauptbild -->
+        @if (product.main_image) {
+        <img
+          [src]="product.main_image"
+          alt="{{ product.title }}"
+          class="w-full max-h-80 object-contain mb-6 rounded"
+        />
+        }
+
+        <!-- Zusatzbilder -->
+        @if (productImages.length > 0) {
+        <div class="flex gap-3 overflow-x-auto mb-6">
+          @for (img of productImages; track img.id) {
+          <img
+            [src]="img.image"
+            alt="Zusatzbild"
+            class="h-24 w-auto object-contain rounded border"
+          />
           }
-
-          <p class="mb-4 text-gray-600">{{ product.description }}</p>
-          <p class="text-2xl font-semibold text-blue-700 mb-6">
-            {{ product.price }} €
-          </p>
-
-          <!-- Farbe Auswahl -->
-          @if (colors().length > 0) {
-            <div class="mb-6">
-              <span class="block font-medium mb-2">Farbe:</span>
-              <div class="flex gap-3">
-                @for (color of colors(); track color) {
-                  <button
-                    (click)="selectColor(color)"
-                    [style.backgroundColor]="mapColor(color)"
-                    class="w-8 h-8 rounded-full border border-gray-300 shadow-sm transition
-                           hover:scale-110"
-                    [class.ring-2]="selectedColor() === color"
-                    [class.ring-black]="selectedColor() === color"
-                  ></button>
-                }
-              </div>
-            </div>
-          }
-
-          <!-- Größe Auswahl -->
-          @if (sizes().length > 0) {
-            <div class="mb-6">
-              <span class="block font-medium mb-2">Größe:</span>
-              <div class="flex gap-2 flex-wrap">
-                @for (size of sizes(); track size) {
-                  <button
-                    (click)="selectSize(size)"
-                    class="px-3 py-1 border rounded shadow-sm transition
-                           hover:bg-gray-100"
-                    [class.bg-gray-300]="selectedSize() === size"
-                  >
-                    {{ size }}
-                  </button>
-                }
-              </div>
-            </div>
-          }
-
-          <button
-            (click)="addToCart()"
-            [disabled]="!canAddToCart()"
-            class="mt-4 w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg 
-                   hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            In den Warenkorb
-          </button>
         </div>
+        }
+
+        <!-- Beschreibung mit Zeilenumbrüchen -->
+        <div class="mb-4 text-gray-600 space-y-2">
+          @for (line of descriptionLines; track line) {
+          <p>{{ line }}</p>
+          }
+        </div>
+
+        <p class="text-2xl font-semibold text-blue-700 mb-6">
+          {{ product.price }} €
+        </p>
+
+        <!-- Dynamische Attribute -->
+        @for (attr of dynamicAttributes(); track attr.name) {
+        <div class="mb-6">
+          <span class="block font-medium mb-2"
+            >{{ attr.name | titlecase }}:</span
+          >
+
+          <!-- Buttons für mehrere Auswahlmöglichkeiten -->
+          @if (attr.values.length > 1) {
+          <div class="flex gap-2 flex-wrap">
+            @for (val of attr.values; track val) {
+            <button
+              (click)="selectAttribute(attr.name, val)"
+              class="px-3 py-1 border rounded shadow-sm transition hover:bg-gray-100"
+              [class.bg-gray-300]="selectedAttributes()[attr.name] === val"
+            >
+              {{ val }}
+            </button>
+            }
+          </div>
+          }
+
+          <!-- Nur eine Auswahlmöglichkeit -> Auto-Preselect -->
+          @if (attr.values.length === 1) {
+          <div class="px-3 py-1 border rounded bg-gray-100 inline-block">
+            {{ attr.values[0] }}
+          </div>
+          }
+        </div>
+        }
+
+        <button
+          (click)="addToCart()"
+          [disabled]="!canAddToCart()"
+          class="mt-4 w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg 
+                   hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          In den Warenkorb
+        </button>
       </div>
+    </div>
     }
   `,
 })
@@ -86,12 +101,11 @@ export class ProductDetailComponent {
   private cartService = inject(CartService);
 
   product: Product | null = null;
+  descriptionLines: string[] = [];
 
-  selectedColor = signal<string | null>(null);
-  selectedSize = signal<string | null>(null);
-
-  colors = signal<string[]>([]);
-  sizes = signal<string[]>([]);
+  // Signal für dynamische Attribute
+  attributes = signal<{ name: string; values: string[] }[]>([]);
+  selectedAttributes = signal<{ [key: string]: string }>({});
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -102,56 +116,65 @@ export class ProductDetailComponent {
           next: (product) => {
             this.product = product;
 
-            // Farben sammeln
-            const colorAttrs =
-              product.attributes?.filter(
-                (attr: ProductAttribute) =>
-                  attr.value.attribute_type.name.toLowerCase() === 'color'
-              ) || [];
-            this.colors.set(colorAttrs.map((a) => a.value.value));
+            // Beschreibung splitten
+            this.descriptionLines =
+              product.description
+                ?.split(/\r?\n/)
+                .filter((l) => l.trim() !== '') || [];
 
-            // Größen sammeln
-            const sizeAttrs =
-              product.attributes?.filter(
-                (attr: ProductAttribute) =>
-                  attr.value.attribute_type.name.toLowerCase() === 'size'
-              ) || [];
-            this.sizes.set(sizeAttrs.map((a) => a.value.value));
+            // Attribute sammeln
+            const grouped: { [key: string]: string[] } = {};
+            (product.attributes || []).forEach((attr: ProductAttribute) => {
+              const key = attr.value.attribute_type.name;
+              if (!grouped[key]) grouped[key] = [];
+              if (!grouped[key].includes(attr.value.value)) {
+                grouped[key].push(attr.value.value);
+              }
+            });
+
+            const attrsArray = Object.entries(grouped).map(
+              ([name, values]) => ({
+                name,
+                values,
+              })
+            );
+            this.attributes.set(attrsArray);
+
+            // Auto-Auswahl für Single-Option-Attribute
+            const autoSelected: { [key: string]: string } = {};
+            attrsArray.forEach((attr) => {
+              if (attr.values.length === 1) {
+                autoSelected[attr.name] = attr.values[0];
+              }
+            });
+            this.selectedAttributes.set(autoSelected);
           },
           error: (err) => console.error('Fehler beim Laden des Produkts:', err),
         });
     }
   }
 
-  selectColor(color: string) {
-    this.selectedColor.set(color);
+  // Getter für Zusatzbilder
+  get productImages() {
+    return this.product?.images ?? [];
   }
 
-  // Helper: Deutsche Namen in CSS-Farben umwandeln
-  public mapColor(value: string): string {
-    const colorMap: { [key: string]: string } = {
-      Rot: 'red',
-      Blau: 'blue',
-      Grün: 'green',
-      Schwarz: 'black',
-      Weiß: 'white',
-      Gelb: 'yellow',
-    };
-    return colorMap[value] || value; // Falls es schon "#hex" oder gültig ist
+  dynamicAttributes() {
+    return this.attributes();
   }
 
-  selectSize(size: string) {
-    this.selectedSize.set(size);
+  selectAttribute(name: string, value: string) {
+    this.selectedAttributes.update((prev) => ({ ...prev, [name]: value }));
   }
 
   canAddToCart(): boolean {
-    const needsColor = this.colors().length > 0;
-    const needsSize = this.sizes().length > 0;
+    if (!this.product) return false;
 
-    const colorOk = !needsColor || this.selectedColor() !== null;
-    const sizeOk = !needsSize || this.selectedSize() !== null;
-
-    return !!this.product && colorOk && sizeOk;
+    // Prüfen, ob alle Attribute (mit > 1 Auswahl) gewählt sind
+    return this.attributes().every((attr) => {
+      if (attr.values.length === 1) return true; // Single automatisch gültig
+      return !!this.selectedAttributes()[attr.name];
+    });
   }
 
   addToCart() {
@@ -159,8 +182,7 @@ export class ProductDetailComponent {
       this.cartService.addToCart(
         this.product,
         1,
-        this.selectedColor() || undefined,
-        this.selectedSize() || undefined
+        JSON.stringify(this.selectedAttributes())
       );
     }
   }
