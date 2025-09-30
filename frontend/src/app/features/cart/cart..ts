@@ -23,16 +23,20 @@ import { CommonModule } from '@angular/common';
         />
       } @else {
         <div class="space-y-2 mb-4 border-b">
-          @for (product of products(); track product.id + '-' + product.selectedColor + '-' + product.selectedSize) {
+          @for (product of products(); track product.id + '-' + (product.selectedColor ?? '') + '-' + (product.selectedSize ?? '')) {
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b">
               <img class="w-16 h-16 object-contain sm:mr-4" [src]="product.main_image" />
 
               <div class="flex-1">
                 <span class="block font-medium text-lg">{{ product.title }}</span>
-                <span class="block text-gray-600 text-sm">
-                  Farbe: {{ product.selectedColor }} | Größe: {{ product.selectedSize }}
-                </span>
-                <span class="block text-gray-700 text-sm">
+
+                @if (formatAttributes(product)) {
+                  <span class="block text-gray-600 text-sm">
+                    {{ formatAttributes(product) }}
+                  </span>
+                }
+
+                <span class="block text-gray-700 text-sm mt-1">
                   {{ product.price }} € x {{ product.quantity }} =
                   <strong>{{ (product.price * product.quantity).toFixed(2) }} €</strong>
                 </span>
@@ -103,6 +107,7 @@ export class Cart {
   alertType: 'success' | 'info' | 'error' = 'info';
 
   remove(product: CartItem) {
+    // Backend-API erwartet bei neuer Variante body mit productId + attributs — CartService kümmert sich drum
     this.cartService.removeFromCart(product.id, product.selectedColor, product.selectedSize);
   }
 
@@ -151,4 +156,63 @@ export class Cart {
   totalRounded = computed(() => {
     return this.totalPrice().toFixed(2);
   });
+
+  /**
+   * Gibt ein hübsch formatiertes Attribut-String zurück.
+   * - Parst JSON, falls nötig
+   * - Mappt bekannte Keys auf deutsche Labels
+   * - Gibt z.B. "Farbe: Schwarz, Watt: 700 W, Volumen: 20 Liter" zurück
+   */
+  formatAttributes(product: CartItem): string {
+    const labelMap: Record<string, string> = {
+      color: 'Farbe',
+      size: 'Größe',
+      watt: 'Watt',
+      volume: 'Volumen',
+      // weitere Mappings hier ergänzen falls gewünscht
+    };
+
+    const attrs: Record<string, string> = {};
+
+    // Falls selectedColor ein JSON-String mit mehreren Attributen enthält
+    if (product.selectedColor) {
+      const raw = product.selectedColor;
+      if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            Object.keys(parsed).forEach((k) => {
+              // parsed values können z.B. "Schwarz" oder "700 W" sein
+              attrs[k.toLowerCase()] = String(parsed[k]);
+            });
+          }
+        } catch {
+          // kein JSON → als simple color behandeln
+          attrs['color'] = raw;
+        }
+      } else {
+        // einfacher string (z. B. "Schwarz")
+        attrs['color'] = raw;
+      }
+    }
+
+    // Falls separate selectedSize gegeben wurde
+    if (product.selectedSize) {
+      attrs['size'] = product.selectedSize;
+    }
+
+    // Falls Backend irgendwann andere Felder liefert (z.B. selectedAttributes) erweitern wir die Logik hier
+
+    // Build display array in stable order: color, size, then others
+    const order = ['color', 'size'];
+    const restKeys = Object.keys(attrs).filter(k => !order.includes(k));
+    const keys = [...order.filter(k => attrs[k] !== undefined), ...restKeys];
+
+    const parts: string[] = keys.map((k) => {
+      const label = labelMap[k] || (k.charAt(0).toUpperCase() + k.slice(1));
+      return `${label}: ${attrs[k]}`;
+    });
+
+    return parts.join(', ');
+  }
 }
