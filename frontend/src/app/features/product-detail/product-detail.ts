@@ -5,11 +5,13 @@ import { Product, ProductAttribute } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { TitleCasePipe, NgFor, NgIf } from '@angular/common';
+import { AuthService } from '../../shared/services/auth.service';
+import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [TitleCasePipe],
+  imports: [NgFor, NgIf, TitleCasePipe, PopupAlert],
   template: `
     @if (product) {
     <div class="container mx-auto px-8 mt-6">
@@ -90,6 +92,13 @@ import { TitleCasePipe, NgFor, NgIf } from '@angular/common';
         >
           In den Warenkorb
         </button>
+
+        <!-- Popup-Alert -->
+        <app-popup-alert
+          [message]="alertMessage"
+          [visible]="showWarning()"
+          [type]="alertType"
+        />
       </div>
     </div>
     }
@@ -99,13 +108,18 @@ export class ProductDetailComponent {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private cartService = inject(CartService);
+  private auth = inject(AuthService);
 
   product: Product | null = null;
   descriptionLines: string[] = [];
 
-  // Signal für dynamische Attribute
+  // Signals
   attributes = signal<{ name: string; values: string[] }[]>([]);
   selectedAttributes = signal<{ [key: string]: string }>({});
+
+  showWarning = signal(false);
+  alertMessage = '';
+  alertType: 'success' | 'info' | 'error' = 'info';
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -122,7 +136,7 @@ export class ProductDetailComponent {
                 ?.split(/\r?\n/)
                 .filter((l) => l.trim() !== '') || [];
 
-            // Attribute sammeln
+            // Attribute gruppieren
             const grouped: { [key: string]: string[] } = {};
             (product.attributes || []).forEach((attr: ProductAttribute) => {
               const key = attr.value.attribute_type.name;
@@ -172,12 +186,20 @@ export class ProductDetailComponent {
 
     // Prüfen, ob alle Attribute (mit > 1 Auswahl) gewählt sind
     return this.attributes().every((attr) => {
-      if (attr.values.length === 1) return true; // Single automatisch gültig
+      if (attr.values.length === 1) return true;
       return !!this.selectedAttributes()[attr.name];
     });
   }
 
   addToCart() {
+    if (!this.auth.isLoggedIn()) {
+      this.alertMessage = 'Bitte anmelden';
+      this.alertType = 'error';
+      this.showWarning.set(true);
+      setTimeout(() => this.showWarning.set(false), 2000);
+      return;
+    }
+
     if (this.product) {
       this.cartService.addToCart(
         this.product,
