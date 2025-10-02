@@ -12,7 +12,7 @@ from .models import (
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
-    fields = ["image", "is_primary"]
+    fields = ["image"]  # is_primary entfernt, da nicht im Model
 
 
 class ProductAttributeInline(admin.TabularInline):
@@ -23,7 +23,7 @@ class ProductAttributeInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "price", "stock")
+    list_display = ("title", "category", "price")  # stock entfernt
     list_filter = ("category",)
     search_fields = ("title", "description")
     inlines = [ProductImageInline, ProductAttributeInline]
@@ -37,8 +37,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(AttributeType)
 class AttributeTypeAdmin(admin.ModelAdmin):
-    list_display = ("name", "category")
-    list_filter = ("category",)
+    list_display = ("name",)  # category entfernt
     search_fields = ("name",)
 
 
@@ -51,7 +50,7 @@ class AttributeValueAdmin(admin.ModelAdmin):
 
 @admin.register(ProductAttribute)
 class ProductAttributeAdmin(admin.ModelAdmin):
-    list_display = ("product", "get_attribute_type", "get_value")
+    list_display = ("product", "get_attribute_type", "get_value", "stock")
     list_filter = ("value__attribute_type",)  # korrekt über FK
     search_fields = ("value__value", "product__title")
 
@@ -66,6 +65,5 @@ class ProductAttributeAdmin(admin.ModelAdmin):
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
-    list_display = ("product", "is_primary", "image")
-    list_filter = ("is_primary", "product__category")
+    list_display = ("product", "image")  # is_primary entfernt
     search_fields = ("product__title",)
