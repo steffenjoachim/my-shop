@@ -1,24 +1,30 @@
-import { Component, effect } from '@angular/core';
-import { ProductService } from '../../shared/services/product.service';
-import { ProductCard } from './product-card/product-card';
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import { Product } from '../../shared/models/products.model';
+import { ProductCardComponent } from './product-card/product-card';
 
 @Component({
-  selector: 'app-product-list',
+  selector: 'app-products-list',
   standalone: true,
-  imports: [ProductCard],
+  imports: [CommonModule, ProductCardComponent],
   template: `
-    <article class="p-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-      @for (product of productService.products(); track product.id) {
-        <app-product-card [product]="product" class="w-full max-w-md mx-auto" />
+    <div class="container mx-auto px-4 py-6 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      @for (product of products; track product.id) {
+        <app-product-card [product]="product"></app-product-card>
       }
-    </article>
+    </div>
   `,
 })
 export class ProductsList {
-  constructor(public productService: ProductService) {
-    // Effekt: wird automatisch aufgerufen, wenn sich das Signal ändert
-    effect(() => {
-      this.productService.products(); // Zugriff triggert Reaktion bei Änderung
+  private http = inject(HttpClient);
+  products: Product[] = [];
+
+  ngOnInit() {
+    this.http.get<Product[]>(`${environment.apiBaseUrl}products/`).subscribe({
+      next: (data) => (this.products = data),
+      error: (err) => console.error('Fehler beim Laden der Produkte:', err),
     });
   }
 }

@@ -1,97 +1,54 @@
-import { Component, Input, computed, inject, signal } from '@angular/core';
-import { Product } from '../../../shared/models/products.model';
-import { PrimaryButton } from '../../../shared/primary-button/primary-button';
-import { CartService } from '../../../shared/services/cart.service';
-import { PopupAlert } from '../../../shared/popup-alert/popup-alert';
+import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
+import { CartService } from '../../../shared/services/cart.service';
+import { Product } from '../../../shared/models/products.model';
 
 @Component({
   selector: 'app-product-card',
   standalone: true,
-  imports: [PrimaryButton, PopupAlert, CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
-    <section
-      class="bg-white shadow-md rounded-xl p-6 flex flex-col justify-between relative min-h-[250px]"
+    <div
+      class="bg-white rounded-2xl shadow-md hover:shadow-lg transition overflow-hidden flex flex-col"
     >
-      <!-- Bild -->
-      <div class="mx-auto">
+      <a [routerLink]="['/product', product.id]" class="block relative">
         <img
-          [src]="product.main_image"
-          alt=""
-          class="w-[200px] h-[100px] object-contain"
+          [src]="product.main_image || 'https://via.placeholder.com/300x200?text=Kein+Bild'"
+          [alt]="product.title"
+          class="w-full h-48 object-contain p-4 bg-gray-50"
         />
-      </div>
+      </a>
 
-      <!-- Produktinfos -->
-      <div class="flex flex-col mt-2 flex-grow">
-        <span class="font-bold text-md">{{ product.title }}</span>
-        <span class="text-sm">{{ '€' + product.price }}</span>
+      <div class="flex-1 flex flex-col justify-between p-4">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800 line-clamp-2">
+            {{ product.title }}
+          </h3>
+          <p class="text-blue-600 font-bold mt-2">
+            {{ product.price }} €
+          </p>
+        </div>
 
-        <!-- Details oben -->
-        <div class="mt-3">
-          <app-primary-button
-            class="w-full"
-            label="Details"
-            (btnClicked)="goToDetail()"
-          />
+        <div class="mt-4">
+          <button
+            (click)="addToCart()"
+            class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg 
+                   hover:bg-blue-700 transition disabled:bg-gray-400"
+          >
+            In den Warenkorb
+          </button>
         </div>
       </div>
-
-      <!-- Lagerstatus -->
-      <span
-        class="absolute top-2 right-3 text-sm font-bold"
-        [ngClass]="{
-          'text-green-500': stock > 0 && stock <= 10,
-          'text-red-500': stock === 0
-        }"
-      >
-        @if (stock > 0 && stock <= 10) {
-          {{ stock }} left
-        } @else if (stock === 0) {
-          Out of stock
-        }
-      </span>
-
-      <!-- Popup -->
-      @if (showWarning()) {
-        <app-popup-alert
-          [message]="'Du hast bereits alle verfügbaren Artikel im Warenkorb.'"
-          [type]="'info'"
-          [visible]="showWarning()"
-        />
-      }
-    </section>
+    </div>
   `,
-  styles: ``,
 })
-export class ProductCard {
+export class ProductCardComponent {
   @Input() product!: Product;
 
-  cartService = inject(CartService);
-  router = inject(Router);
+  constructor(private cartService: CartService) {}
 
-  showWarning = signal(false);
-
-  get stock(): number {
-    return this.product?.stock ?? 0;
-  }
-
-  quantityInCart = computed(() => {
-    const item = this.cartService.cart().find((p) => p.id === this.product?.id);
-    return item?.quantity ?? 0;
-  });
-
-  handleAddToCart() {
-    if (this.quantityInCart() >= this.stock) {
-      this.showWarning.set(true);
-      setTimeout(() => this.showWarning.set(false), 3000);
-      return;
-    }
-    this.cartService.addToCart(this.product.id);
-  }
-
-  goToDetail() {
-    this.router.navigate(['/products', this.product.id]);
+  addToCart() {
+    this.cartService.addToCart(this.product, 1, {});
   }
 }

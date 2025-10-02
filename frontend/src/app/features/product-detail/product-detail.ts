@@ -4,14 +4,14 @@ import { CartService } from '../../shared/services/cart.service';
 import { Product, ProductAttribute } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { TitleCasePipe, NgFor, NgIf } from '@angular/common';
+import { TitleCasePipe } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [NgFor, NgIf, TitleCasePipe, PopupAlert],
+  imports: [TitleCasePipe, PopupAlert],
   template: `
     @if (product) {
     <div class="container mx-auto px-8 mt-6">
@@ -42,7 +42,7 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
         </div>
         }
 
-        <!-- Beschreibung mit Zeilenumbrüchen -->
+        <!-- Beschreibung -->
         <div class="mb-4 text-gray-600 space-y-2">
           @for (line of descriptionLines; track line) {
           <p>{{ line }}</p>
@@ -53,34 +53,32 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
           {{ product.price }} €
         </p>
 
-        <!-- Dynamische Attribute -->
+        <!-- Attribute -->
         @for (attr of dynamicAttributes(); track attr.name) {
         <div class="mb-6">
           <span class="block font-medium mb-2"
             >{{ attr.name | titlecase }}:</span
           >
 
-          <!-- Buttons für mehrere Auswahlmöglichkeiten -->
-          @if (attr.values.length > 1) {
           <div class="flex gap-2 flex-wrap">
-            @for (val of attr.values; track val) {
+            @for (val of attr.values; track val.value) {
             <button
-              (click)="selectAttribute(attr.name, val)"
-              class="px-3 py-1 border rounded shadow-sm transition hover:bg-gray-100"
-              [class.bg-gray-300]="selectedAttributes()[attr.name] === val"
+              (click)="selectAttribute(attr.name, val.value)"
+              class="px-3 py-1 border rounded shadow-sm transition"
+              [disabled]="val.stock === 0"
+              [class.bg-gray-300]="selectedAttributes()[attr.name] === val.value"
+              [class.opacity-50]="val.stock === 0"
+              [title]="val.stock === 0 ? 'Nicht verfügbar' : ''"
             >
-              {{ val }}
+              {{ val.value }}
+              @if (val.stock > 0) {
+                <span class="text-xs text-gray-500 ml-1"
+                  >({{ val.stock }}x)</span
+                >
+              }
             </button>
             }
           </div>
-          }
-
-          <!-- Nur eine Auswahlmöglichkeit -> Auto-Preselect -->
-          @if (attr.values.length === 1) {
-          <div class="px-3 py-1 border rounded bg-gray-100 inline-block">
-            {{ attr.values[0] }}
-          </div>
-          }
         </div>
         }
 
@@ -93,7 +91,7 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
           In den Warenkorb
         </button>
 
-        <!-- Popup-Alert -->
+        <!-- Popup -->
         <app-popup-alert
           [message]="alertMessage"
           [visible]="showWarning()"
@@ -113,8 +111,9 @@ export class ProductDetailComponent {
   product: Product | null = null;
   descriptionLines: string[] = [];
 
-  // Signals
-  attributes = signal<{ name: string; values: string[] }[]>([]);
+  attributes = signal<
+    { name: string; values: { value: string; stock: number }[] }[]
+  >([]);
   selectedAttributes = signal<{ [key: string]: string }>({});
 
   showWarning = signal(false);
@@ -130,35 +129,37 @@ export class ProductDetailComponent {
           next: (product) => {
             this.product = product;
 
-            // Beschreibung splitten
             this.descriptionLines =
               product.description
                 ?.split(/\r?\n/)
                 .filter((l) => l.trim() !== '') || [];
 
             // Attribute gruppieren
-            const grouped: { [key: string]: string[] } = {};
+            const grouped: {
+              [key: string]: { value: string; stock: number }[];
+            } = {};
             (product.attributes || []).forEach((attr: ProductAttribute) => {
               const key = attr.value.attribute_type.name;
               if (!grouped[key]) grouped[key] = [];
-              if (!grouped[key].includes(attr.value.value)) {
-                grouped[key].push(attr.value.value);
+              if (!grouped[key].some((v) => v.value === attr.value.value)) {
+                grouped[key].push({
+                  value: attr.value.value,
+                  stock: attr.stock ?? 0,
+                });
               }
             });
 
-            const attrsArray = Object.entries(grouped).map(
-              ([name, values]) => ({
-                name,
-                values,
-              })
-            );
+            const attrsArray = Object.entries(grouped).map(([name, values]) => ({
+              name,
+              values,
+            }));
             this.attributes.set(attrsArray);
 
-            // Auto-Auswahl für Single-Option-Attribute
+            // Auto-Auswahl
             const autoSelected: { [key: string]: string } = {};
             attrsArray.forEach((attr) => {
-              if (attr.values.length === 1) {
-                autoSelected[attr.name] = attr.values[0];
+              if (attr.values.length === 1 && attr.values[0].stock > 0) {
+                autoSelected[attr.name] = attr.values[0].value;
               }
             });
             this.selectedAttributes.set(autoSelected);
@@ -168,7 +169,6 @@ export class ProductDetailComponent {
     }
   }
 
-  // Getter für Zusatzbilder
   get productImages() {
     return this.product?.images ?? [];
   }
@@ -184,9 +184,7 @@ export class ProductDetailComponent {
   canAddToCart(): boolean {
     if (!this.product) return false;
 
-    // Prüfen, ob alle Attribute (mit > 1 Auswahl) gewählt sind
     return this.attributes().every((attr) => {
-      if (attr.values.length === 1) return true;
       return !!this.selectedAttributes()[attr.name];
     });
   }
@@ -201,11 +199,7 @@ export class ProductDetailComponent {
     }
 
     if (this.product) {
-      this.cartService.addToCart(
-        this.product,
-        1,
-        JSON.stringify(this.selectedAttributes())
-      );
+      this.cartService.addToCart(this.product, 1, this.selectedAttributes());
     }
   }
 }
