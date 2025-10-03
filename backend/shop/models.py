@@ -13,6 +13,7 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     main_image = models.ImageField(upload_to="products/", blank=True, null=True)
+    external_image = models.URLField(max_length=500, blank=True, null=True)  # <--- NEU
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
 
     def __str__(self):
@@ -22,6 +23,9 @@ class Product(models.Model):
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(upload_to="products/")
+
+    def __str__(self):
+        return f"Image for {self.product.title}"
 
 
 class AttributeType(models.Model):
@@ -40,9 +44,9 @@ class AttributeValue(models.Model):
 
 
 class ProductAttribute(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="attributes")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="product_attributes")
     value = models.ForeignKey(AttributeValue, on_delete=models.CASCADE)
-    stock = models.PositiveIntegerField(default=0)  # <--- NEU: Stock pro Variante
+    stock = models.PositiveIntegerField(default=0)  # Stock pro Variante
 
     def __str__(self):
         return f"{self.product.title} - {self.value.value} ({self.stock})"

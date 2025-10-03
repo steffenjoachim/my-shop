@@ -1,7 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { CartService } from '../../../shared/services/cart.service';
 import { Product } from '../../../shared/models/products.model';
 
 @Component({
@@ -31,13 +30,13 @@ import { Product } from '../../../shared/models/products.model';
         </div>
 
         <div class="mt-4">
-          <button
-            (click)="addToCart()"
-            class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg 
-                   hover:bg-blue-700 transition disabled:bg-gray-400"
+          <a
+            [routerLink]="['/products', product.id]"
+            class="w-full inline-block text-center px-4 py-2 bg-blue-600 text-white rounded-lg 
+                   hover:bg-blue-700 transition"
           >
-            In den Warenkorb
-          </button>
+            Details
+          </a>
         </div>
       </div>
     </div>
@@ -45,10 +44,4 @@ import { Product } from '../../../shared/models/products.model';
 })
 export class ProductCardComponent {
   @Input() product!: Product;
-
-  constructor(private cartService: CartService) {}
-
-  addToCart() {
-    this.cartService.addToCart(this.product, 1, {});
-  }
 }
