@@ -8,12 +8,12 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 
-from .models import Product
+from .models import Product, ProductAttribute
 from .serializers import ProductSerializer
 
 
 class ProductViewSet(ModelViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().prefetch_related("product_attributes", "images", "category")
     serializer_class = ProductSerializer
 
 
@@ -23,8 +23,7 @@ class AddToCartView(APIView):
     {
       "productId": 1,
       "quantity": 2,
-      "selectedColor": "Red",
-      "selectedSize": "M"
+      "selectedAttributes": {"RAM": "8 GB", "Farbe": "Rot"}
     }
     """
     def post(self, request, product_id=None):
@@ -36,11 +35,10 @@ class AddToCartView(APIView):
         else:  # neue Variante: /cart/add/
             product_id = request.data.get("productId")
             quantity = int(request.data.get("quantity", 1))
-            color = request.data.get("selectedColor") or ""
-            size = request.data.get("selectedSize") or ""
+            selected_attributes = request.data.get("selectedAttributes", {})
 
-            # Schlüssel eindeutig machen: id|color|size
-            key = f"{product_id}|{color}|{size}"
+            # Schlüssel eindeutig machen: id|attributes(JSON)
+            key = f"{product_id}|{str(selected_attributes)}"
             cart[key] = cart.get(key, 0) + quantity
 
         request.session["cart"] = cart
@@ -54,21 +52,23 @@ class CartView(APIView):
         items = []
         for key, quantity in cart.items():
             # Schlüssel aufteilen
-            parts = key.split("|")
+            parts = key.split("|", 1)
             product_id = parts[0]
-            color = parts[1] if len(parts) > 1 else ""
-            size = parts[2] if len(parts) > 2 else ""
+            selected_attributes = eval(parts[1]) if len(parts) > 1 else {}
 
             product = get_object_or_404(Product, id=product_id)
+
+            # Gesamtbestand über Varianten berechnen
+            total_stock = sum(attr.stock for attr in product.product_attributes.all())
+
             items.append({
                 "id": product.id,
                 "title": product.title,
                 "price": str(product.price),
-                "main_image": product.main_image,
-                "stock": product.stock,
+                "main_image": product.main_image.url if product.main_image else None,
+                "stock": total_stock,
                 "quantity": quantity,
-                "selectedColor": color,
-                "selectedSize": size,
+                "selectedAttributes": selected_attributes,
             })
         return Response(items)
 
@@ -76,7 +76,7 @@ class CartView(APIView):
 class RemoveFromCartView(APIView):
     """
     Erwartet DELETE mit body:
-    { "productId": 1, "color": "Red", "size": "M" }
+    { "productId": 1, "selectedAttributes": {"RAM": "8 GB"} }
     """
     def delete(self, request, product_id=None):
         cart = request.session.get("cart", {})
@@ -85,9 +85,8 @@ class RemoveFromCartView(APIView):
             key = str(product_id)
         else:  # neue Variante mit Attributen
             pid = request.data.get("productId")
-            color = request.data.get("color") or ""
-            size = request.data.get("size") or ""
-            key = f"{pid}|{color}|{size}"
+            selected_attributes = request.data.get("selectedAttributes", {})
+            key = f"{pid}|{str(selected_attributes)}"
 
         if key in cart:
             del cart[key]
@@ -102,8 +101,7 @@ class UpdateCartItemView(APIView):
     {
       "productId": 1,
       "quantity": 3,
-      "color": "Red",
-      "size": "M"
+      "selectedAttributes": {"RAM": "8 GB"}
     }
     """
     def post(self, request, product_id=None):
@@ -115,9 +113,8 @@ class UpdateCartItemView(APIView):
         else:  # neue Variante
             pid = request.data.get("productId")
             quantity = int(request.data.get("quantity", 1))
-            color = request.data.get("color") or ""
-            size = request.data.get("size") or ""
-            key = f"{pid}|{color}|{size}"
+            selected_attributes = request.data.get("selectedAttributes", {})
+            key = f"{pid}|{str(selected_attributes)}"
 
         if quantity is None or int(quantity) < 1:
             return Response({"error": "Ungültige Menge"}, status=status.HTTP_400_BAD_REQUEST)
@@ -135,24 +132,31 @@ class PlaceOrderView(APIView):
         updated_products = []
 
         for key, qty in cart.items():
-            pid = key.split("|")[0]  # Produkt-ID extrahieren
+            pid, attributes = key.split("|", 1)
+            product = get_object_or_404(Product, pk=pid)
+
+            # Falls Variante existiert → konkretes Stock-Feld prüfen
+            variant = None
             try:
-                product = Product.objects.get(pk=pid)
-                if product.stock >= qty:
-                    product.stock -= qty
-                    product.save()
-                    updated_products.append({
-                        "id": product.id,
-                        "title": product.title,
-                        "stock": product.stock,
-                    })
-                else:
-                    return Response(
-                        {"error": f"Nicht genug Lager für {product.title}"},
-                        status=400,
-                    )
-            except Product.DoesNotExist:
-                continue
+                selected_attributes = eval(attributes)
+                variant = product.product_attributes.filter(
+                    value__value__in=selected_attributes.values()
+                ).first()
+            except Exception:
+                pass
+
+            if variant and variant.stock >= qty:
+                variant.stock -= qty
+                variant.save()
+                updated_products.append({
+                    "id": product.id,
+                    "variant": variant.value.value,
+                    "stock": variant.stock,
+                })
+            elif not variant:
+                return Response({"error": f"Variante nicht gefunden für {product.title}"}, status=400)
+            else:
+                return Response({"error": f"Nicht genug Lager für {product.title}"}, status=400)
 
         request.session["cart"] = {}
         request.session.modified = True

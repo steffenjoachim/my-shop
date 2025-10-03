@@ -17,7 +17,7 @@ export interface AttributeValue {
 export interface ProductImage {
   id: number;
   image: string;
-  is_primary: boolean;
+  // is_primary: boolean;
 }
 
 export interface ProductAttributeValue {
