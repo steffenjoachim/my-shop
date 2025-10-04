@@ -12,18 +12,18 @@ from .models import (
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
-    fields = ["image"]  # is_primary entfernt, da nicht im Model
+    fields = ["image"]
 
 
 class ProductAttributeInline(admin.TabularInline):
     model = ProductAttribute
     extra = 1
-    fields = ["value"]  # nur value, da attribute_type indirekt über value kommt
+    fields = ["value", "stock"]  # ✅ stock jetzt direkt im Inline editierbar
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "price")  # stock entfernt
+    list_display = ("title", "category", "price")
     list_filter = ("category",)
     search_fields = ("title", "description")
     inlines = [ProductImageInline, ProductAttributeInline]
@@ -37,7 +37,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(AttributeType)
 class AttributeTypeAdmin(admin.ModelAdmin):
-    list_display = ("name",)  # category entfernt
+    list_display = ("name",)
     search_fields = ("name",)
 
 
@@ -51,19 +51,22 @@ class AttributeValueAdmin(admin.ModelAdmin):
 @admin.register(ProductAttribute)
 class ProductAttributeAdmin(admin.ModelAdmin):
     list_display = ("product", "get_attribute_type", "get_value", "stock")
-    list_filter = ("value__attribute_type",)  # korrekt über FK
+    list_editable = ("stock",)  # ✅ direkt bearbeitbar in der Liste
+    list_filter = ("value__attribute_type",)
     search_fields = ("value__value", "product__title")
 
     def get_attribute_type(self, obj):
         return obj.value.attribute_type.name
-    get_attribute_type.short_description = "Attribute Type"
+
+    get_attribute_type.short_description = "Attributtyp"
 
     def get_value(self, obj):
         return obj.value.value
-    get_value.short_description = "Value"
+
+    get_value.short_description = "Wert"
 
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
-    list_display = ("product", "image")  # is_primary entfernt
+    list_display = ("product", "image")
     search_fields = ("product__title",)

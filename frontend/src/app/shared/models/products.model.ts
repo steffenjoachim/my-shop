@@ -53,7 +53,7 @@ export interface Product {
   category: string;
   category_id: number;
   images: ProductImage[];
-  attributes: ProductAttribute[];
+  product_attributes: ProductAttribute[];
 }
 
 // für den Warenkorb
