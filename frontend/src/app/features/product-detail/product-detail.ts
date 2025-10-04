@@ -4,14 +4,14 @@ import { CartService } from '../../shared/services/cart.service';
 import { Product, ProductAttribute } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { TitleCasePipe } from '@angular/common';
+import { TitleCasePipe, NgClass, NgStyle } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [TitleCasePipe, PopupAlert],
+  imports: [TitleCasePipe, PopupAlert, NgClass, NgStyle],
   template: `
     @if (product) {
     <div class="container mx-auto px-8 mt-6">
@@ -60,21 +60,21 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
             >{{ attr.name | titlecase }}:</span
           >
 
-          <div class="flex gap-2 flex-wrap">
+          <div class="flex gap-3 flex-wrap">
             @for (val of attr.values; track val.value) {
             <button
+              type="button"
               (click)="selectAttribute(attr.name, val.value)"
-              class="px-3 py-1 border rounded shadow-sm transition"
               [disabled]="val.stock === 0"
-              [class.bg-gray-300]="selectedAttributes()[attr.name] === val.value"
-              [class.opacity-50]="val.stock === 0"
-              [title]="val.stock === 0 ? 'Nicht verfügbar' : ''"
+              [ngClass]="{
+                'ring-2 ring-blue-500 scale-105': selectedAttributes()[attr.name] === val.value,
+                'opacity-50 cursor-not-allowed': val.stock === 0
+              }"
+              [ngStyle]="getAttributeStyle(attr.name, val.value)"
+              class="transition-transform duration-150 shadow-sm focus:outline-none"
             >
-              {{ val.value }}
-              @if (val.stock > 0) {
-                <span class="text-xs text-gray-500 ml-1"
-                  >({{ val.stock }}x)</span
-                >
+              @if (!isColorAttribute(attr.name)) {
+                {{ val.value }}
               }
             </button>
             }
@@ -82,6 +82,7 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
         </div>
         }
 
+        <!-- Warenkorb-Button -->
         <button
           (click)="addToCart()"
           [disabled]="!canAddToCart()"
@@ -120,6 +121,25 @@ export class ProductDetailComponent {
   alertMessage = '';
   alertType: 'success' | 'info' | 'error' = 'info';
 
+  /** 🔵 Mapping für deutsche Farbnamen → englische CSS-Farben */
+  private colorMap: Record<string, string> = {
+    rot: 'red',
+    blau: 'blue',
+    schwarz: 'black',
+    weiß: 'white',
+    weiss: 'white',
+    grau: 'gray',
+    grün: 'green',
+    gruen: 'green',
+    gelb: 'yellow',
+    rosa: 'pink',
+    orange: 'orange',
+    lila: 'purple',
+    braun: 'brown',
+    silber: 'silver',
+    gold: 'gold',
+  };
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -128,26 +148,29 @@ export class ProductDetailComponent {
         .subscribe({
           next: (product) => {
             this.product = product;
-
             this.descriptionLines =
               product.description
                 ?.split(/\r?\n/)
                 .filter((l) => l.trim() !== '') || [];
 
             // Attribute gruppieren
-            const grouped: {
-              [key: string]: { value: string; stock: number }[];
-            } = {};
-            (product.attributes || []).forEach((attr: ProductAttribute) => {
-              const key = attr.value.attribute_type.name;
-              if (!grouped[key]) grouped[key] = [];
-              if (!grouped[key].some((v) => v.value === attr.value.value)) {
-                grouped[key].push({
-                  value: attr.value.value,
-                  stock: attr.stock ?? 0,
-                });
+            const grouped: Record<string, { value: string; stock: number }[]> =
+              {};
+            (product.product_attributes || []).forEach(
+              (attr: ProductAttribute) => {
+                const key = attr.value.attribute_type.name;
+                if (!grouped[key]) grouped[key] = [];
+                const stockVal = attr.stock ?? 1; // ✅ Wenn null → verfügbar
+                if (
+                  !grouped[key].some((v) => v.value === attr.value.value)
+                ) {
+                  grouped[key].push({
+                    value: attr.value.value,
+                    stock: stockVal,
+                  });
+                }
               }
-            });
+            );
 
             const attrsArray = Object.entries(grouped).map(([name, values]) => ({
               name,
@@ -155,7 +178,7 @@ export class ProductDetailComponent {
             }));
             this.attributes.set(attrsArray);
 
-            // Auto-Auswahl
+            // ✅ Auto-Auswahl bei nur einer Variante
             const autoSelected: { [key: string]: string } = {};
             attrsArray.forEach((attr) => {
               if (attr.values.length === 1 && attr.values[0].stock > 0) {
@@ -178,17 +201,62 @@ export class ProductDetailComponent {
   }
 
   selectAttribute(name: string, value: string) {
-    this.selectedAttributes.update((prev) => ({ ...prev, [name]: value }));
+    this.selectedAttributes.update((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   }
 
+  /** Prüft, ob es sich um Farb-Attribut handelt */
+  isColorAttribute(name: string): boolean {
+    const lower = name.toLowerCase();
+    return lower === 'color' || lower === 'farbe';
+  }
+
+  /** Style für Buttons (Farben + Größen) */
+  getAttributeStyle(attrName: string, value: string) {
+    const isColor = this.isColorAttribute(attrName);
+    const lower = value.toLowerCase();
+    const colorValue =
+      this.colorMap[lower] || (CSS.supports('color', lower) ? lower : '');
+
+    if (isColor) {
+      const color = colorValue || (lower === 'schwarz' ? '#000000' : '#888888');
+      return {
+        backgroundColor: color,
+        width: '40px',
+        height: '40px',
+        borderRadius: '50%',
+        border: color === 'white' ? '2px solid #d1d5db' : '1px solid #999',
+        cursor: 'pointer',
+        transition: 'transform 0.15s ease',
+      };
+    }
+
+    return {
+      padding: '0.6rem 1.2rem',
+      borderRadius: '0.375rem',
+      border: '1px solid #ccc',
+      backgroundColor: 'white',
+      fontWeight: '600',
+      cursor: 'pointer',
+    };
+  }
+
+  /** Button-Aktivierung prüfen */
   canAddToCart(): boolean {
     if (!this.product) return false;
 
-    return this.attributes().every((attr) => {
-      return !!this.selectedAttributes()[attr.name];
-    });
+    // Wenn jedes Attribut nur 1 Variante hat → automatisch aktiv
+    if (this.attributes().every((attr) => attr.values.length === 1)) return true;
+
+    // Prüfen, ob alle ausgewählt sind
+    return this.attributes().every(
+      (attr) => !!this.selectedAttributes()[attr.name]
+    );
   }
 
+  /** In den Warenkorb */
   addToCart() {
     if (!this.auth.isLoggedIn()) {
       this.alertMessage = 'Bitte anmelden';

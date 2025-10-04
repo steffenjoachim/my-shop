@@ -1,11 +1,35 @@
 from rest_framework import serializers
-from .models import Product, Category, ProductImage, AttributeType, AttributeValue, ProductAttribute
+from .models import (
+    Product,
+    Category,
+    ProductImage,
+    AttributeType,
+    AttributeValue,
+    ProductAttribute,
+)
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductImage
         fields = ["id", "image"]
+
+    def get_image(self, obj):
+        url = str(obj.image)
+
+        # 🩹 Automatische Korrektur bei https:/ statt https://
+        if url.startswith("https:/") and not url.startswith("https://"):
+            url = url.replace("https:/", "https://")
+
+        # Externe URLs direkt durchlassen
+        if url.startswith("http://") or url.startswith("https://"):
+            return url
+
+        # Lokale Datei → absolute URL erzeugen
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.image.url) if request else obj.image.url
 
 
 class AttributeTypeSerializer(serializers.ModelSerializer):
@@ -58,12 +82,24 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
 
     def get_stock(self, obj):
-        # summiert alle Bestände der Varianten
-        return sum(attr.stock for attr in obj.product_attributes.all())
-    
+        """Summiert den Bestand über alle Varianten."""
+        return sum(attr.stock or 0 for attr in obj.product_attributes.all())
+
     def get_main_image(self, obj):
-        if obj.external_image:
-            return obj.external_image
+        url = str(obj.main_image)
+
+        if url.startswith("https:/") and not url.startswith("https://"):
+            url = url.replace("https:/", "https://")
+
+        if url.startswith("http://") or url.startswith("https://"):
+            return url
+
         if obj.main_image:
-            return self.context["request"].build_absolute_uri(obj.main_image.url)
+            request = self.context.get("request")
+            return (
+                request.build_absolute_uri(obj.main_image.url)
+                if request
+                else obj.main_image.url
+            )
+
         return None
