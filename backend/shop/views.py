@@ -8,36 +8,50 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 
-from .models import Product, ProductAttribute
+from .models import Product, ProductVariation, Category
 from .serializers import ProductSerializer
 
 
+# ------------------------------------------------------------
+# 🟩 Produkte abrufen
+# ------------------------------------------------------------
 class ProductViewSet(ModelViewSet):
-    queryset = Product.objects.all().prefetch_related("product_attributes", "images", "category")
+    queryset = (
+        Product.objects.all()
+        .prefetch_related(
+            "variations__color",    # falls vorhanden
+            "variations__size",     # falls vorhanden
+            "images",
+            "category",
+        )
+    )
     serializer_class = ProductSerializer
 
 
+# ------------------------------------------------------------
+# 🟨 Produkt in den Warenkorb legen
+# ------------------------------------------------------------
 class AddToCartView(APIView):
     """
     Erwartet POST-Daten:
     {
       "productId": 1,
       "quantity": 2,
-      "selectedAttributes": {"RAM": "8 GB", "Farbe": "Rot"}
+      "selectedAttributes": {"Größe": "L", "Farbe": "Rot"}
     }
     """
+
     def post(self, request, product_id=None):
         cart = request.session.get("cart", {})
 
-        if product_id:  # alte Variante: /cart/add/<product_id>/
+        if product_id:  # alte Variante
             key = str(product_id)
             cart[key] = cart.get(key, 0) + 1
-        else:  # neue Variante: /cart/add/
+        else:
             product_id = request.data.get("productId")
             quantity = int(request.data.get("quantity", 1))
             selected_attributes = request.data.get("selectedAttributes", {})
 
-            # Schlüssel eindeutig machen: id|attributes(JSON)
             key = f"{product_id}|{str(selected_attributes)}"
             cart[key] = cart.get(key, 0) + quantity
 
@@ -46,44 +60,52 @@ class AddToCartView(APIView):
         return Response({"cart": cart}, status=status.HTTP_200_OK)
 
 
+# ------------------------------------------------------------
+# 🛒 Warenkorb abrufen
+# ------------------------------------------------------------
 class CartView(APIView):
     def get(self, request):
         cart = request.session.get("cart", {})
         items = []
+
         for key, quantity in cart.items():
-            # Schlüssel aufteilen
             parts = key.split("|", 1)
             product_id = parts[0]
             selected_attributes = eval(parts[1]) if len(parts) > 1 else {}
 
             product = get_object_or_404(Product, id=product_id)
 
-            # Gesamtbestand über Varianten berechnen
-            total_stock = sum(attr.stock for attr in product.product_attributes.all())
+            # Gesamtbestand über Varianten
+            total_stock = sum((v.stock or 0) for v in product.variations.all())
 
             items.append({
                 "id": product.id,
                 "title": product.title,
                 "price": str(product.price),
-                "main_image": product.main_image.url if product.main_image else None,
+                "main_image": str(product.main_image) if product.main_image else None,
                 "stock": total_stock,
                 "quantity": quantity,
                 "selectedAttributes": selected_attributes,
             })
+
         return Response(items)
 
 
+# ------------------------------------------------------------
+# 🔴 Produkt aus Warenkorb entfernen
+# ------------------------------------------------------------
 class RemoveFromCartView(APIView):
     """
     Erwartet DELETE mit body:
     { "productId": 1, "selectedAttributes": {"RAM": "8 GB"} }
     """
+
     def delete(self, request, product_id=None):
         cart = request.session.get("cart", {})
 
-        if product_id:  # alte Variante
+        if product_id:
             key = str(product_id)
-        else:  # neue Variante mit Attributen
+        else:
             pid = request.data.get("productId")
             selected_attributes = request.data.get("selectedAttributes", {})
             key = f"{pid}|{str(selected_attributes)}"
@@ -92,9 +114,13 @@ class RemoveFromCartView(APIView):
             del cart[key]
             request.session["cart"] = cart
             request.session.modified = True
+
         return Response({"cart": cart}, status=status.HTTP_200_OK)
 
 
+# ------------------------------------------------------------
+# 🟦 Menge im Warenkorb ändern
+# ------------------------------------------------------------
 class UpdateCartItemView(APIView):
     """
     Erwartet POST:
@@ -104,13 +130,14 @@ class UpdateCartItemView(APIView):
       "selectedAttributes": {"RAM": "8 GB"}
     }
     """
+
     def post(self, request, product_id=None):
         cart = request.session.get("cart", {})
 
-        if product_id:  # alte Variante
+        if product_id:
             key = str(product_id)
             quantity = request.data.get("quantity")
-        else:  # neue Variante
+        else:
             pid = request.data.get("productId")
             quantity = int(request.data.get("quantity", 1))
             selected_attributes = request.data.get("selectedAttributes", {})
@@ -125,6 +152,9 @@ class UpdateCartItemView(APIView):
         return Response({"cart": cart}, status=status.HTTP_200_OK)
 
 
+# ------------------------------------------------------------
+# 🟩 Bestellung abschließen & Lagerbestand reduzieren
+# ------------------------------------------------------------
 @method_decorator(csrf_exempt, name="dispatch")
 class PlaceOrderView(APIView):
     def post(self, request):
@@ -134,29 +164,43 @@ class PlaceOrderView(APIView):
         for key, qty in cart.items():
             pid, attributes = key.split("|", 1)
             product = get_object_or_404(Product, pk=pid)
+            selected_attributes = eval(attributes)
 
-            # Falls Variante existiert → konkretes Stock-Feld prüfen
+            # 🔍 passende Variante finden
             variant = None
-            try:
-                selected_attributes = eval(attributes)
-                variant = product.product_attributes.filter(
-                    value__value__in=selected_attributes.values()
-                ).first()
-            except Exception:
-                pass
+            for v in product.variations.all():
+                matches = True
+                for attr_name, attr_value in selected_attributes.items():
+                    if attr_name.lower() == "farbe" and v.color and v.color.value != attr_value:
+                        matches = False
+                    if attr_name.lower() == "größe" and v.size and v.size.value != attr_value:
+                        matches = False
+                if matches:
+                    variant = v
+                    break
 
-            if variant and variant.stock >= qty:
+            # 🧮 Bestand prüfen und reduzieren
+            if variant and (variant.stock or 0) >= qty:
                 variant.stock -= qty
                 variant.save()
                 updated_products.append({
                     "id": product.id,
-                    "variant": variant.value.value,
+                    "variant": {
+                        "color": variant.color.value if variant.color else None,
+                        "size": variant.size.value if variant.size else None,
+                    },
                     "stock": variant.stock,
                 })
             elif not variant:
-                return Response({"error": f"Variante nicht gefunden für {product.title}"}, status=400)
+                return Response(
+                    {"error": f"Variante nicht gefunden für {product.title}"},
+                    status=400,
+                )
             else:
-                return Response({"error": f"Nicht genug Lager für {product.title}"}, status=400)
+                return Response(
+                    {"error": f"Nicht genug Lager für {product.title}"},
+                    status=400,
+                )
 
         request.session["cart"] = {}
         request.session.modified = True
@@ -167,7 +211,9 @@ class PlaceOrderView(APIView):
         )
 
 
-# CSRF-Cookie-Setz-Endpunkt für Angular
+# ------------------------------------------------------------
+# 🔐 CSRF Cookie für Angular
+# ------------------------------------------------------------
 @ensure_csrf_cookie
 def get_csrf_token(request):
     token = get_token(request)

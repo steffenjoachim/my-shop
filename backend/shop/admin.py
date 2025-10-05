@@ -2,10 +2,10 @@ from django.contrib import admin
 from .models import (
     Category,
     Product,
-    ProductAttribute,
     ProductImage,
     AttributeType,
     AttributeValue,
+    ProductVariation,
 )
 
 
@@ -15,10 +15,11 @@ class ProductImageInline(admin.TabularInline):
     fields = ["image"]
 
 
-class ProductAttributeInline(admin.TabularInline):
-    model = ProductAttribute
+class ProductVariationInline(admin.TabularInline):
+    model = ProductVariation
     extra = 1
-    fields = ["value", "stock"]  # ✅ stock jetzt direkt im Inline editierbar
+    filter_horizontal = ("attributes",)
+    fields = ["attributes", "stock"]
 
 
 @admin.register(Product)
@@ -26,7 +27,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = ("title", "category", "price")
     list_filter = ("category",)
     search_fields = ("title", "description")
-    inlines = [ProductImageInline, ProductAttributeInline]
+    inlines = [ProductImageInline, ProductVariationInline]
 
 
 @admin.register(Category)
@@ -48,25 +49,10 @@ class AttributeValueAdmin(admin.ModelAdmin):
     search_fields = ("value",)
 
 
-@admin.register(ProductAttribute)
-class ProductAttributeAdmin(admin.ModelAdmin):
-    list_display = ("product", "get_attribute_type", "get_value", "stock")
-    list_editable = ("stock",)  # ✅ direkt bearbeitbar in der Liste
-    list_filter = ("value__attribute_type",)
-    search_fields = ("value__value", "product__title")
+@admin.register(ProductVariation)
+class ProductVariationAdmin(admin.ModelAdmin):
+    list_display = ("product", "get_attributes", "stock")
 
-    def get_attribute_type(self, obj):
-        return obj.value.attribute_type.name
-
-    get_attribute_type.short_description = "Attributtyp"
-
-    def get_value(self, obj):
-        return obj.value.value
-
-    get_value.short_description = "Wert"
-
-
-@admin.register(ProductImage)
-class ProductImageAdmin(admin.ModelAdmin):
-    list_display = ("product", "image")
-    search_fields = ("product__title",)
+    def get_attributes(self, obj):
+        return ", ".join([v.value for v in obj.attributes.all()])
+    get_attributes.short_description = "Attribute"
