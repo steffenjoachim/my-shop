@@ -8,7 +8,7 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 
-from .models import Product, ProductVariation, Category
+from .models import Product, ProductVariation, Category, AttributeValue
 from .serializers import ProductSerializer
 
 
@@ -16,13 +16,15 @@ from .serializers import ProductSerializer
 # 🟩 Produkte abrufen
 # ------------------------------------------------------------
 class ProductViewSet(ModelViewSet):
+    """
+    Gibt alle Produkte mit Bildern, Kategorien und Varianten (mit Attributen + Lagerbestand) aus.
+    """
     queryset = (
         Product.objects.all()
+        .select_related("category")
         .prefetch_related(
-            "variations__color",    # falls vorhanden
-            "variations__size",     # falls vorhanden
             "images",
-            "category",
+            "variations__attributes__attribute_type",
         )
     )
     serializer_class = ProductSerializer
@@ -44,7 +46,7 @@ class AddToCartView(APIView):
     def post(self, request, product_id=None):
         cart = request.session.get("cart", {})
 
-        if product_id:  # alte Variante
+        if product_id:
             key = str(product_id)
             cart[key] = cart.get(key, 0) + 1
         else:
@@ -74,8 +76,6 @@ class CartView(APIView):
             selected_attributes = eval(parts[1]) if len(parts) > 1 else {}
 
             product = get_object_or_404(Product, id=product_id)
-
-            # Gesamtbestand über Varianten
             total_stock = sum((v.stock or 0) for v in product.variations.all())
 
             items.append({
@@ -166,15 +166,16 @@ class PlaceOrderView(APIView):
             product = get_object_or_404(Product, pk=pid)
             selected_attributes = eval(attributes)
 
-            # 🔍 passende Variante finden
+            # 🔍 passende Variante anhand AttributeValue suchen
             variant = None
-            for v in product.variations.all():
-                matches = True
-                for attr_name, attr_value in selected_attributes.items():
-                    if attr_name.lower() == "farbe" and v.color and v.color.value != attr_value:
-                        matches = False
-                    if attr_name.lower() == "größe" and v.size and v.size.value != attr_value:
-                        matches = False
+            for v in product.variations.prefetch_related("attributes__attribute_type"):
+                v_attrs = {a.attribute_type.name.lower(): a.value for a in v.attributes.all()}
+
+                matches = all(
+                    selected_attributes.get(attr_name, "").lower() == attr_value.lower()
+                    for attr_name, attr_value in v_attrs.items()
+                )
+
                 if matches:
                     variant = v
                     break
@@ -185,11 +186,8 @@ class PlaceOrderView(APIView):
                 variant.save()
                 updated_products.append({
                     "id": product.id,
-                    "variant": {
-                        "color": variant.color.value if variant.color else None,
-                        "size": variant.size.value if variant.size else None,
-                    },
-                    "stock": variant.stock,
+                    "variant_id": variant.id,
+                    "remaining_stock": variant.stock,
                 })
             elif not variant:
                 return Response(
@@ -202,6 +200,7 @@ class PlaceOrderView(APIView):
                     status=400,
                 )
 
+        # 🧹 Warenkorb leeren
         request.session["cart"] = {}
         request.session.modified = True
 

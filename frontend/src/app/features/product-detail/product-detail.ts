@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
-import { Product, ProductAttribute } from '../../shared/models/products.model';
+import { Product } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { TitleCasePipe, NgClass, NgStyle } from '@angular/common';
@@ -14,92 +14,93 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
   imports: [TitleCasePipe, PopupAlert, NgClass, NgStyle],
   template: `
     @if (product) {
-    <div class="container mx-auto px-8 mt-6">
-      <div class="bg-white rounded-2xl shadow-lg p-6 md:max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold mb-4 text-gray-800">
-          {{ product.title }}
-        </h1>
+      <div class="container mx-auto px-8 mt-6">
+        <div class="bg-white rounded-2xl shadow-lg p-6 md:max-w-2xl mx-auto">
+          <h1 class="text-3xl font-bold mb-4 text-gray-800">
+            {{ product.title }}
+          </h1>
 
-        <!-- Hauptbild -->
-        @if (product.main_image) {
-        <img
-          [src]="product.main_image"
-          alt="{{ product.title }}"
-          class="w-full max-h-80 object-contain mb-6 rounded"
-        />
-        }
-
-        <!-- Zusatzbilder -->
-        @if (productImages.length > 0) {
-        <div class="flex gap-3 overflow-x-auto mb-6">
-          @for (img of productImages; track img.id) {
-          <img
-            [src]="img.image"
-            alt="Zusatzbild"
-            class="h-24 w-auto object-contain rounded border"
-          />
+          <!-- 🖼 Hauptbild -->
+          @if (product.main_image || product.external_image) {
+            <img
+              [src]="sanitizeImageUrl(product.main_image || product.external_image)"
+              alt="{{ product.title }}"
+              class="w-full max-h-80 object-contain mb-6 rounded"
+            />
           }
-        </div>
-        }
 
-        <!-- Beschreibung -->
-        <div class="mb-4 text-gray-600 space-y-2">
-          @for (line of descriptionLines; track line) {
-          <p>{{ line }}</p>
-          }
-        </div>
-
-        <p class="text-2xl font-semibold text-blue-700 mb-6">
-          {{ product.price }} €
-        </p>
-
-        <!-- Attribute -->
-        @for (attr of dynamicAttributes(); track attr.name) {
-        <div class="mb-6">
-          <span class="block font-medium mb-2"
-            >{{ attr.name | titlecase }}:</span
-          >
-
-          <div class="flex gap-3 flex-wrap">
-            @for (val of attr.values; track val.value) {
-            <button
-              type="button"
-              (click)="selectAttribute(attr.name, val.value)"
-              [disabled]="val.stock === 0"
-              [ngClass]="{
-                'ring-2 ring-blue-500 scale-105': selectedAttributes()[attr.name] === val.value,
-                'opacity-50 cursor-not-allowed': val.stock === 0
-              }"
-              [ngStyle]="getAttributeStyle(attr.name, val.value)"
-              class="transition-transform duration-150 shadow-sm focus:outline-none"
-            >
-              @if (!isColorAttribute(attr.name)) {
-                {{ val.value }}
+          <!-- 🖼 Zusatzbilder -->
+          @if (productImages.length > 0) {
+            <div class="flex gap-3 overflow-x-auto mb-6">
+              @for (img of productImages; track img.id) {
+                <img
+                  [src]="sanitizeImageUrl(img.image)"
+                  alt="Zusatzbild"
+                  class="h-24 w-auto object-contain rounded border"
+                />
               }
-            </button>
+            </div>
+          }
+
+          <!-- 📜 Beschreibung -->
+          <div class="mb-4 text-gray-600 space-y-2">
+            @for (line of descriptionLines; track line) {
+              <p>{{ line }}</p>
             }
           </div>
+
+          <p class="text-2xl font-semibold text-blue-700 mb-6">
+            {{ product.price }} €
+          </p>
+
+          <!-- 🧩 Attribute / Varianten -->
+          @for (attr of dynamicAttributes(); track attr.name) {
+            <div class="mb-6">
+              <span class="block font-medium mb-2">
+                {{ attr.name | titlecase }}:
+              </span>
+
+              <div class="flex gap-3 flex-wrap">
+                @for (val of attr.values; track val.value) {
+                  <button
+                    type="button"
+                    (click)="selectAttribute(attr.name, val.value)"
+                    [disabled]="val.stock === 0"
+                    [ngClass]="{
+                      'ring-2 ring-blue-500 scale-105':
+                        selectedAttributes()[attr.name] === val.value,
+                      'opacity-50 cursor-not-allowed': val.stock === 0
+                    }"
+                    [ngStyle]="getAttributeStyle(attr.name, val.value)"
+                    class="transition-transform duration-150 shadow-sm focus:outline-none"
+                  >
+                    @if (!isColorAttribute(attr.name)) {
+                      {{ val.value }}
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- 🛒 In den Warenkorb -->
+          <button
+            (click)="addToCart()"
+            [disabled]="!canAddToCart()"
+            class="mt-4 w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg 
+                     hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            In den Warenkorb
+          </button>
+
+          <!-- ⚠️ Popup -->
+          <app-popup-alert
+            [message]="alertMessage"
+            [visible]="showWarning()"
+            [type]="alertType"
+          />
         </div>
-        }
-
-        <!-- Warenkorb-Button -->
-        <button
-          (click)="addToCart()"
-          [disabled]="!canAddToCart()"
-          class="mt-4 w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg 
-                   hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          In den Warenkorb
-        </button>
-
-        <!-- Popup -->
-        <app-popup-alert
-          [message]="alertMessage"
-          [visible]="showWarning()"
-          [type]="alertType"
-        />
       </div>
-    </div>
     }
   `,
 })
@@ -121,7 +122,7 @@ export class ProductDetailComponent {
   alertMessage = '';
   alertType: 'success' | 'info' | 'error' = 'info';
 
-  /** 🔵 Mapping für deutsche Farbnamen → englische CSS-Farben */
+  /** 🎨 Farb-Map für visuelle Kreise */
   private colorMap: Record<string, string> = {
     rot: 'red',
     blau: 'blue',
@@ -143,63 +144,72 @@ export class ProductDetailComponent {
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.http
-        .get<Product>(`${environment.apiBaseUrl}products/${id}/`)
-        .subscribe({
-          next: (product) => {
-            this.product = product;
-            this.descriptionLines =
-              product.description
-                ?.split(/\r?\n/)
-                .filter((l) => l.trim() !== '') || [];
+      this.http.get<Product>(`${environment.apiBaseUrl}products/${id}/`).subscribe({
+        next: (product) => {
+          this.product = product;
+          this.descriptionLines =
+            product.description?.split(/\r?\n/).filter((l) => l.trim() !== '') || [];
 
-            // Attribute gruppieren
-            const grouped: Record<string, { value: string; stock: number }[]> =
-              {};
-            (product.product_attributes || []).forEach(
-              (attr: ProductAttribute) => {
-                const key = attr.value.attribute_type.name;
-                if (!grouped[key]) grouped[key] = [];
-                const stockVal = attr.stock ?? 1; // ✅ Wenn null → verfügbar
-                if (
-                  !grouped[key].some((v) => v.value === attr.value.value)
-                ) {
-                  grouped[key].push({
-                    value: attr.value.value,
-                    stock: stockVal,
-                  });
-                }
-              }
-            );
+          // 🧩 Attribute aus Variations ableiten
+          const grouped: Record<string, { value: string; stock: number }[]> = {};
 
-            const attrsArray = Object.entries(grouped).map(([name, values]) => ({
-              name,
-              values,
-            }));
-            this.attributes.set(attrsArray);
-
-            // ✅ Auto-Auswahl bei nur einer Variante
-            const autoSelected: { [key: string]: string } = {};
-            attrsArray.forEach((attr) => {
-              if (attr.values.length === 1 && attr.values[0].stock > 0) {
-                autoSelected[attr.name] = attr.values[0].value;
+          (product.variations || []).forEach((variation) => {
+            (variation.attributes || []).forEach((attr) => {
+              const key = attr.attribute_type.name;
+              if (!grouped[key]) grouped[key] = [];
+              if (!grouped[key].some((v) => v.value === attr.value)) {
+                grouped[key].push({
+                  value: attr.value,
+                  stock: variation.stock ?? 0,
+                });
               }
             });
-            this.selectedAttributes.set(autoSelected);
-          },
-          error: (err) => console.error('Fehler beim Laden des Produkts:', err),
-        });
+          });
+
+          const attrsArray = Object.entries(grouped).map(([name, values]) => ({
+            name,
+            values,
+          }));
+          this.attributes.set(attrsArray);
+
+          // 🟢 Auto-Auswahl bei Einzelauswahl
+          const autoSelected: { [key: string]: string } = {};
+          attrsArray.forEach((attr) => {
+            if (attr.values.length === 1 && attr.values[0].stock > 0) {
+              autoSelected[attr.name] = attr.values[0].value;
+            }
+          });
+          this.selectedAttributes.set(autoSelected);
+        },
+        error: (err) => console.error('Fehler beim Laden des Produkts:', err),
+      });
     }
   }
 
+  /** 🖼 Zusatzbilder */
   get productImages() {
     return this.product?.images ?? [];
   }
 
+  /** 🧹 Korrigiert fehlerhafte URLs */
+  sanitizeImageUrl(url?: string | null): string {
+    if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+    if (url.startsWith('https:/') && !url.startsWith('https://')) {
+      return url.replace('https:/', 'https://');
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    // fallback (lokales Bild)
+    return `${environment.apiBaseUrl.replace('/api/', '')}${url}`;
+  }
+
+  /** 🔁 Getter für dynamische Attribute */
   dynamicAttributes() {
     return this.attributes();
   }
 
+  /** Attribut auswählen */
   selectAttribute(name: string, value: string) {
     this.selectedAttributes.update((prev) => ({
       ...prev,
@@ -207,13 +217,13 @@ export class ProductDetailComponent {
     }));
   }
 
-  /** Prüft, ob es sich um Farb-Attribut handelt */
+  /** Prüft, ob Attribut eine Farbe ist */
   isColorAttribute(name: string): boolean {
     const lower = name.toLowerCase();
     return lower === 'color' || lower === 'farbe';
   }
 
-  /** Style für Buttons (Farben + Größen) */
+  /** 🎨 Style für Buttons */
   getAttributeStyle(attrName: string, value: string) {
     const isColor = this.isColorAttribute(attrName);
     const lower = value.toLowerCase();
@@ -233,6 +243,7 @@ export class ProductDetailComponent {
       };
     }
 
+    // Standard für Größe / Text
     return {
       padding: '0.6rem 1.2rem',
       borderRadius: '0.375rem',
@@ -243,23 +254,27 @@ export class ProductDetailComponent {
     };
   }
 
-  /** Button-Aktivierung prüfen */
+  /** Button aktiv, wenn alle Attribute gewählt und Lager > 0 */
   canAddToCart(): boolean {
     if (!this.product) return false;
+    const attrs = this.attributes();
+    if (!attrs.length) return true;
+    const allSelected = attrs.every((attr) => !!this.selectedAttributes()[attr.name]);
+    if (!allSelected) return false;
 
-    // Wenn jedes Attribut nur 1 Variante hat → automatisch aktiv
-    if (this.attributes().every((attr) => attr.values.length === 1)) return true;
-
-    // Prüfen, ob alle ausgewählt sind
-    return this.attributes().every(
-      (attr) => !!this.selectedAttributes()[attr.name]
+    // prüfen, ob gewählte Kombination verfügbar
+    const matched = this.product.variations?.find((variation) =>
+      variation.attributes.every(
+        (a) => this.selectedAttributes()[a.attribute_type.name] === a.value
+      )
     );
+    return matched ? matched.stock > 0 : false;
   }
 
-  /** In den Warenkorb */
+  /** 🛒 In den Warenkorb legen */
   addToCart() {
     if (!this.auth.isLoggedIn()) {
-      this.alertMessage = 'Bitte anmelden';
+      this.alertMessage = 'Bitte melde dich zuerst an.';
       this.alertType = 'error';
       this.showWarning.set(true);
       setTimeout(() => this.showWarning.set(false), 2000);
@@ -268,6 +283,10 @@ export class ProductDetailComponent {
 
     if (this.product) {
       this.cartService.addToCart(this.product, 1, this.selectedAttributes());
+      this.alertMessage = 'Produkt wurde in den Warenkorb gelegt.';
+      this.alertType = 'success';
+      this.showWarning.set(true);
+      setTimeout(() => this.showWarning.set(false), 2000);
     }
   }
 }

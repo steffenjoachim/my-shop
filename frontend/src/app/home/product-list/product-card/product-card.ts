@@ -13,7 +13,7 @@ import { Product } from '../../../shared/models/products.model';
     >
       <a [routerLink]="['/product', product.id]" class="block relative">
         <img
-          [src]="product.main_image || 'https://via.placeholder.com/300x200?text=Kein+Bild'"
+          [src]="product.main_image || product.external_image || 'https://via.placeholder.com/300x200?text=Kein+Bild'"
           [alt]="product.title"
           class="w-full h-48 object-contain p-4 bg-gray-50"
         />

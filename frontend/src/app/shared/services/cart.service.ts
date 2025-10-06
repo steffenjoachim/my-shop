@@ -11,29 +11,50 @@ export class CartService {
   }
 
   addToCart(
-    product: Product,
-    quantity: number,
-    selectedAttributes: { [key: string]: string }
-  ) {
-    const existing = this.cart().find(
-      (item) =>
-        item.id === product.id &&
-        JSON.stringify(item.selectedAttributes) ===
-          JSON.stringify(selectedAttributes)
+  product: Product,
+  quantity: number,
+  selectedAttributes: { [key: string]: string }
+) {
+  const existing = this.cart().find(
+    (item) =>
+      item.id === product.id &&
+      JSON.stringify(item.selectedAttributes) ===
+        JSON.stringify(selectedAttributes)
+  );
+
+  // 🔍 Bestimme den passenden Stock (für Varianten)
+  let stockValue = product.stock ?? 0;
+
+  if (product.variations?.length > 0) {
+    // Versuche den passenden Variant-Stock zu finden
+    const matchingVariation = product.variations.find((v) =>
+      v.attributes.every((attr) =>
+        Object.entries(selectedAttributes).some(
+          ([key, value]) =>
+            attr.attribute_type.name.toLowerCase() === key.toLowerCase() &&
+            attr.value.toLowerCase() === value.toLowerCase()
+        )
+      )
     );
 
-    if (existing) {
-      existing.quantity += quantity;
-      this.cart.set([...this.cart()]);
-    } else {
-      const newItem: CartItem = {
-        ...product,
-        quantity,
-        selectedAttributes,
-      };
-      this.cart.set([...this.cart(), newItem]);
+    if (matchingVariation) {
+      stockValue = matchingVariation.stock;
     }
   }
+
+  if (existing) {
+    existing.quantity += quantity;
+    this.cart.set([...this.cart()]);
+  } else {
+    const newItem: CartItem = {
+      ...product,
+      quantity,
+      selectedAttributes,
+      stock: stockValue, // ✅ Hier speichern wir den tatsächlichen Bestand
+    };
+    this.cart.set([...this.cart(), newItem]);
+  }
+}
 
   updateQuantity(
     productId: number,
