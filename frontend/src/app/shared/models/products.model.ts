@@ -1,3 +1,5 @@
+// src/app/shared/models/products.model.ts
+
 export interface Category {
   id: number;
   name: string;
@@ -17,47 +19,28 @@ export interface AttributeValue {
 export interface ProductImage {
   id: number;
   image: string;
-  // is_primary: boolean;
 }
 
-export interface ProductAttributeValue {
+export interface ProductVariation {
   id: number;
-  value: string;
-  attribute_type: {
-    id: number;
-    name: string;
-  };
+  attributes: AttributeValue[];
+  stock: number;
 }
-
-export interface ProductAttribute {
-  id: number;
-  value: {
-    id: number;
-    value: string;
-    attribute_type: {
-      id: number;
-      name: string;
-    };
-  };
-  stock: number;   // 👈 ergänzen
-}
-
 
 export interface Product {
   id: number;
   title: string;
   description: string;
   price: number;
-  stock: number;
   main_image: string;
-  category: string;
-  category_id: number;
+  external_image?: string | null;
+  category: Category;
   images: ProductImage[];
-  product_attributes: ProductAttribute[];
+  variations: ProductVariation[];   // ✅ hier wird die Backend-Struktur übernommen
 }
 
-// für den Warenkorb
 export interface CartItem extends Product {
   quantity: number;
   selectedAttributes: { [key: string]: string };
+  stock?: number;   // ✅ optional, damit TS2339 weg ist
 }
