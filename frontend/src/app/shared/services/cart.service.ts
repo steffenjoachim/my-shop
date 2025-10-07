@@ -1,97 +1,87 @@
-import { Injectable, signal } from '@angular/core';
-import { Product, CartItem } from '../models/products.model';
+import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+import { CartItem, Product } from '../models/products.model';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root',
+})
 export class CartService {
-  cart = signal<CartItem[]>([]);
+  private itemsSubject = new BehaviorSubject<CartItem[]>([]);
+  items$ = this.itemsSubject.asObservable();
 
-  get totalPrice() {
-    return () =>
-      this.cart().reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }
-
-  addToCart(
-  product: Product,
-  quantity: number,
-  selectedAttributes: { [key: string]: string }
-) {
-  const existing = this.cart().find(
-    (item) =>
-      item.id === product.id &&
-      JSON.stringify(item.selectedAttributes) ===
-        JSON.stringify(selectedAttributes)
-  );
-
-  // 🔍 Bestimme den passenden Stock (für Varianten)
-  let stockValue = product.stock ?? 0;
-
-  if (product.variations?.length > 0) {
-    // Versuche den passenden Variant-Stock zu finden
-    const matchingVariation = product.variations.find((v) =>
-      v.attributes.every((attr) =>
-        Object.entries(selectedAttributes).some(
-          ([key, value]) =>
-            attr.attribute_type.name.toLowerCase() === key.toLowerCase() &&
-            attr.value.toLowerCase() === value.toLowerCase()
-        )
-      )
-    );
-
-    if (matchingVariation) {
-      stockValue = matchingVariation.stock;
+  constructor() {
+    const stored = localStorage.getItem('cart');
+    if (stored) {
+      this.itemsSubject.next(JSON.parse(stored));
     }
   }
 
-  if (existing) {
-    existing.quantity += quantity;
-    this.cart.set([...this.cart()]);
-  } else {
-    const newItem: CartItem = {
-      ...product,
-      quantity,
-      selectedAttributes,
-      stock: stockValue, // ✅ Hier speichern wir den tatsächlichen Bestand
-    };
-    this.cart.set([...this.cart(), newItem]);
-  }
-}
+  /** 📦 Produkt in den Warenkorb legen */
+  addToCart(product: Product, quantity = 1, selectedAttributes: { [key: string]: string } = {}) {
+    const items = this.itemsSubject.value;
 
-  updateQuantity(
-    productId: number,
-    newQty: number,
-    selectedAttributes: { [key: string]: string }
-  ) {
-    this.cart.update((items) =>
-      items.map((item) =>
-        item.id === productId &&
-        JSON.stringify(item.selectedAttributes) ===
-          JSON.stringify(selectedAttributes)
-          ? { ...item, quantity: newQty }
-          : item
-      )
+    // 🔍 Versuchen, passenden Bestand zu ermitteln
+    let stockValue = 0;
+    if (product.variations && product.variations.length > 0) {
+      const matchingVariation = product.variations.find((v) =>
+        v.attributes.every(
+          (attr) =>
+            selectedAttributes[attr.attribute_type.name] === attr.value
+        )
+      );
+      stockValue = matchingVariation?.stock ?? 0;
+    }
+
+    // 🔍 Prüfen, ob Item mit gleichen Attributen schon im Warenkorb ist
+    const existingItem = items.find(
+      (i) =>
+        i.id === product.id &&
+        JSON.stringify(i.selectedAttributes) === JSON.stringify(selectedAttributes)
     );
+
+    if (existingItem) {
+      // Nur erhöhen, wenn Lagerbestand ausreicht
+      if (existingItem.quantity + quantity <= stockValue || stockValue === 0) {
+        existingItem.quantity += quantity;
+      } else {
+        existingItem.quantity = stockValue;
+      }
+    } else {
+      const newItem: CartItem = {
+        ...product,
+        quantity: Math.min(quantity, stockValue || quantity),
+        selectedAttributes,
+      };
+      items.push(newItem);
+    }
+
+    this.updateCart(items);
   }
 
-  removeFromCart(
-    productId: number,
-    selectedAttributes: { [key: string]: string }
-  ) {
-    this.cart.update((items) =>
-      items.filter(
-        (item) =>
-          !(
-            item.id === productId &&
-            JSON.stringify(item.selectedAttributes) ===
-              JSON.stringify(selectedAttributes)
-          )
-      )
+  /** 🗑️ Produkt aus Warenkorb entfernen */
+  removeFromCart(productId: number, selectedAttributes?: { [key: string]: string }) {
+    const filtered = this.itemsSubject.value.filter(
+      (i) =>
+        i.id !== productId ||
+        (selectedAttributes &&
+          JSON.stringify(i.selectedAttributes) !== JSON.stringify(selectedAttributes))
     );
+    this.updateCart(filtered);
+  }
+
+  /** 🧮 Gesamtanzahl */
+  getItemCount(): number {
+    return this.itemsSubject.value.reduce((sum, item) => sum + item.quantity, 0);
+  }
+
+  /** 💾 Speicherung */
+  private updateCart(items: CartItem[]) {
+    this.itemsSubject.next(items);
+    localStorage.setItem('cart', JSON.stringify(items));
   }
 
   clearCart() {
-    this.cart.set([]);
+    this.itemsSubject.next([]);
+    localStorage.removeItem('cart');
   }
 }
-
-// 👉 Hier CartItem weiter exportieren
-export type { CartItem };
