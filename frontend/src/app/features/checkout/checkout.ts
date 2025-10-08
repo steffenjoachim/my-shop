@@ -8,6 +8,7 @@ import { AuthService } from '../../shared/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { CartItem } from '../../shared/models/products.model';
 
 interface PlaceOrderResponse {
   message: string;
@@ -135,12 +136,16 @@ export class Checkout {
   private auth = inject(AuthService);
   private http = inject(HttpClient);
 
-  cartItems = computed(() => this.cartService.cart());
-  total = computed(() =>
+  // ✅ Zugriff auf Cart über getCartItems()
+  cartItems = computed<CartItem[]>(() => this.cartService.getCartItems());
+
+  // ✅ Typisierung korrigiert, um any-Warnungen zu vermeiden
+  total = computed<number>(() =>
     this.cartService
-      .cart()
-      .reduce((sum, item) => sum + item.price * item.quantity, 0)
+      .getCartItems()
+      .reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0)
   );
+
   isLoggedIn = this.auth.isLoggedIn;
 
   address = {

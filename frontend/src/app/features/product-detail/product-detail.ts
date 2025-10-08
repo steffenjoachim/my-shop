@@ -142,49 +142,59 @@ export class ProductDetailComponent {
   };
 
   ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.http.get<Product>(`${environment.apiBaseUrl}products/${id}/`).subscribe({
-        next: (product) => {
-          this.product = product;
-          this.descriptionLines =
-            product.description?.split(/\r?\n/).filter((l) => l.trim() !== '') || [];
+  const id = this.route.snapshot.paramMap.get('id');
+  if (id) {
+    this.http.get<Product>(`${environment.apiBaseUrl}products/${id}/`).subscribe({
+      next: (product) => {
+        this.product = product;
+        this.descriptionLines =
+          product.description?.split(/\r?\n/).filter((l) => l.trim() !== '') || [];
 
-          // 🧩 Attribute aus Variations ableiten
-          const grouped: Record<string, { value: string; stock: number }[]> = {};
+        // 🧩 Attribute aus Variationen ableiten (color / size)
+        const grouped: Record<string, { value: string; stock: number }[]> = {};
 
-          (product.variations || []).forEach((variation) => {
-            (variation.attributes || []).forEach((attr) => {
-              const key = attr.attribute_type.name;
-              if (!grouped[key]) grouped[key] = [];
-              if (!grouped[key].some((v) => v.value === attr.value)) {
-                grouped[key].push({
-                  value: attr.value,
-                  stock: variation.stock ?? 0,
-                });
-              }
-            });
-          });
-
-          const attrsArray = Object.entries(grouped).map(([name, values]) => ({
-            name,
-            values,
-          }));
-          this.attributes.set(attrsArray);
-
-          // 🟢 Auto-Auswahl bei Einzelauswahl
-          const autoSelected: { [key: string]: string } = {};
-          attrsArray.forEach((attr) => {
-            if (attr.values.length === 1 && attr.values[0].stock > 0) {
-              autoSelected[attr.name] = attr.values[0].value;
+        (product.variations || []).forEach((variation) => {
+          // Farbe
+          if (variation.color) {
+            if (!grouped['Farbe']) grouped['Farbe'] = [];
+            if (!grouped['Farbe'].some((v) => v.value === variation.color)) {
+              grouped['Farbe'].push({
+                value: variation.color,
+                stock: variation.stock ?? 0,
+              });
             }
-          });
-          this.selectedAttributes.set(autoSelected);
-        },
-        error: (err) => console.error('Fehler beim Laden des Produkts:', err),
-      });
-    }
+          }
+          // Größe
+          if (variation.size) {
+            if (!grouped['Größe']) grouped['Größe'] = [];
+            if (!grouped['Größe'].some((v) => v.value === variation.size)) {
+              grouped['Größe'].push({
+                value: variation.size,
+                stock: variation.stock ?? 0,
+              });
+            }
+          }
+        });
+
+        const attrsArray = Object.entries(grouped).map(([name, values]) => ({
+          name,
+          values,
+        }));
+        this.attributes.set(attrsArray);
+
+        // 🟢 Auto-Auswahl bei Einzelauswahl
+        const autoSelected: { [key: string]: string } = {};
+        attrsArray.forEach((attr) => {
+          if (attr.values.length === 1 && attr.values[0].stock > 0) {
+            autoSelected[attr.name] = attr.values[0].value;
+          }
+        });
+        this.selectedAttributes.set(autoSelected);
+      },
+      error: (err) => console.error('Fehler beim Laden des Produkts:', err),
+    });
   }
+}
 
   /** 🖼 Zusatzbilder */
   get productImages() {
@@ -264,10 +274,10 @@ export class ProductDetailComponent {
 
     // prüfen, ob gewählte Kombination verfügbar
     const matched = this.product.variations?.find((variation) =>
-      variation.attributes.every(
-        (a) => this.selectedAttributes()[a.attribute_type.name] === a.value
-      )
-    );
+  (!variation.color || variation.color === this.selectedAttributes()['Farbe']) &&
+  (!variation.size || variation.size === this.selectedAttributes()['Größe'])
+);
+
     return matched ? matched.stock > 0 : false;
   }
 
