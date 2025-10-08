@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { CartItem, Product } from '../models/products.model';
+import { Product, CartItem } from '../models/products.model';
 
 @Injectable({
   providedIn: 'root',
@@ -17,30 +17,34 @@ export class CartService {
   }
 
   /** 📦 Produkt in den Warenkorb legen */
-  addToCart(product: Product, quantity = 1, selectedAttributes: { [key: string]: string } = {}) {
+  addToCart(
+    product: Product,
+    quantity = 1,
+    selectedAttributes: { [key: string]: string } = {}
+  ) {
     const items = this.itemsSubject.value;
 
-    // 🔍 Versuchen, passenden Bestand zu ermitteln
+    // 🔍 Lagerbestand prüfen
     let stockValue = 0;
     if (product.variations && product.variations.length > 0) {
-      const matchingVariation = product.variations.find((v) =>
-        v.attributes.every(
-          (attr) =>
-            selectedAttributes[attr.attribute_type.name] === attr.value
-        )
+      const matchingVariation = product.variations.find(
+        (v) =>
+          (!v.color || v.color === selectedAttributes['Farbe']) &&
+          (!v.size || v.size === selectedAttributes['Größe'])
       );
       stockValue = matchingVariation?.stock ?? 0;
     }
 
-    // 🔍 Prüfen, ob Item mit gleichen Attributen schon im Warenkorb ist
+    // 🔍 Prüfen, ob Produkt mit gleichen Attributen bereits im Warenkorb
     const existingItem = items.find(
       (i) =>
         i.id === product.id &&
-        JSON.stringify(i.selectedAttributes) === JSON.stringify(selectedAttributes)
+        JSON.stringify(i.selectedAttributes) ===
+          JSON.stringify(selectedAttributes)
     );
 
     if (existingItem) {
-      // Nur erhöhen, wenn Lagerbestand ausreicht
+      // Nur erhöhen, wenn Lager reicht
       if (existingItem.quantity + quantity <= stockValue || stockValue === 0) {
         existingItem.quantity += quantity;
       } else {
@@ -59,19 +63,26 @@ export class CartService {
   }
 
   /** 🗑️ Produkt aus Warenkorb entfernen */
-  removeFromCart(productId: number, selectedAttributes?: { [key: string]: string }) {
+  removeFromCart(
+    productId: number,
+    selectedAttributes?: { [key: string]: string }
+  ) {
     const filtered = this.itemsSubject.value.filter(
       (i) =>
         i.id !== productId ||
         (selectedAttributes &&
-          JSON.stringify(i.selectedAttributes) !== JSON.stringify(selectedAttributes))
+          JSON.stringify(i.selectedAttributes) !==
+            JSON.stringify(selectedAttributes))
     );
     this.updateCart(filtered);
   }
 
-  /** 🧮 Gesamtanzahl */
+  /** 🧮 Anzahl aller Artikel */
   getItemCount(): number {
-    return this.itemsSubject.value.reduce((sum, item) => sum + item.quantity, 0);
+    return this.itemsSubject.value.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
   }
 
   /** 💾 Speicherung */
@@ -80,8 +91,14 @@ export class CartService {
     localStorage.setItem('cart', JSON.stringify(items));
   }
 
+  /** 🧹 Warenkorb leeren */
   clearCart() {
     this.itemsSubject.next([]);
     localStorage.removeItem('cart');
+  }
+
+  /** 🧩 Zugriff auf aktuellen Warenkorb — fehlte bisher */
+  getCartItems(): CartItem[] {
+    return this.itemsSubject.value;
   }
 }

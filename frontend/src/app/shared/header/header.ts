@@ -1,9 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { PrimaryButton } from '../primary-button/primary-button';
 import { CartService } from '../services/cart.service';
-import { RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-header',
@@ -13,25 +13,25 @@ import { CommonModule } from '@angular/common';
     <header
       class="bg-slate-50 px-8 py-3 shadow-md sticky top-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
     >
-      <!-- Erste Zeile: Logo -->
-      <h1 class="font-bold text-4xl text-shadow-lg cursor-pointer" routerLink="/">
+      <h1
+        class="font-bold text-4xl text-shadow-lg cursor-pointer"
+        routerLink="/"
+      >
         My Store
       </h1>
 
-      <!-- Zweite Zeile (bei schmalen Bildschirmen darunter) -->
       <div class="flex items-center justify-between w-full sm:w-auto">
         <nav class="flex items-center gap-4 text-sm text-gray-600">
           @if (!isLoggedIn()) {
-            <a
-              routerLink="/login"
-              class="hover:underline text-lg font-bold"
-              >Login</a
-            >
+            <a routerLink="/login" class="hover:underline text-lg font-bold">
+              Login
+            </a>
             <a
               routerLink="/register"
               class="hover:underline text-lg font-bold"
-              >Registrieren</a
             >
+              Registrieren
+            </a>
           } @else {
             <span class="text-gray-700 text-lg font-bold">
               {{ user()?.username }}
@@ -46,7 +46,7 @@ import { CommonModule } from '@angular/common';
         </nav>
 
         <app-primary-button
-          [label]="'Cart (' + cartCount() + ')'"
+          [label]="'Cart (' + cartCount + ')'"
           routerLink="/cart"
           class="ml-4"
         />
@@ -54,13 +54,18 @@ import { CommonModule } from '@angular/common';
     </header>
   `,
 })
-export class Header {
+export class Header implements OnInit {
   private cartService = inject(CartService);
   private auth = inject(AuthService);
 
-  cartCount = computed(() =>
-    this.cartService.cart().reduce((sum, item) => sum + item.quantity, 0)
-  );
+  cartCount = 0;
+
+  ngOnInit() {
+    // Reaktiv auf Änderungen im Warenkorb reagieren
+    this.cartService.items$.subscribe((items) => {
+      this.cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    });
+  }
 
   isLoggedIn = () => this.auth.isLoggedIn();
   user = () => this.auth.user();

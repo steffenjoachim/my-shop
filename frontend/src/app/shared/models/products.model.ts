@@ -1,19 +1,6 @@
-// src/app/shared/models/products.model.ts
-
 export interface Category {
   id: number;
   name: string;
-}
-
-export interface AttributeType {
-  id: number;
-  name: string;
-}
-
-export interface AttributeValue {
-  id: number;
-  value: string;
-  attribute_type: AttributeType;
 }
 
 export interface ProductImage {
@@ -21,9 +8,11 @@ export interface ProductImage {
   image: string;
 }
 
+// 🧩 Backend liefert color, size, stock
 export interface ProductVariation {
   id: number;
-  attributes: AttributeValue[];
+  color?: string | null;
+  size?: string | null;
   stock: number;
 }
 
@@ -36,11 +25,11 @@ export interface Product {
   external_image?: string | null;
   category: Category;
   images: ProductImage[];
-  variations: ProductVariation[];   // ✅ hier wird die Backend-Struktur übernommen
+  variations: ProductVariation[];  // ✅ backend-konform
 }
 
 export interface CartItem extends Product {
   quantity: number;
   selectedAttributes: { [key: string]: string };
-  stock?: number;   // ✅ optional, damit TS2339 weg ist
+  stock?: number;  // optional
 }

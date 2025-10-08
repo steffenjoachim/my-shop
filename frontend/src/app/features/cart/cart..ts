@@ -1,174 +1,115 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { CartService, CartItem } from '../../shared/services/cart.service';
-import { AuthService } from '../../shared/services/auth.service';
-import { Router, RouterModule } from '@angular/router';
-import { PopupAlert } from '../../shared/popup-alert/popup-alert';
-import { PrimaryButton } from '../../shared/primary-button/primary-button';
-import { CommonModule } from '@angular/common';
+import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+import { Product, CartItem } from '../../shared/models/products.model';
 
-@Component({
-  selector: 'app-cart',
-  standalone: true,
-  imports: [RouterModule, PopupAlert, CommonModule, PrimaryButton],
-  template: `
-    <article class="container mx-auto mt-4 p-4 bg-white rounded shadow">
-      <h2 class="text-3xl font-bold mb-4">Cart</h2>
-
-      @if (products().length === 0) {
-        <p class="text-gray-500 mb-8">Your cart is currently empty.</p>
-        <app-primary-button
-          class="mt-8"
-          [label]="'Zurück zum Shop'"
-          routerLink="/"
-        />
-      } @else {
-        <div class="space-y-2 mb-4 border-b">
-          @for (product of products(); track trackByFn($index, product)) {
-            <div
-              class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b"
-            >
-              <img
-                class="w-16 h-16 object-contain sm:mr-4"
-                [src]="product.main_image"
-              />
-
-              <div class="flex-1">
-                <span class="block font-medium text-lg">{{
-                  product.title
-                }}</span>
-
-                <!-- Dynamische Attribute -->
-                <span class="block text-gray-600 text-sm">
-                  @for (attrKey of objectKeys(product.selectedAttributes); track attrKey) {
-                    <span class="mr-2">
-                      {{ attrKey }}: {{ product.selectedAttributes[attrKey] }}
-                    </span>
-                  }
-                </span>
-
-                <span class="block text-gray-700 text-sm">
-                  {{ product.price }} € x {{ product.quantity }} =
-                  <strong>{{
-                    (product.price * product.quantity).toFixed(2)
-                  }} €</strong>
-                </span>
-
-                <div class="mt-2 flex gap-2 items-center text-sm">
-                  <button
-                    (click)="decrease(product)"
-                    class="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    −
-                  </button>
-                  <span>{{ product.quantity }}</span>
-                  <button
-                    (click)="increase(product)"
-                    class="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <button
-                (click)="remove(product)"
-                class="self-end sm:self-auto mt-2 sm:mt-0 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition"
-              >
-                Remove
-              </button>
-            </div>
-          }
-        </div>
-
-        <div class="text-xl font-semibold text-right">
-          Total: {{ totalRounded() }} €
-        </div>
-
-        <div class="flex justify-between mt-6">
-          <app-primary-button
-            class="ml-4"
-            [label]="'Weiter einkaufen'"
-            routerLink="/"
-          />
-          <app-primary-button
-            [label]="'Proceed to Checkout'"
-            (click)="proceedToCheckout()"
-          />
-        </div>
-      }
-
-      <app-popup-alert
-        [message]="alertMessage"
-        [visible]="showWarning()"
-        [type]="alertType"
-      />
-    </article>
-  `,
+@Injectable({
+  providedIn: 'root',
 })
 export class Cart {
-  private cartService = inject(CartService);
-  private router = inject(Router);
-  private authService = inject(AuthService);
+  private itemsSubject = new BehaviorSubject<CartItem[]>([]);
+  items$ = this.itemsSubject.asObservable();
 
-  products = this.cartService.cart;
-  totalPrice = this.cartService.totalPrice;
+  constructor() {
+    const stored = localStorage.getItem('cart');
+    if (stored) {
+      this.itemsSubject.next(JSON.parse(stored));
+    }
+  }
 
-  showWarning = signal(false);
+  /** 📦 Produkt in den Warenkorb legen */
+  addToCart(
+    product: Product,
+    quantity = 1,
+    selectedAttributes: { [key: string]: string } = {}
+  ) {
+    const items = this.itemsSubject.value;
 
-  alertMessage = '';
-  alertType: 'success' | 'info' | 'error' = 'info';
+    // 🔍 Lagerbestand anhand Variationen prüfen
+    let stockValue = 0;
+    if (product.variations && product.variations.length > 0) {
+      const matchingVariation = product.variations.find(
+        (v) =>
+          (!v.color || v.color === selectedAttributes['Farbe']) &&
+          (!v.size || v.size === selectedAttributes['Größe'])
+      );
+      stockValue = matchingVariation?.stock ?? 0;
+    }
 
-  objectKeys = Object.keys;
+    // 🔍 Prüfen, ob Item mit gleichen Attributen schon existiert
+    const existingItem = items.find(
+      (i) =>
+        i.id === product.id &&
+        JSON.stringify(i.selectedAttributes) ===
+          JSON.stringify(selectedAttributes)
+    );
 
-  trackByFn(index: number, item: CartItem) {
-  return item.id + '-' + JSON.stringify(item.selectedAttributes);
+    if (existingItem) {
+      // Nur erhöhen, wenn Lagerbestand ausreicht
+      if (existingItem.quantity + quantity <= stockValue || stockValue === 0) {
+        existingItem.quantity += quantity;
+      } else {
+        existingItem.quantity = stockValue;
+      }
+    } else {
+      const newItem: CartItem = {
+        ...product,
+        quantity: Math.min(quantity, stockValue || quantity),
+        selectedAttributes,
+      };
+      items.push(newItem);
+    }
+
+    this.updateCart(items);
+  }
+
+  /** 🗑️ Produkt aus Warenkorb entfernen */
+  removeFromCart(
+    productId: number,
+    selectedAttributes?: { [key: string]: string }
+  ) {
+    const filtered = this.itemsSubject.value.filter(
+      (i) =>
+        i.id !== productId ||
+        (selectedAttributes &&
+          JSON.stringify(i.selectedAttributes) !==
+            JSON.stringify(selectedAttributes))
+    );
+    this.updateCart(filtered);
+  }
+
+  /** 🧮 Anzahl aller Artikel */
+  getItemCount(): number {
+    return this.itemsSubject.value.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+  }
+
+  /** 💰 Gesamtpreis berechnen */
+  getTotalPrice(): number {
+    return this.itemsSubject.value.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+  }
+
+  /** 💾 Speicherung */
+  private updateCart(items: CartItem[]) {
+    this.itemsSubject.next(items);
+    localStorage.setItem('cart', JSON.stringify(items));
+  }
+
+  /** 🧹 Warenkorb leeren */
+  clearCart() {
+    this.itemsSubject.next([]);
+    localStorage.removeItem('cart');
+  }
+
+  /** 🔍 Zugriff auf aktuellen Warenkorb */
+  getCartItems(): CartItem[] {
+    return this.itemsSubject.value;
+  }
 }
 
-  remove(product: CartItem) {
-    this.cartService.removeFromCart(product.id, product.selectedAttributes);
-  }
-
-  increase(product: CartItem) {
-    const currentQty = product.quantity;
-    const maxStock = product.stock ?? 0;
-
-    if (currentQty < maxStock) {
-      this.cartService.updateQuantity(
-        product.id,
-        currentQty + 1,
-        product.selectedAttributes
-      );
-    } else {
-      this.alertMessage = 'You have reached the maximum stock quantity.';
-      this.alertType = 'error';
-      this.showWarning.set(true);
-      setTimeout(() => this.showWarning.set(false), 1000);
-    }
-  }
-
-  decrease(product: CartItem) {
-    if (product.quantity === 1) {
-      this.cartService.removeFromCart(product.id, product.selectedAttributes);
-    } else {
-      this.cartService.updateQuantity(
-        product.id,
-        product.quantity - 1,
-        product.selectedAttributes
-      );
-    }
-  }
-
-  proceedToCheckout() {
-    if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/checkout']);
-    } else {
-      this.router.navigate(['/login'], {
-        queryParams: { redirectTo: '/checkout' },
-      });
-    }
-  }
-
-  totalRounded = computed(() => {
-    return this.totalPrice().toFixed(2);
-  });
-}
+/** 👉 Typen-Export (damit andere Dateien CartItem importieren können) */
+export type { CartItem };
