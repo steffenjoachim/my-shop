@@ -1,35 +1,25 @@
-export interface Category {
-  id: number;
-  name: string;
-}
-
-export interface ProductImage {
-  id: number;
-  image: string;
-}
-
-// 🧩 Backend liefert color, size, stock
-export interface ProductVariation {
-  id: number;
-  color?: string | null;
-  size?: string | null;
-  stock: number;
-}
-
+// products.model.ts
 export interface Product {
   id: number;
   title: string;
-  description: string;
   price: number;
   main_image: string;
-  external_image?: string | null;
-  category: Category;
-  images: ProductImage[];
-  variations: ProductVariation[];  // ✅ backend-konform
+  description?: string;
+  variations?: ProductVariation[];
+  stock?: number;
+  // Bilder als String-Array, nicht als Objekt-Array
+  external_image?: string;
+  images?: string[]; // Array von Bild-URLs als Strings
+}
+
+export interface ProductVariation {
+  color?: string;
+  size?: string;
+  stock: number;
+  price?: number;
 }
 
 export interface CartItem extends Product {
   quantity: number;
-  selectedAttributes: { [key: string]: string };
-  stock?: number;  // optional
+  selectedAttributes?: { [key: string]: string };
 }

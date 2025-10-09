@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { Product, CartItem } from '../models/products.model';
+import { Product, CartItem, ProductVariation } from '../models/products.model'; 
 
 @Injectable({
   providedIn: 'root',
@@ -28,7 +28,7 @@ export class CartService {
     let stockValue = 0;
     if (product.variations && product.variations.length > 0) {
       const matchingVariation = product.variations.find(
-        (v) =>
+        (v: ProductVariation) => // ✅ Typ ergänzt
           (!v.color || v.color === selectedAttributes['Farbe']) &&
           (!v.size || v.size === selectedAttributes['Größe'])
       );
@@ -44,7 +44,6 @@ export class CartService {
     );
 
     if (existingItem) {
-      // Nur erhöhen, wenn Lager reicht
       if (existingItem.quantity + quantity <= stockValue || stockValue === 0) {
         existingItem.quantity += quantity;
       } else {
@@ -97,7 +96,7 @@ export class CartService {
     localStorage.removeItem('cart');
   }
 
-  /** 🧩 Zugriff auf aktuellen Warenkorb — fehlte bisher */
+  /** 🧩 Zugriff auf aktuellen Warenkorb */
   getCartItems(): CartItem[] {
     return this.itemsSubject.value;
   }
