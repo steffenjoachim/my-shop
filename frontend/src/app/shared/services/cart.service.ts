@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { Product, CartItem, ProductVariation } from '../models/products.model'; 
+import { Product, CartItem, ProductVariation } from '../models/products.model';
 
 @Injectable({
   providedIn: 'root',
@@ -28,9 +28,21 @@ export class CartService {
     let stockValue = 0;
     if (product.variations && product.variations.length > 0) {
       const matchingVariation = product.variations.find(
-        (v: ProductVariation) => // ✅ Typ ergänzt
-          (!v.color || v.color === selectedAttributes['Farbe']) &&
-          (!v.size || v.size === selectedAttributes['Größe'])
+        (v: ProductVariation) => {
+          if (v.attributes && v.attributes.length > 0) {
+            const requiredPairs = Object.entries(selectedAttributes || {});
+            return requiredPairs.every(([typeName, val]) =>
+              v.attributes!.some(
+                (a) => a.attribute_type === typeName && a.value === val
+              )
+            );
+          }
+          // Fallback: Altstruktur mit color/size
+          return (
+            (!v.color || v.color === selectedAttributes['Farbe']) &&
+            (!v.size || v.size === selectedAttributes['Größe'])
+          );
+        }
       );
       stockValue = matchingVariation?.stock ?? 0;
     }

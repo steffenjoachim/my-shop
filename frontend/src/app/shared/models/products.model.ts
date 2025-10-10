@@ -9,10 +9,13 @@ export interface Product {
   stock?: number;
   // Bilder als String-Array, nicht als Objekt-Array
   external_image?: string;
-  images?: string[]; // Array von Bild-URLs als Strings
+  images?: { id: number; image: string }[]; // Objekt-Array wie vom Backend-Serializer
 }
 
 export interface ProductVariation {
+  // Generische Attributdarstellung aus dem Backend (ManyToMany AttributeValue)
+  attributes?: { attribute_type: string; value: string }[];
+  // Kompatibilität zu älteren Datenständen (direkte Felder)
   color?: string;
   size?: string;
   stock: number;
