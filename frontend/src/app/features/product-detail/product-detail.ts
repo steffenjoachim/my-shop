@@ -83,6 +83,16 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
         </div>
         }
 
+        <!-- 📦 Lagerbestand-Hinweis -->
+        @if (shouldShowStockWarning()) {
+        <div
+          class="mt-3 p-3 rounded-lg text-center font-medium"
+          [ngClass]="getStockWarningClass()"
+        >
+          Nur noch {{ getCurrentStock() }} Stück verfügbar
+        </div>
+        }
+
         <!-- 🛒 In den Warenkorb -->
         <button
           (click)="addToCart()"
@@ -163,7 +173,17 @@ export class ProductDetailComponent {
                 variation.attributes.forEach((attr) => {
                   const typeName = attr.attribute_type;
                   if (!grouped[typeName]) grouped[typeName] = [];
-                  if (!grouped[typeName].some((v) => v.value === attr.value)) {
+
+                  // Prüfen, ob der Wert existiert
+                  const existingValue = grouped[typeName].find(
+                    (v) => v.value === attr.value
+                  );
+                  if (existingValue) {
+                    existingValue.stock = Math.max(
+                      existingValue.stock,
+                      variation.stock ?? 0
+                    );
+                  } else {
                     grouped[typeName].push({
                       value: attr.value,
                       stock: variation.stock ?? 0,
@@ -173,7 +193,7 @@ export class ProductDetailComponent {
                 return;
               }
 
-              // Fallback für Altstruktur (color/size)
+              // 🧩 Fallback Altstruktur (color / size)
               if (variation.color) {
                 if (!grouped['Farbe']) grouped['Farbe'] = [];
                 if (
@@ -196,12 +216,14 @@ export class ProductDetailComponent {
               }
             });
 
-            const attrsArray = Object.entries(grouped).map(
-              ([name, values]) => ({
-                name,
-                values,
-              })
-            );
+            // 🔢 Sortierung für Größenattribute
+            const attrsArray = Object.entries(grouped).map(([name, values]) => {
+              if (this.isSizeAttribute(name)) {
+                values = this.sortSizes(values);
+              }
+              return { name, values };
+            });
+
             this.attributes.set(attrsArray);
 
             // 🟢 Auto-Auswahl bei Einzelauswahl
@@ -232,13 +254,47 @@ export class ProductDetailComponent {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
-    // fallback (lokales Bild)
     return `${environment.apiBaseUrl.replace('/api/', '')}${url}`;
   }
 
   /** 🔁 Getter für dynamische Attribute */
   dynamicAttributes() {
     return this.attributes();
+  }
+
+  /** Prüft, ob Attribut eine Größe ist */
+  isSizeAttribute(name: string): boolean {
+    const lower = name.toLowerCase();
+    return lower === 'size' || lower === 'größe' || lower === 'groesse';
+  }
+
+  /** Sortiert Größen in der richtigen Reihenfolge */
+  sortSizes(values: { value: string; stock: number }[]): {
+    value: string;
+    stock: number;
+  }[] {
+    const sizeOrder = [
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+      'XXXL',
+      '3XL',
+      '4XL',
+      '5XL',
+    ];
+
+    return values.sort((a, b) => {
+      const aIndex = sizeOrder.indexOf(a.value.toUpperCase());
+      const bIndex = sizeOrder.indexOf(b.value.toUpperCase());
+
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.value.localeCompare(b.value);
+    });
   }
 
   /** Attribut auswählen */
@@ -275,7 +331,6 @@ export class ProductDetailComponent {
       };
     }
 
-    // Standard für Größe / Text
     return {
       padding: '0.6rem 1.2rem',
       borderRadius: '0.375rem',
@@ -296,27 +351,64 @@ export class ProductDetailComponent {
     );
     if (!allSelected) return false;
 
-    // prüfen, ob gewählte Kombination verfügbar (generische Attribute)
+    const selectedCombo = this.selectedAttributes();
     const matched = this.product.variations?.find((variation) => {
       if (variation.attributes && variation.attributes.length > 0) {
-        const requiredPairs = Object.entries(this.selectedAttributes());
+        const requiredPairs = Object.entries(selectedCombo);
         return requiredPairs.every(([typeName, val]) =>
           variation.attributes!.some(
             (a) => a.attribute_type === typeName && a.value === val
           )
         );
       }
-      // Fallback Altstruktur
       const colorOk =
-        !variation.color ||
-        variation.color === this.selectedAttributes()['Farbe'];
+        !variation.color || variation.color === selectedCombo['Farbe'];
       const sizeOk =
-        !variation.size ||
-        variation.size === this.selectedAttributes()['Größe'];
+        !variation.size || variation.size === selectedCombo['Größe'];
       return colorOk && sizeOk;
     });
 
     return matched ? (matched.stock ?? 0) > 0 : false;
+  }
+
+  /** 📦 Aktueller Lagerbestand für gewählte Kombination */
+  getCurrentStock(): number {
+    if (!this.product) return 0;
+
+    const selectedCombo = this.selectedAttributes();
+    const matched = this.product.variations?.find((variation) => {
+      if (variation.attributes && variation.attributes.length > 0) {
+        const requiredPairs = Object.entries(selectedCombo);
+        return requiredPairs.every(([typeName, val]) =>
+          variation.attributes!.some(
+            (a) => a.attribute_type === typeName && a.value === val
+          )
+        );
+      }
+      const colorOk =
+        !variation.color || variation.color === selectedCombo['Farbe'];
+      const sizeOk =
+        !variation.size || variation.size === selectedCombo['Größe'];
+      return colorOk && sizeOk;
+    });
+
+    return matched ? matched.stock ?? 0 : 0;
+  }
+
+  /** 📦 Prüft, ob Lagerbestand-Hinweis angezeigt werden soll */
+  shouldShowStockWarning(): boolean {
+    const stock = this.getCurrentStock();
+    return stock > 0 && stock <= 10;
+  }
+
+  /** 📦 CSS-Klasse für Lagerbestand-Hinweis */
+  getStockWarningClass(): string {
+    const stock = this.getCurrentStock();
+    if (stock <= 3) {
+      return 'bg-red-100 text-red-800 border border-red-300';
+    } else {
+      return 'bg-green-100 text-green-800 border border-green-300';
+    }
   }
 
   /** 🛒 In den Warenkorb legen */
