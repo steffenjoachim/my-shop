@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
 import { Product } from '../../shared/models/products.model';
@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { TitleCasePipe, NgClass, NgStyle } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-product-detail',
@@ -114,11 +115,12 @@ import { PopupAlert } from '../../shared/popup-alert/popup-alert';
     }
   `,
 })
-export class ProductDetailComponent {
+export class ProductDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private cartService = inject(CartService);
   private auth = inject(AuthService);
+  private subscription = new Subscription();
 
   product: Product | null = null;
   descriptionLines: string[] = [];
@@ -154,90 +156,112 @@ export class ProductDetailComponent {
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.http
-        .get<Product>(`${environment.apiBaseUrl}products/${id}/`)
-        .subscribe({
-          next: (product) => {
-            this.product = product;
-            this.descriptionLines =
-              product.description
-                ?.split(/\r?\n/)
-                .filter((l) => l.trim() !== '') || [];
-
-            // 🧩 Attribute aus generischen Variation-Attributen ableiten
-            const grouped: Record<string, { value: string; stock: number }[]> =
-              {};
-
-            (product.variations || []).forEach((variation) => {
-              if (variation.attributes && variation.attributes.length > 0) {
-                variation.attributes.forEach((attr) => {
-                  const typeName = attr.attribute_type;
-                  if (!grouped[typeName]) grouped[typeName] = [];
-
-                  // Prüfen, ob der Wert existiert
-                  const existingValue = grouped[typeName].find(
-                    (v) => v.value === attr.value
-                  );
-                  if (existingValue) {
-                    existingValue.stock = Math.max(
-                      existingValue.stock,
-                      variation.stock ?? 0
-                    );
-                  } else {
-                    grouped[typeName].push({
-                      value: attr.value,
-                      stock: variation.stock ?? 0,
-                    });
-                  }
-                });
-                return;
-              }
-
-              // 🧩 Fallback Altstruktur (color / size)
-              if (variation.color) {
-                if (!grouped['Farbe']) grouped['Farbe'] = [];
-                if (
-                  !grouped['Farbe'].some((v) => v.value === variation.color)
-                ) {
-                  grouped['Farbe'].push({
-                    value: variation.color,
-                    stock: variation.stock ?? 0,
-                  });
-                }
-              }
-              if (variation.size) {
-                if (!grouped['Größe']) grouped['Größe'] = [];
-                if (!grouped['Größe'].some((v) => v.value === variation.size)) {
-                  grouped['Größe'].push({
-                    value: variation.size,
-                    stock: variation.stock ?? 0,
-                  });
-                }
-              }
-            });
-
-            // 🔢 Sortierung für Größenattribute
-            const attrsArray = Object.entries(grouped).map(([name, values]) => {
-              if (this.isSizeAttribute(name)) {
-                values = this.sortSizes(values);
-              }
-              return { name, values };
-            });
-
-            this.attributes.set(attrsArray);
-
-            // 🟢 Auto-Auswahl bei Einzelauswahl
-            const autoSelected: { [key: string]: string } = {};
-            attrsArray.forEach((attr) => {
-              if (attr.values.length === 1 && attr.values[0].stock > 0) {
-                autoSelected[attr.name] = attr.values[0].value;
-              }
-            });
-            this.selectedAttributes.set(autoSelected);
-          },
-          error: (err) => console.error('Fehler beim Laden des Produkts:', err),
-        });
+      this.loadProduct(id);
     }
+
+    // 🎯 Event-Listener für Bestellabschluss
+    window.addEventListener('orderCompleted', this.handleOrderCompleted);
+  }
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+    window.removeEventListener('orderCompleted', this.handleOrderCompleted);
+  }
+
+  /** 🎯 Handler für Bestellabschluss-Event */
+  private handleOrderCompleted = (event: Event) => {
+    console.log(
+      'Bestellung abgeschlossen, Produktdaten werden aktualisiert...'
+    );
+    const currentId = this.route.snapshot.paramMap.get('id');
+    if (currentId) {
+      this.loadProduct(currentId);
+    }
+  };
+
+  /** 🔄 Produktdaten laden */
+  private loadProduct(id: string) {
+    this.http
+      .get<Product>(`${environment.apiBaseUrl}products/${id}/`)
+      .subscribe({
+        next: (product) => {
+          this.product = product;
+          this.descriptionLines =
+            product.description
+              ?.split(/\r?\n/)
+              .filter((l) => l.trim() !== '') || [];
+
+          // 🧩 Attribute aus generischen Variation-Attributen ableiten
+          const grouped: Record<string, { value: string; stock: number }[]> =
+            {};
+
+          (product.variations || []).forEach((variation) => {
+            if (variation.attributes && variation.attributes.length > 0) {
+              variation.attributes.forEach((attr) => {
+                const typeName = attr.attribute_type;
+                if (!grouped[typeName]) grouped[typeName] = [];
+
+                // Prüfen, ob der Wert existiert
+                const existingValue = grouped[typeName].find(
+                  (v) => v.value === attr.value
+                );
+                if (existingValue) {
+                  existingValue.stock = Math.max(
+                    existingValue.stock,
+                    variation.stock ?? 0
+                  );
+                } else {
+                  grouped[typeName].push({
+                    value: attr.value,
+                    stock: variation.stock ?? 0,
+                  });
+                }
+              });
+              return;
+            }
+
+            // 🧩 Fallback Altstruktur (color / size)
+            if (variation.color) {
+              if (!grouped['Farbe']) grouped['Farbe'] = [];
+              if (!grouped['Farbe'].some((v) => v.value === variation.color)) {
+                grouped['Farbe'].push({
+                  value: variation.color,
+                  stock: variation.stock ?? 0,
+                });
+              }
+            }
+            if (variation.size) {
+              if (!grouped['Größe']) grouped['Größe'] = [];
+              if (!grouped['Größe'].some((v) => v.value === variation.size)) {
+                grouped['Größe'].push({
+                  value: variation.size,
+                  stock: variation.stock ?? 0,
+                });
+              }
+            }
+          });
+
+          // 🔢 Sortierung für Größenattribute
+          const attrsArray = Object.entries(grouped).map(([name, values]) => {
+            if (this.isSizeAttribute(name)) {
+              values = this.sortSizes(values);
+            }
+            return { name, values };
+          });
+
+          this.attributes.set(attrsArray);
+
+          // 🟢 Auto-Auswahl bei Einzelauswahl
+          const autoSelected: { [key: string]: string } = {};
+          attrsArray.forEach((attr) => {
+            if (attr.values.length === 1 && attr.values[0].stock > 0) {
+              autoSelected[attr.name] = attr.values[0].value;
+            }
+          });
+          this.selectedAttributes.set(autoSelected);
+        },
+        error: (err) => console.error('Fehler beim Laden des Produkts:', err),
+      });
   }
 
   /** 🖼 Zusatzbilder */

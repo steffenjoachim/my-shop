@@ -1,19 +1,47 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, signal, effect } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Product, CartItem, ProductVariation } from '../models/products.model';
+import { environment } from '../../../environments/environment';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CartService {
-  private itemsSubject = new BehaviorSubject<CartItem[]>([]);
-  items$ = this.itemsSubject.asObservable();
+  private apiUrl = `${environment.apiBaseUrl}cart/`;
+  private readonly _cart = signal<CartItem[]>([]);
+  public readonly cart = this._cart.asReadonly();
+  
+  // Observable for cart items
+  private _cartItems$ = new BehaviorSubject<CartItem[]>([]);
+  public readonly items$: Observable<CartItem[]> = this._cartItems$.asObservable();
 
-  constructor() {
-    const stored = localStorage.getItem('cart');
-    if (stored) {
-      this.itemsSubject.next(JSON.parse(stored));
-    }
+  public readonly totalPrice = signal(0);
+
+  constructor(private http: HttpClient) {
+    this.loadCart();
+
+    // Automatisches Berechnen von totalPrice bei jeder Cart-Änderung
+    effect(() => {
+      const items = this._cart();
+      const total = items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      this.totalPrice.set(total);
+      this._cartItems$.next(items);
+    });
+  }
+
+  loadCart(): void {
+    this.http
+      .get<CartItem[]>(this.apiUrl, { withCredentials: true })
+      .subscribe({
+        next: (data) => {
+          this._cart.set(data);
+        },
+        error: (err) => console.error('[CartService] loadCart ERROR', err),
+      });
   }
 
   /** 📦 Produkt in den Warenkorb legen */
@@ -22,55 +50,22 @@ export class CartService {
     quantity = 1,
     selectedAttributes: { [key: string]: string } = {}
   ) {
-    const items = this.itemsSubject.value;
-
-    // 🔍 Lagerbestand prüfen
-    let stockValue = 0;
-    if (product.variations && product.variations.length > 0) {
-      const matchingVariation = product.variations.find(
-        (v: ProductVariation) => {
-          if (v.attributes && v.attributes.length > 0) {
-            const requiredPairs = Object.entries(selectedAttributes || {});
-            return requiredPairs.every(([typeName, val]) =>
-              v.attributes!.some(
-                (a) => a.attribute_type === typeName && a.value === val
-              )
-            );
-          }
-          // Fallback: Altstruktur mit color/size
-          return (
-            (!v.color || v.color === selectedAttributes['Farbe']) &&
-            (!v.size || v.size === selectedAttributes['Größe'])
-          );
-        }
-      );
-      stockValue = matchingVariation?.stock ?? 0;
-    }
-
-    // 🔍 Prüfen, ob Produkt mit gleichen Attributen bereits im Warenkorb
-    const existingItem = items.find(
-      (i) =>
-        i.id === product.id &&
-        JSON.stringify(i.selectedAttributes) ===
-          JSON.stringify(selectedAttributes)
-    );
-
-    if (existingItem) {
-      if (existingItem.quantity + quantity <= stockValue || stockValue === 0) {
-        existingItem.quantity += quantity;
-      } else {
-        existingItem.quantity = stockValue;
-      }
-    } else {
-      const newItem: CartItem = {
-        ...product,
-        quantity: Math.min(quantity, stockValue || quantity),
-        selectedAttributes,
-      };
-      items.push(newItem);
-    }
-
-    this.updateCart(items);
+    this.http
+      .post(
+        `${this.apiUrl}add/${product.id}/`,
+        {
+          productId: product.id,
+          quantity: quantity,
+          selectedAttributes: selectedAttributes,
+        },
+        { withCredentials: true }
+      )
+      .subscribe({
+        next: (res) => {
+          this.loadCart();
+        },
+        error: (err) => console.error('[CartService] addToCart ERROR', err),
+      });
   }
 
   /** 🗑️ Produkt aus Warenkorb entfernen */
@@ -78,38 +73,33 @@ export class CartService {
     productId: number,
     selectedAttributes?: { [key: string]: string }
   ) {
-    const filtered = this.itemsSubject.value.filter(
-      (i) =>
-        i.id !== productId ||
-        (selectedAttributes &&
-          JSON.stringify(i.selectedAttributes) !==
-            JSON.stringify(selectedAttributes))
-    );
-    this.updateCart(filtered);
+    this.http
+      .delete(`${this.apiUrl}remove/${productId}/`, {
+        withCredentials: true,
+        body: {
+          productId: productId,
+          selectedAttributes: selectedAttributes || {},
+        },
+      })
+      .subscribe({
+        next: () => this.loadCart(),
+        error: (err) =>
+          console.error('[CartService] removeFromCart ERROR', err),
+      });
   }
 
   /** 🧮 Anzahl aller Artikel */
   getItemCount(): number {
-    return this.itemsSubject.value.reduce(
-      (sum, item) => sum + item.quantity,
-      0
-    );
-  }
-
-  /** 💾 Speicherung */
-  private updateCart(items: CartItem[]) {
-    this.itemsSubject.next(items);
-    localStorage.setItem('cart', JSON.stringify(items));
+    return this._cart().reduce((sum, item) => sum + item.quantity, 0);
   }
 
   /** 🧹 Warenkorb leeren */
   clearCart() {
-    this.itemsSubject.next([]);
-    localStorage.removeItem('cart');
+    this._cart.set([]);
   }
 
   /** 🧩 Zugriff auf aktuellen Warenkorb */
   getCartItems(): CartItem[] {
-    return this.itemsSubject.value;
+    return this._cart();
   }
 }

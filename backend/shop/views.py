@@ -11,7 +11,6 @@ from django.middleware.csrf import get_token
 from .models import Product, ProductVariation, Category, AttributeValue
 from .serializers import ProductSerializer
 
-
 # ------------------------------------------------------------
 # 🟩 Produkte abrufen
 # ------------------------------------------------------------
@@ -28,7 +27,6 @@ class ProductViewSet(ModelViewSet):
         )
     )
     serializer_class = ProductSerializer
-
 
 # ------------------------------------------------------------
 # 🟨 Produkt in den Warenkorb legen
@@ -47,20 +45,23 @@ class AddToCartView(APIView):
         cart = request.session.get("cart", {})
 
         if product_id:
-            key = str(product_id)
-            cart[key] = cart.get(key, 0) + 1
+            # Direkter Aufruf mit product_id
+            product_id = int(product_id)
+            quantity = int(request.data.get("quantity", 1))
+            selected_attributes = request.data.get("selectedAttributes", {})
         else:
+            # Body-basierter Aufruf
             product_id = request.data.get("productId")
             quantity = int(request.data.get("quantity", 1))
             selected_attributes = request.data.get("selectedAttributes", {})
 
-            key = f"{product_id}|{str(selected_attributes)}"
-            cart[key] = cart.get(key, 0) + quantity
+        # Key für Session: productId|{selectedAttributes}
+        key = f"{product_id}|{str(selected_attributes)}"
+        cart[key] = cart.get(key, 0) + quantity
 
         request.session["cart"] = cart
         request.session.modified = True
         return Response({"cart": cart}, status=status.HTTP_200_OK)
-
 
 # ------------------------------------------------------------
 # 🛒 Warenkorb abrufen
@@ -90,7 +91,6 @@ class CartView(APIView):
 
         return Response(items)
 
-
 # ------------------------------------------------------------
 # 🔴 Produkt aus Warenkorb entfernen
 # ------------------------------------------------------------
@@ -104,8 +104,12 @@ class RemoveFromCartView(APIView):
         cart = request.session.get("cart", {})
 
         if product_id:
-            key = str(product_id)
+            # Direkter Aufruf mit product_id
+            product_id = int(product_id)
+            selected_attributes = request.data.get("selectedAttributes", {})
+            key = f"{product_id}|{str(selected_attributes)}"
         else:
+            # Body-basierter Aufruf
             pid = request.data.get("productId")
             selected_attributes = request.data.get("selectedAttributes", {})
             key = f"{pid}|{str(selected_attributes)}"
@@ -116,7 +120,6 @@ class RemoveFromCartView(APIView):
             request.session.modified = True
 
         return Response({"cart": cart}, status=status.HTTP_200_OK)
-
 
 # ------------------------------------------------------------
 # 🟦 Menge im Warenkorb ändern
@@ -135,22 +138,25 @@ class UpdateCartItemView(APIView):
         cart = request.session.get("cart", {})
 
         if product_id:
-            key = str(product_id)
-            quantity = request.data.get("quantity")
+            # Direkter Aufruf mit product_id
+            product_id = int(product_id)
+            quantity = int(request.data.get("quantity", 1))
+            selected_attributes = request.data.get("selectedAttributes", {})
+            key = f"{product_id}|{str(selected_attributes)}"
         else:
+            # Body-basierter Aufruf
             pid = request.data.get("productId")
             quantity = int(request.data.get("quantity", 1))
             selected_attributes = request.data.get("selectedAttributes", {})
             key = f"{pid}|{str(selected_attributes)}"
 
-        if quantity is None or int(quantity) < 1:
+        if quantity < 1:
             return Response({"error": "Ungültige Menge"}, status=status.HTTP_400_BAD_REQUEST)
 
-        cart[key] = int(quantity)
+        cart[key] = quantity
         request.session["cart"] = cart
         request.session.modified = True
         return Response({"cart": cart}, status=status.HTTP_200_OK)
-
 
 # ------------------------------------------------------------
 # 🟩 Bestellung abschließen & Lagerbestand reduzieren
@@ -158,6 +164,10 @@ class UpdateCartItemView(APIView):
 @method_decorator(csrf_exempt, name="dispatch")
 class PlaceOrderView(APIView):
     def post(self, request):
+        # Akzeptiere zusätzliche Felder (z.B. address, paymentMethod) ohne sie zu verwenden
+        address = request.data.get("address", {})
+        payment_method = request.data.get("paymentMethod", "")
+
         cart = request.session.get("cart", {})
         updated_products = []
 
@@ -171,10 +181,11 @@ class PlaceOrderView(APIView):
             for v in product.variations.prefetch_related("attributes__attribute_type"):
                 v_attrs = {a.attribute_type.name.lower(): a.value for a in v.attributes.all()}
 
+                # Prüfe, ob alle ausgewählten Attribute mit der Variante übereinstimmen
                 matches = all(
                     selected_attributes.get(attr_name, "").lower() == attr_value.lower()
                     for attr_name, attr_value in v_attrs.items()
-                )
+                ) and len(v_attrs) == len(selected_attributes)
 
                 if matches:
                     variant = v
@@ -208,7 +219,6 @@ class PlaceOrderView(APIView):
             {"message": "Bestellung erfolgreich", "updated_products": updated_products},
             status=200,
         )
-
 
 # ------------------------------------------------------------
 # 🔐 CSRF Cookie für Angular
