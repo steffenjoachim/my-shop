@@ -116,7 +116,7 @@ export class Cart {
   });
   products = computed(() => this.cartItems());
   totalPrice = computed(() =>
-    this.cartItems().reduce((sum, p) => sum + p.price * p.quantity, 0)
+    this.cartItems().reduce((sum: number, p: CartItem) => sum + p.price * p.quantity, 0)
   );
 
   showWarning = signal(false);

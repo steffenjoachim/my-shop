@@ -1,9 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { PrimaryButton } from '../primary-button/primary-button';
 import { CartService } from '../services/cart.service';
 import { AuthService } from '../services/auth.service';
+import { CartItem } from '../models/products.model';
 
 @Component({
   selector: 'app-header',
@@ -26,10 +27,7 @@ import { AuthService } from '../services/auth.service';
             <a routerLink="/login" class="hover:underline text-lg font-bold">
               Login
             </a>
-            <a
-              routerLink="/register"
-              class="hover:underline text-lg font-bold"
-            >
+            <a routerLink="/register" class="hover:underline text-lg font-bold">
               Registrieren
             </a>
           } @else {
@@ -45,8 +43,9 @@ import { AuthService } from '../services/auth.service';
           }
         </nav>
 
+        <!-- ✅ Hier wird cartCount() aufgerufen -->
         <app-primary-button
-          [label]="'Cart (' + cartCount + ')'"
+          [label]="'Cart (' + cartCount() + ')'"
           routerLink="/cart"
           class="ml-4"
         />
@@ -54,18 +53,16 @@ import { AuthService } from '../services/auth.service';
     </header>
   `,
 })
-export class Header implements OnInit {
+export class Header {
   private cartService = inject(CartService);
   private auth = inject(AuthService);
 
-  cartCount = 0;
-
-  ngOnInit() {
-    // Reaktiv auf Änderungen im Warenkorb reagieren
-    this.cartService.items$.subscribe((items) => {
-      this.cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
-    });
-  }
+  // ✅ Computed Signal für Cart-Count
+  cartCount = computed(() =>
+    this.cartService
+      .cart()
+      .reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
+  );
 
   isLoggedIn = () => this.auth.isLoggedIn();
   user = () => this.auth.user();

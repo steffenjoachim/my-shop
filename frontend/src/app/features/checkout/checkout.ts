@@ -18,13 +18,7 @@ interface PlaceOrderResponse {
 @Component({
   selector: 'app-checkout',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    PrimaryButton,
-    FormsModule,
-    PopupAlert,
-  ],
+  imports: [CommonModule, RouterLink, PrimaryButton, FormsModule, PopupAlert],
   template: `
     <div class="p-8 max-w-3xl mx-auto">
       <h1 class="text-3xl font-bold mb-6">Checkout</h1>
@@ -143,7 +137,10 @@ export class Checkout {
   total = computed<number>(() =>
     this.cartService
       .getCartItems()
-      .reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0)
+      .reduce(
+        (sum: number, item: CartItem) => sum + item.price * item.quantity,
+        0
+      )
   );
 
   isLoggedIn = this.auth.isLoggedIn;
@@ -177,6 +174,13 @@ export class Checkout {
           this.cartService.clearCart();
           this.successMessage = `Thank you for your order! <br> Check your email for confirmation.`;
           this.showSuccessAlert = true;
+
+          // 🔄 Produktdaten aktualisieren durch Event
+          window.dispatchEvent(
+            new CustomEvent('orderCompleted', {
+              detail: { updatedProducts: res.updated_products },
+            })
+          );
         },
         error: (err: any) => {
           console.error('Fehler bei Bestellung:', err);
