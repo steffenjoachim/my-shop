@@ -179,13 +179,18 @@ class PlaceOrderView(APIView):
             # 🔍 passende Variante anhand AttributeValue suchen
             variant = None
             for v in product.variations.prefetch_related("attributes__attribute_type"):
-                v_attrs = {a.attribute_type.name.lower(): a.value for a in v.attributes.all()}
+                # Vergleiche Keys und Values normalized (klein, getrimmt)
+                v_attrs = {a.attribute_type.name.strip().lower(): a.value.strip().lower() for a in v.attributes.all()}
+                selected_attrs_normalized = {k.strip().lower(): v.strip().lower() for k, v in selected_attributes.items()}
 
-                # Prüfe, ob alle ausgewählten Attribute mit der Variante übereinstimmen
-                matches = all(
-                    selected_attributes.get(attr_name, "").lower() == attr_value.lower()
-                    for attr_name, attr_value in v_attrs.items()
-                ) and len(v_attrs) == len(selected_attributes)
+                # Debug-Ausgaben (optional, für Entwicklung)
+                # print("selected_attrs_normalized:", selected_attrs_normalized)
+                # print("variant attrs:", v_attrs)
+
+                matches = (
+                    v_attrs == selected_attrs_normalized
+                    and len(v_attrs) == len(selected_attrs_normalized)
+                )
 
                 if matches:
                     variant = v
