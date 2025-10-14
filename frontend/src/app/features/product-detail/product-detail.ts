@@ -84,8 +84,14 @@ import { Subscription } from 'rxjs';
         </div>
         }
 
-        <!-- 📦 Lagerbestand-Hinweis -->
-        @if (shouldShowStockWarning()) {
+         <!-- 📦 Lagerbestand-Hinweis -->
+        @if (getCurrentStock() === 0) {
+        <div
+          class="mt-3 p-3 rounded-lg text-center font-medium bg-gray-200 text-gray-700 border border-gray-300"
+        >
+          Produkt momentan nicht verfügbar!
+        </div>
+        } @else if (shouldShowStockWarning()) {
         <div
           class="mt-3 p-3 rounded-lg text-center font-medium"
           [ngClass]="getStockWarningClass()"
