@@ -17,6 +17,11 @@ class Product(models.Model):
     main_image = models.ImageField(upload_to="products/", blank=True, null=True)
     external_image = models.URLField(max_length=500, blank=True, null=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
+    delivery_time = models.CharField(
+        max_length=100,
+        default="In 1-2 Werktagen bei dir!",
+        help_text="Lieferzeit für dieses Produkt"
+    )
 
     def __str__(self):
         return self.title

@@ -84,7 +84,7 @@ import { Subscription } from 'rxjs';
         </div>
         }
 
-         <!-- 📦 Lagerbestand-Hinweis -->
+        <!-- 📦 Lagerbestand-Hinweis -->
         @if (getCurrentStock() === 0) {
         <div
           class="mt-3 p-3 rounded-lg text-center font-medium bg-gray-200 text-gray-700 border border-gray-300"
@@ -97,6 +97,13 @@ import { Subscription } from 'rxjs';
           [ngClass]="getStockWarningClass()"
         >
           Nur noch {{ getCurrentStock() }} Stück verfügbar
+        </div>
+        }
+
+        <!-- Lieferzeit -->
+        @if (product.delivery_time) {
+        <div class="mb-4 mt-4 text-gray-700 font-medium">
+          🚚 Lieferzeit: {{ product.delivery_time }}
         </div>
         }
 

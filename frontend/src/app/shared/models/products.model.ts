@@ -10,6 +10,7 @@ export interface Product {
   // Bilder als String-Array, nicht als Objekt-Array
   external_image?: string;
   images?: { id: number; image: string }[]; // Objekt-Array wie vom Backend-Serializer
+  delivery_time?: string; 
 }
 
 export interface ProductVariation {
