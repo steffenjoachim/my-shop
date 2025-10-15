@@ -88,6 +88,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "external_image",
             "images",
             "variations",
+            "delivery_time",
         ]
 
     def get_main_image(self, obj):
