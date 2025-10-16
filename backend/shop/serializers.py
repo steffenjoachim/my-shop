@@ -6,6 +6,7 @@ from .models import (
     AttributeType,
     AttributeValue,
     ProductVariation,
+    DeliveryTime,
 )
 
 
@@ -64,7 +65,15 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ["id", "name"]
-
+        
+#-------------------------------------------------------------
+# 🚚 Lieferzeit
+# ------------------------------------------------------------      
+        
+class DeliveryTimeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryTime
+        fields = ["id", "name", "min_days", "max_days", "is_default"]
 
 # ------------------------------------------------------------
 # 🛍️ Produkt
@@ -75,7 +84,15 @@ class ProductSerializer(serializers.ModelSerializer):
     variations = ProductVariationSerializer(many=True, read_only=True)
     main_image = serializers.SerializerMethodField()
     external_image = serializers.SerializerMethodField()
-
+    delivery_time = DeliveryTimeSerializer(read_only=True)
+    delivery_time_id = serializers.PrimaryKeyRelatedField(
+        queryset=DeliveryTime.objects.all(),
+        source="delivery_time",
+        write_only=True,
+        allow_null=True,
+        required=False,
+    )
+    
     class Meta:
         model = Product
         fields = [
@@ -89,6 +106,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "images",
             "variations",
             "delivery_time",
+            "delivery_time_id",
         ]
 
     def get_main_image(self, obj):

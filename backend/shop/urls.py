@@ -7,11 +7,13 @@ from .views import (
     RemoveFromCartView,
     UpdateCartItemView,
     PlaceOrderView,
+    DeliveryTimeViewSet,
     get_csrf_token,
 )
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="product")
+router.register(r"delivery-times", DeliveryTimeViewSet)
 
 urlpatterns = [
     # Produkte (RESTful über Router)

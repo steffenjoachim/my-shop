@@ -8,8 +8,8 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 
-from .models import Product, ProductVariation, Category, AttributeValue
-from .serializers import ProductSerializer
+from .models import Product, ProductVariation, Category, AttributeValue, DeliveryTime
+from .serializers import ProductSerializer, DeliveryTimeSerializer
 
 # ------------------------------------------------------------
 # 🟩 Produkte abrufen
@@ -20,13 +20,23 @@ class ProductViewSet(ModelViewSet):
     """
     queryset = (
         Product.objects.all()
-        .select_related("category")
+        .select_related("category", "delivery_time")
         .prefetch_related(
             "images",
             "variations__attributes__attribute_type",
         )
     )
-    serializer_class = ProductSerializer
+    
+ # ------------------------------------------------------------
+# 🚚 Lieferzeit anzeigen
+# ------------------------------------------------------------   
+    
+class DeliveryTimeViewSet(ModelViewSet):
+    """
+    CRUD für verfügbare Lieferzeiten. Eine Lieferzeit kann als Default markiert werden.
+    """
+    queryset = DeliveryTime.objects.all()
+    serializer_class = DeliveryTimeSerializer
 
 # ------------------------------------------------------------
 # 🟨 Produkt in den Warenkorb legen
