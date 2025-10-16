@@ -7,6 +7,20 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+    
+class DeliveryTime(models.Model):
+    name = models.CharField(max_length=100)
+    min_days = models.PositiveIntegerField()
+    max_days = models.PositiveIntegerField()
+    is_default = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            DeliveryTime.objects.exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} ({self.min_days}-{self.max_days} Tage)"
 
 
 class Product(models.Model):
@@ -17,10 +31,12 @@ class Product(models.Model):
     main_image = models.ImageField(upload_to="products/", blank=True, null=True)
     external_image = models.URLField(max_length=500, blank=True, null=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
-    delivery_time = models.CharField(
-        max_length=100,
-        default="In 1-2 Werktagen bei dir!",
-        help_text="Lieferzeit für dieses Produkt"
+    delivery_time = models.ForeignKey(
+        DeliveryTime,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="products",
     )
 
     def __str__(self):
