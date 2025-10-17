@@ -15,26 +15,15 @@ from .serializers import ProductSerializer, DeliveryTimeSerializer
 # 🟩 Produkte abrufen
 # ------------------------------------------------------------
 class ProductViewSet(ModelViewSet):
-    """
-    Gibt alle Produkte mit Bildern, Kategorien und Varianten (mit Attributen + Lagerbestand) aus.
-    """
-    queryset = (
-        Product.objects.all()
-        .select_related("category", "delivery_time")
-        .prefetch_related(
-            "images",
-            "variations__attributes__attribute_type",
-        )
-    )
-    
- # ------------------------------------------------------------
+    # Queryset mit select_related, damit category und delivery_time sauber geladen werden
+    queryset = Product.objects.select_related("category", "delivery_time").all()
+    serializer_class = ProductSerializer
+    # optional: pagination_class = None
+
+# ------------------------------------------------------------
 # 🚚 Lieferzeit anzeigen
 # ------------------------------------------------------------   
-    
 class DeliveryTimeViewSet(ModelViewSet):
-    """
-    CRUD für verfügbare Lieferzeiten. Eine Lieferzeit kann als Default markiert werden.
-    """
     queryset = DeliveryTime.objects.all()
     serializer_class = DeliveryTimeSerializer
 
