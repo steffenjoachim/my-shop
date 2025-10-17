@@ -1,4 +1,11 @@
-// products.model.ts
+export interface DeliveryTime {
+  id?: number;
+  name?: string;
+  min_days?: number;
+  max_days?: number;
+  is_default?: boolean;
+}
+
 export interface Product {
   id: number;
   title: string;
@@ -7,10 +14,9 @@ export interface Product {
   description?: string;
   variations?: ProductVariation[];
   stock?: number;
-  // Bilder als String-Array, nicht als Objekt-Array
   external_image?: string;
-  images?: { id: number; image: string }[]; // Objekt-Array wie vom Backend-Serializer
-  delivery_time?: string; 
+  images?: { id: number; image: string }[];
+  delivery_time?: string | DeliveryTime; 
 }
 
 export interface ProductVariation {

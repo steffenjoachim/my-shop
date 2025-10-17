@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
-import { Product } from '../../shared/models/products.model';
+import { Product, DeliveryTime } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { TitleCasePipe, NgClass, NgStyle } from '@angular/common';
@@ -103,7 +103,7 @@ import { Subscription } from 'rxjs';
         <!-- Lieferzeit -->
         @if (product.delivery_time) {
         <div class="mb-4 mt-4 text-gray-700 font-medium">
-          🚚 Lieferzeit: {{ product.delivery_time }}
+          🚚 Lieferzeit: {{ displayDeliveryTime(product.delivery_time) }}
         </div>
         }
 
@@ -431,6 +431,22 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
     return matched ? matched.stock ?? 0 : 0;
   }
+
+ /** Liefert lesbaren Lieferzeit‑Text (String oder Objekt) */
+displayDeliveryTime(dt?: string | DeliveryTime | null): string {
+  if (!dt) return '';
+  if (typeof dt === 'string') return dt;
+
+  // Objekt: bevorzugt name
+  if (dt.name && dt.name.trim() !== '') return dt.name;
+
+  const min = dt.min_days ?? '';
+  const max = dt.max_days ?? '';
+  const dash = min && max ? '–' : '';
+  const combined = `${min}${dash}${max}`.trim();
+
+  return combined !== '' ? combined : '';
+}
 
   /** 📦 Prüft, ob Lagerbestand-Hinweis angezeigt werden soll */
   shouldShowStockWarning(): boolean {
