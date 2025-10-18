@@ -6,6 +6,7 @@ from .models import (
     AttributeType,
     AttributeValue,
     ProductVariation,
+    DeliveryTime,
 )
 
 
@@ -60,3 +61,10 @@ class ProductVariationAdmin(admin.ModelAdmin):
     def get_attributes(self, obj):
         return ", ".join([v.value for v in obj.attributes.all()])
     get_attributes.short_description = "Attribute"
+
+
+@admin.register(DeliveryTime)
+class DeliveryTimeAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "min_days", "max_days", "is_default")
+    list_editable = ("is_default",)
+    search_fields = ("name",)
