@@ -136,34 +136,41 @@ export class Cart {
     this.cartService.removeFromCart(product.id, product.selectedAttributes);
   }
 
-  /** ➕ Erhöht Menge */
-  increase(product: CartItem) {
-    const currentQty = product.quantity;
-    const stock = product.stock ?? 0;
+  /** ➕ Erhöht Menge (prüft Backend-Lager) */
+   async increase(product: CartItem) {
+    const selectedAttributes = product.selectedAttributes ?? {};
 
-    if (stock === 0 || currentQty < stock) {
-      this.cartService.addToCart(product, 1, product.selectedAttributes ?? {});
+    // aktuelle Verfügbarkeit vom Backend
+    const stock = await this.cartService.getAvailableStock(product.id, selectedAttributes);
+
+    // aktuelle Menge aus dem Service (vermeidet stale product-Objekt)
+    const items = this.cartService.getCartItems();
+    const key = JSON.stringify(selectedAttributes);
+    const currentQty =
+      items.find(
+        (i) => i.id === product.id && JSON.stringify(i.selectedAttributes ?? {}) === key
+      )?.quantity ?? 0;
+
+    if (currentQty < stock) {
+      // atomisch setzen statt addToCart (vermeidet race/duplication)
+      this.cartService.setItemQuantity(product.id, currentQty + 1, selectedAttributes);
     } else {
-      this.alertMessage = 'Maximaler Lagerbestand erreicht.';
+      this.alertMessage = 'Gewünschte Anzahl ist nicht auf Lager';
       this.alertType = 'error';
       this.showWarning.set(true);
-      setTimeout(() => this.showWarning.set(false), 1500);
+      setTimeout(() => this.showWarning.set(false), 1000);
     }
   }
 
   /** ➖ Verringert Menge */
-  decrease(product: CartItem) {
+   decrease(product: CartItem) {
+    const selectedAttributes = product.selectedAttributes ?? {};
     if (product.quantity > 1) {
       const newQty = product.quantity - 1;
-      // Verwenden Sie die öffentliche API des CartService statt des internen updateCart
-      this.cartService.removeFromCart(product.id, product.selectedAttributes);
-      this.cartService.addToCart(
-        product,
-        newQty,
-        product.selectedAttributes ?? {}
-      );
+      this.cartService.setItemQuantity(product.id, newQty, selectedAttributes);
     } else {
-      this.cartService.removeFromCart(product.id, product.selectedAttributes);
+      // entferne den Eintrag
+      this.cartService.setItemQuantity(product.id, 0, selectedAttributes);
     }
   }
 
