@@ -18,7 +18,7 @@ import { CartItem } from '../models/products.model';
         class="font-bold text-4xl text-shadow-lg cursor-pointer"
         routerLink="/"
       >
-        My Store
+        MyShop
       </h1>
 
       <div class="flex items-center justify-between w-full sm:w-auto">
