@@ -9,9 +9,9 @@ import { RouterLink } from '@angular/router';
   template: `
     <footer class="footer mt-8">
       <nav class="footer-nav" aria-label="Footer navigation">
-        <a routerLink="/impressum" class="footer-link">Impressum</a>
-        <a routerLink="/datenschutz" class="footer-link">Datenschutz</a>
-        <a routerLink="/agbs" class="footer-link">unsere AGBs</a>
+        <a routerLink="/imprint" class="footer-link">Impressum</a>
+        <a routerLink="/data-protection" class="footer-link">Datenschutz</a>
+        <a routerLink="/terms-and-conditions" class="footer-link">AGBs</a>
       </nav>
 
       <div class="footer-copy" aria-hidden="false">
@@ -22,7 +22,6 @@ import { RouterLink } from '@angular/router';
   styles: [`
     :host { display: block; }
 
-    /* Hintergrund schwarz, Textfarbe aus globaler Variable (--text-color) */
     .footer {
       background: #000;
       color: var(--text-color, #333);
@@ -39,7 +38,7 @@ import { RouterLink } from '@angular/router';
     }
 
     .footer-link {
-      color: var(--text-color, #333);
+      color: white;
       text-decoration: none;
       font-size: 0.95rem;
       opacity: 0.95;
@@ -56,7 +55,7 @@ import { RouterLink } from '@angular/router';
     .footer-copy {
       text-align: center;
       font-size: 0.85rem;
-      opacity: 0.9;
+      color: white;
     }
 
     @media (min-width: 640px) {

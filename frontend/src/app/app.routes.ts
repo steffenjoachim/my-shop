@@ -35,4 +35,23 @@ export const routes: Routes = [
         (m) => m.ProductDetailComponent
       ),
   },
+  {
+    path: 'imprint',
+    loadComponent: () =>
+      import('./features/imprint/imprint').then(m => m.Imprint),
+  },
+  {
+    path: 'data-protection',
+    loadComponent: () =>
+      import('./features/data-protection/data-protection').then(
+        m => m.DataProtection
+      ),
+  },
+  {
+    path: 'terms-and-conditions',
+    loadComponent: () =>
+      import('./features/terms-and-conditions/terms-and-conditions').then(
+        m => m.TermsAndConditions
+      ),
+  },
 ];
