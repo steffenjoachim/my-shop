@@ -50,9 +50,23 @@ import { Subscription } from 'rxjs';
           }
         </div>
 
-        <p class="text-2xl font-semibold text-blue-700 mb-6">
+        <p class="text-2xl font-semibold text-blue-700 mb-2">
           {{ product.price }} €
         </p>
+
+        <div class="mb-6">
+          <div
+            class="flex items-center gap-1 text-2xl text-gray-400"
+            aria-hidden="true"
+            title="Bewertungen"
+          >
+            <span>☆</span><span>☆</span><span>☆</span><span>☆</span
+            ><span>☆</span>
+          </div>
+          <div class="text-xs text-gray-600 mb-4">
+            Bis jetzt noch keine Bewertungen vorhanden.
+          </div>
+        </div>
 
         <!-- 🧩 Attribute / Varianten -->
         @for (attr of dynamicAttributes(); track attr.name) {
@@ -432,21 +446,21 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     return matched ? matched.stock ?? 0 : 0;
   }
 
- /** Liefert lesbaren Lieferzeit‑Text (String oder Objekt) */
-displayDeliveryTime(dt?: string | DeliveryTime | null): string {
-  if (!dt) return '';
-  if (typeof dt === 'string') return dt;
+  /** Liefert lesbaren Lieferzeit‑Text (String oder Objekt) */
+  displayDeliveryTime(dt?: string | DeliveryTime | null): string {
+    if (!dt) return '';
+    if (typeof dt === 'string') return dt;
 
-  // Objekt: bevorzugt name
-  if (dt.name && dt.name.trim() !== '') return dt.name;
+    // Objekt: bevorzugt name
+    if (dt.name && dt.name.trim() !== '') return dt.name;
 
-  const min = dt.min_days ?? '';
-  const max = dt.max_days ?? '';
-  const dash = min && max ? '–' : '';
-  const combined = `${min}${dash}${max}`.trim();
+    const min = dt.min_days ?? '';
+    const max = dt.max_days ?? '';
+    const dash = min && max ? '–' : '';
+    const combined = `${min}${dash}${max}`.trim();
 
-  return combined !== '' ? combined : '';
-}
+    return combined !== '' ? combined : '';
+  }
 
   /** 📦 Prüft, ob Lagerbestand-Hinweis angezeigt werden soll */
   shouldShowStockWarning(): boolean {
