@@ -54,4 +54,16 @@ export const routes: Routes = [
         m => m.TermsAndConditions
       ),
   },
+  {path: 'orders',
+    loadComponent: () =>
+      import('./features/orders/orders').then(
+        m => m.Orders
+      ),
+  },
+  {path: 'reviews',
+    loadComponent: () =>
+      import('./features/reviews/reviews').then(
+        m => m.Reviews
+      ),
+  },
 ];
