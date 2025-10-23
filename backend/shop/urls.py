@@ -9,11 +9,15 @@ from .views import (
     PlaceOrderView,
     DeliveryTimeViewSet,
     get_csrf_token,
+    ReviewViewSet,
+    OrderViewSet,
 )
 
 router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="product")
 router.register(r"delivery-times", DeliveryTimeViewSet)
+router.register(r"reviews", ReviewViewSet, basename="review")
+router.register(r"orders", OrderViewSet, basename="order")
 
 urlpatterns = [
     # Produkte (RESTful über Router)

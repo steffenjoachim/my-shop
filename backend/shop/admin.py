@@ -7,8 +7,10 @@ from .models import (
     AttributeValue,
     ProductVariation,
     DeliveryTime,
+    Review,
+    Order,
+    OrderItem,
 )
-
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -68,3 +70,27 @@ class DeliveryTimeAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "min_days", "max_days", "is_default")
     list_editable = ("is_default",)
     search_fields = ("name",)
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "created_at", "total", "status", "paid")
+    list_filter = ("status", "paid")
+    readonly_fields = ("created_at",)
+    search_fields = ("user__username",)
+
+@admin.register(OrderItem)
+class OrderItemAdmin(admin.ModelAdmin):
+    list_display = ("order", "product", "variation", "quantity", "price")
+    search_fields = ("product__title",)
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ("product", "user", "rating", "approved", "created_at")
+    list_filter = ("approved", "rating")
+    search_fields = ("product__title", "user__username", "body")
+    actions = ["approve_reviews"]
+
+    def approve_reviews(self, request, queryset):
+        queryset.update(approved=True)
+    approve_reviews.short_description = "Ausgewählte Bewertungen freischalten"

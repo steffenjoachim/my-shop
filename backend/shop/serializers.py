@@ -7,8 +7,10 @@ from .models import (
     AttributeValue,
     ProductVariation,
     DeliveryTime,
+    Review,
+    Order,
+    OrderItem,
 )
-
 
 # ------------------------------------------------------------
 # 🖼️ Produktbilder
@@ -92,6 +94,11 @@ class ProductSerializer(serializers.ModelSerializer):
         allow_null=True,
         required=False,
     )
+
+    # new / cached rating fields
+    rating_avg = serializers.DecimalField(max_digits=3, decimal_places=2, read_only=True)
+    rating_count = serializers.IntegerField(read_only=True)
+    recent_reviews = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Product
@@ -107,6 +114,9 @@ class ProductSerializer(serializers.ModelSerializer):
             "variations",
             "delivery_time",
             "delivery_time_id",
+            "rating_avg",
+            "rating_count",
+            "recent_reviews",
         ]
 
     def get_main_image(self, obj):
@@ -137,3 +147,32 @@ class ProductSerializer(serializers.ModelSerializer):
                 url = url.replace("https:/", "https://")
             return url
         return None
+    
+    def get_recent_reviews(self, obj):
+        reviews = obj.reviews.filter(approved=True).order_by("-created_at")[:3]
+        return ReviewSerializer(reviews, many=True).data
+    
+# ---- Review Serializer ----
+class ReviewSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ["id", "product", "user", "rating", "title", "body", "approved", "created_at"]
+        read_only_fields = ["id", "user", "approved", "created_at"]
+
+# ---- OrderItem / Order Serializer (minimal) ----
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = OrderItem
+        fields = ["id", "product", "variation", "price", "quantity"]
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    user = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Order
+        fields = ["id", "user", "created_at", "total", "status", "paid", "items"]
