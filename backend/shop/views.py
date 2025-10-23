@@ -7,9 +7,11 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
-
-from .models import Product, ProductVariation, Category, AttributeValue, DeliveryTime
-from .serializers import ProductSerializer, DeliveryTimeSerializer
+from rest_framework import permissions, viewsets
+from .models import Product, ProductVariation, Category, AttributeValue, DeliveryTime, Review, Order
+from .serializers import ProductSerializer, DeliveryTimeSerializer, ReviewSerializer, OrderSerializer
+import ast
+from django.db import transaction
 
 # ------------------------------------------------------------
 # 🟩 Produkte abrufen
@@ -160,69 +162,140 @@ class UpdateCartItemView(APIView):
 # ------------------------------------------------------------
 # 🟩 Bestellung abschließen & Lagerbestand reduzieren
 # ------------------------------------------------------------
+
 @method_decorator(csrf_exempt, name="dispatch")
 class PlaceOrderView(APIView):
+    """
+    Erzeugt eine Order + OrderItems, reduziert Bestände atomar und leert den Session‑Warenkorb.
+    Erwartet optional address/paymentMethod im Body. User muss angemeldet sein (Order.user FK).
+    """
+
     def post(self, request):
-        # Akzeptiere zusätzliche Felder (z.B. address, paymentMethod) ohne sie zu verwenden
+        if not request.user or not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
         address = request.data.get("address", {})
         payment_method = request.data.get("paymentMethod", "")
 
         cart = request.session.get("cart", {})
+        if not cart:
+            return Response({"error": "Warenkorb ist leer"}, status=status.HTTP_400_BAD_REQUEST)
+
         updated_products = []
+        try:
+            with transaction.atomic():
+                # Order anlegen (minimal)
+                order = Order.objects.create(user=request.user, total=0, paid=False, status="pending")
 
-        for key, qty in cart.items():
-            pid, attributes = key.split("|", 1)
-            product = get_object_or_404(Product, pk=pid)
-            selected_attributes = eval(attributes)
+                total = 0
+                for key, qty in cart.items():
+                    try:
+                        pid, attributes = key.split("|", 1)
+                        pid = int(pid)
+                        selected_attributes = ast.literal_eval(attributes)
+                    except Exception:
+                        transaction.set_rollback(True)
+                        return Response({"error": "Ungültiger Warenkorb‑Eintrag"}, status=400)
 
-            # 🔍 passende Variante anhand AttributeValue suchen
-            variant = None
-            for v in product.variations.prefetch_related("attributes__attribute_type"):
-                # Vergleiche Keys und Values normalized (klein, getrimmt)
-                v_attrs = {a.attribute_type.name.strip().lower(): a.value.strip().lower() for a in v.attributes.all()}
-                selected_attrs_normalized = {k.strip().lower(): v.strip().lower() for k, v in selected_attributes.items()}
+                    product = get_object_or_404(Product, pk=pid)
 
-                # Debug-Ausgaben (optional, für Entwicklung)
-                # print("selected_attrs_normalized:", selected_attrs_normalized)
-                # print("variant attrs:", v_attrs)
+                    # 🔍 passende Variante anhand AttributeValue suchen
+                    variant = None
+                    for v in product.variations.prefetch_related("attributes__attribute_type"):
+                        v_attrs = {a.attribute_type.name.strip().lower(): a.value.strip().lower() for a in v.attributes.all()}
+                        selected_attrs_normalized = {k.strip().lower(): str(vv).strip().lower() for k, vv in selected_attributes.items()}
 
-                matches = (
-                    v_attrs == selected_attrs_normalized
-                    and len(v_attrs) == len(selected_attrs_normalized)
-                )
+                        matches = (
+                            v_attrs == selected_attrs_normalized
+                            and len(v_attrs) == len(selected_attrs_normalized)
+                        )
+                        if matches:
+                            variant = v
+                            break
 
-                if matches:
-                    variant = v
-                    break
+                    if not variant:
+                        transaction.set_rollback(True)
+                        return Response({"error": f"Variante nicht gefunden für {product.title}"}, status=400)
 
-            # 🧮 Bestand prüfen und reduzieren
-            if variant and (variant.stock or 0) >= qty:
-                variant.stock -= qty
-                variant.save()
-                updated_products.append({
-                    "id": product.id,
-                    "variant_id": variant.id,
-                    "remaining_stock": variant.stock,
-                })
-            elif not variant:
-                return Response(
-                    {"error": f"Variante nicht gefunden für {product.title}"},
-                    status=400,
-                )
-            else:
-                return Response(
-                    {"error": f"Nicht genug Lager für {product.title}"},
-                    status=400,
-                )
+                    if (variant.stock or 0) < qty:
+                        transaction.set_rollback(True)
+                        return Response({"error": f"Nicht genug Lager für {product.title}"}, status=400)
 
-        # 🧹 Warenkorb leeren
-        request.session["cart"] = {}
-        request.session.modified = True
+                    # Bestand reduzieren und OrderItem anlegen
+                    variant.stock -= qty
+                    variant.save(update_fields=["stock"])
 
-        return Response(
-            {"message": "Bestellung erfolgreich", "updated_products": updated_products},
-            status=200,
-        )
+                    price = product.price
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        variation=variant,
+                        price=price,
+                        quantity=qty,
+                    )
+
+                    total += float(price) * int(qty)
+
+                    updated_products.append({
+                        "id": product.id,
+                        "variant_id": variant.id,
+                        "remaining_stock": variant.stock,
+                        "ordered_quantity": qty,
+                    })
+
+                # Order total setzen
+                order.total = total
+                order.save(update_fields=["total"])
+
+                # Warenkorb leeren
+                request.session["cart"] = {}
+                request.session.modified = True
+
+                return Response({
+                    "message": "Bestellung erfolgreich",
+                    "order_id": order.id,
+                    "updated_products": updated_products
+                }, status=status.HTTP_200_OK)
+
+        except Exception as exc:
+            # Sicherstellen, dass bei Fehlern zurückgerollt wird
+            return Response({"error": "Fehler beim Erstellen der Bestellung", "detail": str(exc)}, status=500)
+        
+# ------------------------------------------------------------
+# 🟩 Bewertungen
+# ------------------------------------------------------------
+class ReviewViewSet(viewsets.ModelViewSet):
+    queryset = Review.objects.select_related("product", "user").all()
+    serializer_class = ReviewSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(approved=True)
+        product_id = self.request.query_params.get("product")
+        if product_id:
+            qs = qs.filter(product_id=product_id)
+        return qs
+
+    def perform_create(self, serializer):
+        # set user from request (require auth in production)
+        if self.request.user.is_authenticated:
+            serializer.save(user=self.request.user)
+        else:
+            # in dev: reject or allow anonymous by setting None (prefer to require auth)
+            raise permissions.exceptions.NotAuthenticated()
+        
+# ------------------------------------------------------------
+# 🟩 Bestellungen (Rechnung)
+# --------------------------------------------------------------
+class OrderViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Order.objects.prefetch_related("items__product").all()
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        # users only see their orders (superusers see all)
+        user = self.request.user
+        if user.is_authenticated and not user.is_staff:
+            return self.queryset.filter(user=user)
+        return self.queryset
 
 # ------------------------------------------------------------
 # 🔐 CSRF Cookie für Angular
