@@ -9,48 +9,50 @@ import { Toast } from '../../shared/toast/toast';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Toast ],
+  imports: [CommonModule, FormsModule, RouterLink, Toast],
   template: `
-    <section class="max-w-sm mx-auto mt-8 p-4 bg-white rounded shadow">
-      <h2 class="text-2xl font-bold mb-4">Login</h2>
+    <div class="min-h-screen flex items-center justify-center">
+      <section class="max-w-sm mx-auto mt-8 p-4 bg-white rounded shadow">
+        <h2 class="text-2xl font-bold mb-4">Login</h2>
 
-      <form (ngSubmit)="login()" #form="ngForm" class="space-y-4">
-        <input
-          name="username"
-          [(ngModel)]="username"
-          class="w-full border rounded px-3 py-2"
-          placeholder="Username"
-          required
-        />
-        <input
-          name="password"
-          [(ngModel)]="password"
-          type="password"
-          class="w-full border rounded px-3 py-2"
-          placeholder="Password"
-          required
-        />
-        <button
-          class="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-600"
-        >
-          Login
-        </button>
-      </form>
+        <form (ngSubmit)="login()" #form="ngForm" class="space-y-4">
+          <input
+            name="username"
+            [(ngModel)]="username"
+            class="w-full border rounded px-3 py-2"
+            placeholder="Username"
+            required
+          />
+          <input
+            name="password"
+            [(ngModel)]="password"
+            type="password"
+            class="w-full border rounded px-3 py-2"
+            placeholder="Password"
+            required
+          />
+          <button
+            class="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-600"
+          >
+            Login
+          </button>
+        </form>
 
-      @if (error) {
-      <p class="text-red-600 mt-2">{{ error }}</p>
-      }
+        @if (error) {
+        <p class="text-red-600 mt-2">{{ error }}</p>
+        }
 
-      <!-- Inline Toasts direkt unter der Karte -->
-      <app-toast [inline]="true" />
+        <!-- Inline Toasts direkt unter der Karte -->
+        <app-toast [inline]="true" />
 
-      <p class="text-sm mt-4 text-center">
-        Don't have an account?
-        <a routerLink="/register" class="text-blue-600 hover:underline"
-          >Register here</a
-        >
-      </p>
-    </section>
+        <p class="text-sm mt-4 text-center">
+          Don't have an account?
+          <a routerLink="/register" class="text-blue-600 hover:underline"
+            >Register here</a
+          >
+        </p>
+      </section>
+    </div>
   `,
 })
 export class Login {

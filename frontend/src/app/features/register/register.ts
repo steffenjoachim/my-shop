@@ -11,6 +11,7 @@ import { Toast } from '../../shared/toast/toast';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, Toast],
   template: `
+  <div class="min-h-screen flex items-center justify-center">
     <section class="max-w-sm mx-auto mt-8 p-4 bg-white rounded shadow">
       <h2 class="text-2xl font-bold mb-4">Register</h2>
 
@@ -49,6 +50,7 @@ import { Toast } from '../../shared/toast/toast';
         <a routerLink="/login" class="text-blue-600 hover:underline">Login</a>
       </p>
     </section>
+    </div>
   `,
 })
 export class Register {
