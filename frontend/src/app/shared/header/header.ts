@@ -49,7 +49,7 @@ import { CartItem } from '../models/products.model';
                       routerLink="/orders"
                       class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
                       (click)="closeMenu()"
-                      >🛍️ Deine Bestellungen</a
+                      >🛍️ Meine Bestellungen</a
                     >
                   </li>
                   <li>
@@ -57,7 +57,7 @@ import { CartItem } from '../models/products.model';
                       routerLink="/reviews"
                       class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
                       (click)="closeMenu()"
-                      >⭐ Deine Bewertungen</a
+                      >⭐ Meine Bewertungen</a
                     >
                   </li>
                 </ul>
