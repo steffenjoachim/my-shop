@@ -161,18 +161,86 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ["id", "product", "user", "rating", "title", "body", "approved", "created_at"]
         read_only_fields = ["id", "user", "approved", "created_at"]
 
-# ---- OrderItem / Order Serializer (minimal) ----
+# ---- OrderItem / Order Serializer ----
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(read_only=True)
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    variation = serializers.PrimaryKeyRelatedField(
+        queryset=ProductVariation.objects.all(),
+        allow_null=True,
+        required=False
+    )
 
     class Meta:
         model = OrderItem
-        fields = ["id", "product", "variation", "price", "quantity"]
+        fields = [
+            "id",
+            "product",
+            "variation",
+            "product_title",
+            "product_image",
+            "price",
+            "quantity",
+        ]
+
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, read_only=True)
+    items = OrderItemSerializer(many=True)
     user = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Order
-        fields = ["id", "user", "created_at", "total", "status", "paid", "items"]
+        fields = [
+            "id",
+            "user",
+            "created_at",
+            "total",
+            "status",
+            "paid",
+            "name",
+            "street",
+            "zip",
+            "city",
+            "payment_method",
+            "items",
+        ]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else None
+
+        items_data = validated_data.pop("items", [])
+        order = Order.objects.create(user=user, **validated_data)
+
+        total = 0
+        for item_data in items_data:
+            product = item_data["product"]
+            qty = item_data["quantity"]
+            price = item_data["price"]
+
+            # Bild übernehmen
+            image = (
+                product.main_image.url
+                if product.main_image
+                else product.external_image
+            )
+
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                variation=item_data.get("variation"),
+                product_title=product.title,
+                product_image=image,
+                price=price,
+                quantity=qty,
+            )
+            total += price * qty
+
+            # optional: Lagerbestand anpassen
+            variation = item_data.get("variation")
+            if variation:
+                variation.stock = max(0, variation.stock - qty)
+                variation.save()
+
+        order.total = total
+        order.save()
+        return order

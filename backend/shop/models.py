@@ -93,7 +93,6 @@ class ProductVariation(models.Model):
 # Bestell-/Rechnungsmodelle
 # -------------------------
 class Order(models.Model):
-    """Bestellung / Rechnung (minimal)"""
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("paid", "Paid"),
@@ -106,23 +105,33 @@ class Order(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     paid = models.BooleanField(default=False)
-    # optional: billing/shipping fields, invoice_number etc.
+    # 🏠 Liefer-/Rechnungsadresse
+    name = models.CharField(max_length=150, blank=True, null=True)
+    street = models.CharField(max_length=200, blank=True, null=True)
+    zip = models.CharField(max_length=20, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+     # 💳 Zahlungsart
+    payment_method = models.CharField(max_length=50, default="paypal")
 
     def __str__(self):
         return f"Order #{self.pk} by {self.user}"
 
 
 class OrderItem(models.Model):
-    """Einzelposition in einer Bestellung"""
+    """Einzelposition in einer Bestellung (inkl. Produktdaten zum Zeitpunkt der Bestellung)"""
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     variation = models.ForeignKey(ProductVariation, null=True, blank=True, on_delete=models.PROTECT)
+
+    # 🖼️ Zusatzinfos (damit spätere Preis-/Bildänderungen die Rechnung nicht verändern)
+    product_title = models.CharField(max_length=200, blank=True, null=True)
+    product_image = models.URLField(max_length=500, blank=True, null=True)
+
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField()
 
     def __str__(self):
-        return f"{self.quantity} × {self.product.title} (Order #{self.order_id})"
-
+        return f"{self.quantity} × {self.product_title} (Order #{self.order_id})"
 
 # -------------------------
 # Review / Rating Modell
