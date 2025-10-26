@@ -157,34 +157,26 @@ export class Checkout {
   successMessage = '';
   showSuccessAlert = false;
 
-  onPlaceOrder() {
-    const payload = {
-      address: this.address,
-      paymentMethod: this.paymentMethod,
-    };
+ onPlaceOrder() {
+  const payload = {
+    cartItems: this.cartItems(),
+    address: this.address,
+    paymentMethod: this.paymentMethod,
+  };
 
-    this.http
-      .post<PlaceOrderResponse>(
-        `${environment.apiBaseUrl}cart/place-order/`,
-        payload,
-        { withCredentials: true }
-      )
-      .subscribe({
-        next: (res: PlaceOrderResponse) => {
-          this.cartService.clearCart();
-          this.successMessage = `Thank you for your order! <br> Check your email for confirmation.`;
-          this.showSuccessAlert = true;
-
-          // 🔄 Produktdaten aktualisieren durch Event
-          window.dispatchEvent(
-            new CustomEvent('orderCompleted', {
-              detail: { updatedProducts: res.updated_products },
-            })
-          );
-        },
-        error: (err: any) => {
-          console.error('Fehler bei Bestellung:', err);
-        },
-      });
-  }
+  this.http
+    .post(`${environment.apiBaseUrl}cart/place-order/`, payload, {
+      withCredentials: true,
+    })
+    .subscribe({
+      next: (res: any) => {
+        this.cartService.clearCart();
+        this.successMessage = 'Danke für deine Bestellung!';
+        this.showSuccessAlert = true;
+      },
+      error: (err) => {
+        console.error('Fehler bei Bestellung:', err);
+      },
+    });
+}
 }

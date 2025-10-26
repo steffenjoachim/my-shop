@@ -29,10 +29,12 @@ class ProductImageSerializer(serializers.ModelSerializer):
         if not obj.image:
             return None
         url = str(obj.image)
-        if url.startswith("https:/") and not url.startswith("https://"):
-            url = url.replace("https:/", "https://")
+
+        # 🔹 Wenn schon externe URL → direkt zurückgeben (Fix!)
         if url.startswith("http://") or url.startswith("https://"):
-            return url
+            return url.replace("https:/", "https://")
+
+        # 🔹 Sonst absolute lokale URL erzeugen
         request = self.context.get("request")
         return request.build_absolute_uri(obj.image.url) if request else obj.image.url
 
@@ -68,14 +70,15 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ["id", "name"]
         
-#-------------------------------------------------------------
+
+# ------------------------------------------------------------
 # 🚚 Lieferzeit
-# ------------------------------------------------------------      
-        
+# ------------------------------------------------------------
 class DeliveryTimeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryTime
         fields = ["id", "name", "min_days", "max_days", "is_default"]
+
 
 # ------------------------------------------------------------
 # 🛍️ Produkt
@@ -95,11 +98,10 @@ class ProductSerializer(serializers.ModelSerializer):
         required=False,
     )
 
-    # new / cached rating fields
     rating_avg = serializers.DecimalField(max_digits=3, decimal_places=2, read_only=True)
     rating_count = serializers.IntegerField(read_only=True)
     recent_reviews = serializers.SerializerMethodField(read_only=True)
-    
+
     class Meta:
         model = Product
         fields = [
@@ -120,39 +122,44 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
 
     def get_main_image(self, obj):
-        """
-        Korrigiert URLs, sodass auch externe Bilder mit 'https' korrekt angezeigt werden.
-        """
-        if not obj.main_image and obj.external_image:
-            return obj.external_image
+        request = self.context.get("request")
 
+        # 🟢 1. Lokales Bild vorhanden
         if obj.main_image:
             url = str(obj.main_image)
-            if url.startswith("https:/") and not url.startswith("https://"):
-                url = url.replace("https:/", "https://")
-            if url.startswith("http://") or url.startswith("https://"):
-                return url
-            request = self.context.get("request")
-            return request.build_absolute_uri(obj.main_image.url) if request else obj.main_image.url
+            if not (url.startswith("http://") or url.startswith("https://")):
+                return request.build_absolute_uri(obj.main_image.url) if request else obj.main_image.url
+            return url
+
+        # 🟢 2. Externes Bild fallback
+        if obj.external_image:
+            return self._fix_external_url(obj.external_image)
 
         return None
 
     def get_external_image(self, obj):
-        """
-        Gibt saubere externe Bild-URLs zurück (ohne 404 im Backend).
-        """
         if obj.external_image:
-            url = str(obj.external_image)
-            if url.startswith("https:/") and not url.startswith("https://"):
-                url = url.replace("https:/", "https://")
-            return url
+            return self._fix_external_url(obj.external_image)
         return None
-    
+
+    def _fix_external_url(self, url: str):
+        """
+        Korrigiert falsch formatierte externe URLs wie 'https:/...'
+        """
+        url = str(url)
+        if url.startswith("https:/") and not url.startswith("https://"):
+            url = url.replace("https:/", "https://")
+        if url.startswith("http:/") and not url.startswith("http://"):
+            url = url.replace("http:/", "http://")
+        return url
+
     def get_recent_reviews(self, obj):
         reviews = obj.reviews.filter(approved=True).order_by("-created_at")[:3]
         return ReviewSerializer(reviews, many=True).data
-    
-# ---- Review Serializer ----
+
+# ------------------------------------------------------------
+# 🗨️ Bewertungen
+# ------------------------------------------------------------
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
 
@@ -161,7 +168,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ["id", "product", "user", "rating", "title", "body", "approved", "created_at"]
         read_only_fields = ["id", "user", "approved", "created_at"]
 
-# ---- OrderItem / Order Serializer ----
+
+# ------------------------------------------------------------
+# 🧾 Bestellungen
+# ------------------------------------------------------------
 class OrderItemSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
     variation = serializers.PrimaryKeyRelatedField(
@@ -169,6 +179,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
         allow_null=True,
         required=False
     )
+
+    product_image = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
@@ -181,6 +193,20 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "price",
             "quantity",
         ]
+
+    def get_product_image(self, obj):
+        """
+        Liefert absolute oder externe URLs korrekt zurück.
+        """
+        if not obj.product_image:
+            return None
+
+        url = str(obj.product_image)
+        if url.startswith("http://") or url.startswith("https://"):
+            return url.replace("https:/", "https://")
+
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request else url
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -204,43 +230,50 @@ class OrderSerializer(serializers.ModelSerializer):
             "items",
         ]
 
-    def create(self, validated_data):
-        request = self.context.get("request")
-        user = request.user if request and request.user.is_authenticated else None
+def create(self, validated_data):
+    request = self.context.get("request")
+    user = request.user if request and request.user.is_authenticated else None
 
-        items_data = validated_data.pop("items", [])
-        order = Order.objects.create(user=user, **validated_data)
+    items_data = validated_data.pop("items", [])
+    order = Order.objects.create(user=user, **validated_data)
 
-        total = 0
-        for item_data in items_data:
-            product = item_data["product"]
-            qty = item_data["quantity"]
-            price = item_data["price"]
+    total = 0
+    for item_data in items_data:
+        product = item_data["product"]
+        qty = item_data["quantity"]
+        price = item_data["price"]
 
-            # Bild übernehmen
-            image = (
-                product.main_image.url
-                if product.main_image
-                else product.external_image
-            )
+        # 🔹 Korrektes Bild sicherstellen
+        image = None
+        if product.main_image:
+            image = str(product.main_image)
+            # Lokale Datei → baue absolute URL
+            if not image.startswith("http"):
+                if request:
+                    image = request.build_absolute_uri(product.main_image.url)
+        elif product.external_image:
+            image = str(product.external_image)
+            # Fix für doppelte Slashes oder encoding
+            image = image.replace("https:/", "https://").replace("http:/", "http://")
 
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                variation=item_data.get("variation"),
-                product_title=product.title,
-                product_image=image,
-                price=price,
-                quantity=qty,
-            )
-            total += price * qty
+        # 🟢 Item erzeugen
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            variation=item_data.get("variation"),
+            product_title=product.title,
+            product_image=image,  # wird als plain URL gespeichert
+            price=price,
+            quantity=qty,
+        )
+        total += price * qty
 
-            # optional: Lagerbestand anpassen
-            variation = item_data.get("variation")
-            if variation:
-                variation.stock = max(0, variation.stock - qty)
-                variation.save()
+        # 🔹 Lagerbestand anpassen (optional)
+        variation = item_data.get("variation")
+        if variation:
+            variation.stock = max(0, variation.stock - qty)
+            variation.save()
 
-        order.total = total
-        order.save()
-        return order
+    order.total = total
+    order.save()
+    return order

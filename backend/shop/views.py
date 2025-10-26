@@ -316,7 +316,18 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         if user.is_authenticated and not user.is_staff:
             return self.queryset.filter(user=user).order_by("-created_at")
         return self.queryset.order_by("-created_at")
+    
+class OrderListCreateView(generics.ListCreateAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        # Nur Bestellungen des eingeloggten Benutzers anzeigen
+        user = self.request.user
+        return Order.objects.filter(user=user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 # ------------------------------------------------------------
 # 🔐 CSRF Cookie für Angular (Initial-Request)
