@@ -21,19 +21,18 @@ interface Order {
     <div class="min-h-screen m-8">
       <h1 class="text-2xl font-bold mb-4">Meine Bestellungen:</h1>
 
-      @if (isLoggedIn()) {
-
-        @if (orders().length > 0) {
-          <div class="grid gap-4">
-            @for (order of orders(); track order.id) {
-              <app-order-card [order]="order"></app-order-card>
-            }
-          </div>
-        } @else {
-          <p class="text-gray-500">Du hast noch keine Bestellungen.</p>
+      @if (isLoggedIn()) { @if (orders().length > 0) {
+      <div class="grid gap-4">
+        @for (order of orders(); track order.id) {
+        <app-order-card [order]="order"></app-order-card>
         }
+      </div>
       } @else {
-        <p class="text-red-600">Bitte melde dich an, um deine Bestellungen zu sehen.</p>
+      <p class="text-gray-500">Du hast noch keine Bestellungen.</p>
+      } } @else {
+      <p class="text-red-600">
+        Bitte melde dich an, um deine Bestellungen zu sehen.
+      </p>
       }
     </div>
   `,
@@ -53,12 +52,13 @@ export class Orders {
 
   /** 🔄 Holt die Bestellungen des eingeloggten Benutzers */
   async getOrders() {
-    const currentUser = this.user();
-    if (!currentUser) return;
+    if (!this.isLoggedIn()) return;
 
     try {
       const response = await this.http
-        .get<Order[]>(`${environment.apiBaseUrl}orders/?user=${currentUser.username}`)
+        .get<Order[]>(`${environment.apiBaseUrl}orders/`, {
+          withCredentials: true, // 🟩 wichtig für Session-Auth
+        })
         .toPromise();
 
       this.orders.set(response || []);
