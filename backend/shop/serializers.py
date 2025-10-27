@@ -11,6 +11,8 @@ from .models import (
     Order,
     OrderItem,
 )
+from urllib.parse import unquote
+
 
 # ------------------------------------------------------------
 # 🖼️ Produktbilder
@@ -230,50 +232,59 @@ class OrderSerializer(serializers.ModelSerializer):
             "items",
         ]
 
-def create(self, validated_data):
-    request = self.context.get("request")
-    user = request.user if request and request.user.is_authenticated else None
+    def create(self, validated_data):
+        from urllib.parse import unquote
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else None
 
-    items_data = validated_data.pop("items", [])
-    order = Order.objects.create(user=user, **validated_data)
+        items_data = validated_data.pop("items", [])
+        order = Order.objects.create(user=user, **validated_data)
 
-    total = 0
-    for item_data in items_data:
-        product = item_data["product"]
-        qty = item_data["quantity"]
-        price = item_data["price"]
+        total = 0
+        for item_data in items_data:
+            product = item_data["product"]
+            qty = item_data["quantity"]
+            price = item_data["price"]
 
-        # 🔹 Korrektes Bild sicherstellen
-        image = None
-        if product.main_image:
-            image = str(product.main_image)
-            # Lokale Datei → baue absolute URL
-            if not image.startswith("http"):
-                if request:
-                    image = request.build_absolute_uri(product.main_image.url)
-        elif product.external_image:
-            image = str(product.external_image)
-            # Fix für doppelte Slashes oder encoding
-            image = image.replace("https:/", "https://").replace("http:/", "http://")
+            image = None
 
-        # 🟢 Item erzeugen
-        OrderItem.objects.create(
-            order=order,
-            product=product,
-            variation=item_data.get("variation"),
-            product_title=product.title,
-            product_image=image,  # wird als plain URL gespeichert
-            price=price,
-            quantity=qty,
-        )
-        total += price * qty
+            # 🟢 Prüfen, ob echtes Model oder dict/ID
+            if hasattr(product, "main_image") or hasattr(product, "external_image"):
+                # Echte Product-Instanz
+                if product.main_image:
+                    image = str(product.main_image)
+                    if not image.startswith("http"):
+                        if request:
+                            image = request.build_absolute_uri(product.main_image.url)
+                elif product.external_image:
+                    image = str(product.external_image)
+                    image = image.replace("https:/", "https://").replace("http:/", "http://")
+            else:
+                # 🔹 Frontend hat wahrscheinlich eine URL oder encodierte Version geschickt
+                raw_image = item_data.get("product_image")
+                if raw_image:
+                    image = unquote(str(raw_image))  # dekodiere '%3A' → ':'
+                    # Falls fälschlich mit "/" beginnt, fixen:
+                    if image.startswith("/https"):
+                        image = image[1:]
 
-        # 🔹 Lagerbestand anpassen (optional)
-        variation = item_data.get("variation")
-        if variation:
-            variation.stock = max(0, variation.stock - qty)
-            variation.save()
+            OrderItem.objects.create(
+                order=order,
+                product=product if not isinstance(product, int) else Product.objects.get(pk=product),
+                variation=item_data.get("variation"),
+                product_title=getattr(product, "title", item_data.get("product_title", "")),
+                product_image=image,
+                price=price,
+                quantity=qty,
+            )
 
-    order.total = total
-    order.save()
-    return order
+            total += price * qty
+
+            variation = item_data.get("variation")
+            if variation and hasattr(variation, "stock"):
+                variation.stock = max(0, variation.stock - qty)
+                variation.save()
+
+        order.total = total
+        order.save()
+        return order
