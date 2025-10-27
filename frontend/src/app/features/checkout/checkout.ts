@@ -10,11 +10,6 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { CartItem } from '../../shared/models/products.model';
 
-interface PlaceOrderResponse {
-  message: string;
-  updated_products: { id: number; title: string; stock: number }[];
-}
-
 @Component({
   selector: 'app-checkout',
   standalone: true,
@@ -123,17 +118,14 @@ interface PlaceOrderResponse {
       ></app-popup-alert>
     </div>
   `,
-  styles: ``,
 })
 export class Checkout {
   private cartService = inject(CartService);
   private auth = inject(AuthService);
   private http = inject(HttpClient);
 
-  // ✅ Zugriff auf Cart über getCartItems()
   cartItems = computed<CartItem[]>(() => this.cartService.getCartItems());
 
-  // ✅ Typisierung korrigiert, um any-Warnungen zu vermeiden
   total = computed<number>(() =>
     this.cartService
       .getCartItems()
@@ -145,38 +137,58 @@ export class Checkout {
 
   isLoggedIn = this.auth.isLoggedIn;
 
-  address = {
-    name: '',
-    street: '',
-    zip: '',
-    city: '',
-  };
-
+  address = { name: '', street: '', zip: '', city: '' };
   paymentMethod = 'paypal';
-
   successMessage = '';
   showSuccessAlert = false;
 
- onPlaceOrder() {
-  const payload = {
-    cartItems: this.cartItems(),
-    address: this.address,
-    paymentMethod: this.paymentMethod,
-  };
+  /**
+   * 🧾 Bestellung absenden
+   *  - URL-Decoding für externe Bilder
+   *  - Fallback auf erstes Bild aus `images`
+   */
+  onPlaceOrder() {
+    const decodedCart = this.cartItems().map((item) => {
+      // ✅ Korrekt: nutze erstes Bild aus item.images[]
+      let cleanImage = item.main_image || item.images?.[0]?.image || '';
 
-  this.http
-    .post(`${environment.apiBaseUrl}cart/place-order/`, payload, {
-      withCredentials: true,
-    })
-    .subscribe({
-      next: (res: any) => {
-        this.cartService.clearCart();
-        this.successMessage = 'Danke für deine Bestellung!';
-        this.showSuccessAlert = true;
-      },
-      error: (err) => {
-        console.error('Fehler bei Bestellung:', err);
-      },
+      try {
+        cleanImage = decodeURIComponent(cleanImage);
+      } catch {
+        /* ignore */
+      }
+
+      if (cleanImage.startsWith('/https')) cleanImage = cleanImage.slice(1);
+
+      return {
+        id: item.id,
+        product: item.id,
+        title: item.title,
+        product_image: cleanImage,
+        price: item.price,
+        quantity: item.quantity,
+        // kein Variation-Objekt mit ID vorhanden, daher null
+        variation: null,
+      };
     });
-}
+
+    const payload = {
+      cartItems: decodedCart,
+      address: this.address,
+      paymentMethod: this.paymentMethod,
+    };
+
+    this.http
+      .post(`${environment.apiBaseUrl}cart/place-order/`, payload, {
+        withCredentials: true,
+      })
+      .subscribe({
+        next: () => {
+          this.cartService.clearCart();
+          this.successMessage = 'Danke für deine Bestellung!';
+          this.showSuccessAlert = true;
+        },
+        error: (err) => console.error('Fehler bei Bestellung:', err),
+      });
+  }
 }

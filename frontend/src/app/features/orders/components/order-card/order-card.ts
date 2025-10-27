@@ -9,9 +9,7 @@ import { CommonModule } from '@angular/common';
     <div class="p-4 bg-white shadow-md rounded-xl border border-gray-200">
       <div class="flex justify-between items-center mb-2">
         <h2 class="font-semibold text-lg">Bestellung #{{ order.id }}</h2>
-        @if (order.items?.length) {
-          <img [src]="order.items?.[0]?.product_image" class="w-16 h-16 rounded-lg" />
-        }
+       
         <span
           class="px-3 py-1 text-sm rounded-full"
           [ngClass]="{
@@ -23,6 +21,10 @@ import { CommonModule } from '@angular/common';
           {{ order.status }}
         </span>
       </div>
+
+      @if (order.items?.length) {
+          <img [src]="order.items?.[0]?.product_image" class="mb-4 w-16 h-12 rounded-lg" />
+        }
 
       <p class="text-gray-600">
         Gesamt: <b>{{ order.total }} €</b>
