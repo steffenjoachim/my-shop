@@ -175,14 +175,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 # 🧾 Bestellungen
 # ------------------------------------------------------------
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
-    variation = serializers.PrimaryKeyRelatedField(
-        queryset=ProductVariation.objects.all(),
-        allow_null=True,
-        required=False
-    )
-
-    product_image = serializers.SerializerMethodField()
+    product_image = serializers.CharField(allow_blank=True, allow_null=True)
 
     class Meta:
         model = OrderItem
@@ -195,20 +188,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "price",
             "quantity",
         ]
-
-    def get_product_image(self, obj):
-        """
-        Liefert absolute oder externe URLs korrekt zurück.
-        """
-        if not obj.product_image:
-            return None
-
-        url = str(obj.product_image)
-        if url.startswith("http://") or url.startswith("https://"):
-            return url.replace("https:/", "https://")
-
-        request = self.context.get("request")
-        return request.build_absolute_uri(url) if request else url
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -234,6 +213,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from urllib.parse import unquote
+
         request = self.context.get("request")
         user = request.user if request and request.user.is_authenticated else None
 
@@ -241,6 +221,7 @@ class OrderSerializer(serializers.ModelSerializer):
         order = Order.objects.create(user=user, **validated_data)
 
         total = 0
+
         for item_data in items_data:
             product = item_data["product"]
             qty = item_data["quantity"]
@@ -248,26 +229,31 @@ class OrderSerializer(serializers.ModelSerializer):
 
             image = None
 
-            # 🟢 Prüfen, ob echtes Model oder dict/ID
+            # 🧩 Schritt 1: Wenn echtes Produktmodell, hole internes oder externes Bild
             if hasattr(product, "main_image") or hasattr(product, "external_image"):
-                # Echte Product-Instanz
                 if product.main_image:
                     image = str(product.main_image)
-                    if not image.startswith("http"):
-                        if request:
-                            image = request.build_absolute_uri(product.main_image.url)
+                    if not image.startswith("http") and request:
+                        image = request.build_absolute_uri(product.main_image.url)
                 elif product.external_image:
                     image = str(product.external_image)
-                    image = image.replace("https:/", "https://").replace("http:/", "http://")
             else:
-                # 🔹 Frontend hat wahrscheinlich eine URL oder encodierte Version geschickt
+                # 🧩 Schritt 2: Bild aus Payload (Frontend)
                 raw_image = item_data.get("product_image")
                 if raw_image:
-                    image = unquote(str(raw_image))  # dekodiere '%3A' → ':'
-                    # Falls fälschlich mit "/" beginnt, fixen:
+                    image = unquote(str(raw_image)).strip()
+
+                    # 🧹 Schritt 3: Bereinigung aller Problemfälle
                     if image.startswith("/https"):
                         image = image[1:]
+                    if image.startswith("http:/") and not image.startswith("http://"):
+                        image = image.replace("http:/", "http://")
+                    if image.startswith("https:/") and not image.startswith("https://"):
+                        image = image.replace("https:/", "https://")
+                    if not image.startswith("http"):
+                        image = f"https://{image.lstrip('/')}"
 
+            # 🧾 Schritt 4: OrderItem erstellen
             OrderItem.objects.create(
                 order=order,
                 product=product if not isinstance(product, int) else Product.objects.get(pk=product),
@@ -280,6 +266,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
             total += price * qty
 
+            # 🔽 Schritt 5: Lagerbestand ggf. anpassen
             variation = item_data.get("variation")
             if variation and hasattr(variation, "stock"):
                 variation.stock = max(0, variation.stock - qty)

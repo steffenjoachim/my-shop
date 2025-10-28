@@ -105,12 +105,14 @@ class Order(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     paid = models.BooleanField(default=False)
+
     # 🏠 Liefer-/Rechnungsadresse
     name = models.CharField(max_length=150, blank=True, null=True)
     street = models.CharField(max_length=200, blank=True, null=True)
     zip = models.CharField(max_length=20, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
-     # 💳 Zahlungsart
+
+    # 💳 Zahlungsart
     payment_method = models.CharField(max_length=50, default="paypal")
 
     def __str__(self):
@@ -125,7 +127,9 @@ class OrderItem(models.Model):
 
     # 🖼️ Zusatzinfos (damit spätere Preis-/Bildänderungen die Rechnung nicht verändern)
     product_title = models.CharField(max_length=200, blank=True, null=True)
-    product_image = models.URLField(max_length=500, blank=True, null=True)
+
+    # 🔧 URLField → CharField, um Auto-Encoding zu verhindern
+    product_image = models.CharField(max_length=500, blank=True, null=True)
 
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField()

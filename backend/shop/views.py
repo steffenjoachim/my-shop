@@ -7,9 +7,9 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
-from rest_framework import permissions, viewsets
 from django.db import transaction
 import ast
+from urllib.parse import unquote
 
 from .models import (
     Product,
@@ -139,15 +139,6 @@ class RemoveFromCartView(APIView):
 # 🟦 Menge im Warenkorb ändern
 # ------------------------------------------------------------
 class UpdateCartItemView(APIView):
-    """
-    Erwartet POST:
-    {
-      "productId": 1,
-      "quantity": 3,
-      "selectedAttributes": {"RAM": "8 GB"}
-    }
-    """
-
     def post(self, request, product_id=None):
         cart = request.session.get("cart", {})
 
@@ -187,14 +178,13 @@ class PlaceOrderView(APIView):
 
         address = request.data.get("address", {})
         payment_method = request.data.get("paymentMethod", "paypal")
-
         cart = request.session.get("cart", {})
+
         if not cart:
             return Response({"error": "Warenkorb ist leer"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
-                # 🧾 Bestellung anlegen inkl. Adresse und Zahlungsart
                 order = Order.objects.create(
                     user=request.user,
                     total=0,
@@ -208,6 +198,7 @@ class PlaceOrderView(APIView):
                 )
 
                 total = 0
+
                 for key, qty in cart.items():
                     try:
                         pid, attributes = key.split("|", 1)
@@ -219,12 +210,11 @@ class PlaceOrderView(APIView):
 
                     product = get_object_or_404(Product, pk=pid)
 
-                    # 🔍 Variante ermitteln
+                    # Variante finden
                     variant = None
                     for v in product.variations.prefetch_related("attributes__attribute_type"):
                         v_attrs = {a.attribute_type.name.strip().lower(): a.value.strip().lower() for a in v.attributes.all()}
                         selected_attrs_normalized = {k.strip().lower(): str(vv).strip().lower() for k, vv in selected_attributes.items()}
-
                         if v_attrs == selected_attrs_normalized and len(v_attrs) == len(selected_attrs_normalized):
                             variant = v
                             break
@@ -237,11 +227,29 @@ class PlaceOrderView(APIView):
                         transaction.set_rollback(True)
                         return Response({"error": f"Nicht genug Lager für {product.title}"}, status=400)
 
-                    # 🏷️ Bestand reduzieren & OrderItem speichern
                     variant.stock -= qty
                     variant.save(update_fields=["stock"])
 
-                    image = product.main_image.url if product.main_image else product.external_image
+                    # 🖼 Bildquelle bereinigen
+                    image = None
+                    # 1️⃣ Falls Frontend ein Bild mitschickt
+                    frontend_items = request.data.get("cartItems", [])
+                    frontend_item = next((i for i in frontend_items if int(i.get("id", 0)) == product.id), None)
+                    if frontend_item:
+                        raw_img = frontend_item.get("product_image", "")
+                        image = unquote(raw_img)
+                        if image.startswith("/https"):
+                            image = image[1:]
+                    # 2️⃣ Falls nicht, fallback auf Model-Felder
+                    if not image:
+                        if product.main_image:
+                            image = request.build_absolute_uri(product.main_image.url)
+                        elif product.external_image:
+                            image = unquote(product.external_image)
+                            if image.startswith("/https"):
+                                image = image[1:]
+
+                    print("🖼 gespeichertes Bild:", image)
 
                     OrderItem.objects.create(
                         order=order,
@@ -255,11 +263,9 @@ class PlaceOrderView(APIView):
 
                     total += float(product.price) * int(qty)
 
-                # 💰 Gesamtsumme speichern
                 order.total = total
                 order.save(update_fields=["total"])
 
-                # 🧹 Warenkorb leeren
                 request.session["cart"] = {}
                 request.session.modified = True
 
@@ -280,12 +286,12 @@ class PlaceOrderView(APIView):
 # ------------------------------------------------------------
 # 🟩 Bewertungen
 # ------------------------------------------------------------
-class ReviewViewSet(viewsets.ModelViewSet):
-    queryset = Review.objects.select_related("product", "user").all()
+class ReviewViewSet(ModelViewSet):
+    queryset = Review.objects.select_related("product", "user").filter(approved=True)
     serializer_class = ReviewSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset().filter(approved=True)
+        qs = super().get_queryset()
         product_id = self.request.query_params.get("product")
         if product_id:
             qs = qs.filter(product_id=product_id)
@@ -299,14 +305,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 # ------------------------------------------------------------
-# 🧾 Bestellungen anzeigen (User oder Admin)
+# 🧾 Bestellungen anzeigen
 # ------------------------------------------------------------
-class OrderViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Zeigt alle Bestellungen an:
-      - normale Nutzer: nur eigene Bestellungen
-      - Admins: alle
-    """
+class OrderViewSet(ModelViewSet):
     queryset = Order.objects.prefetch_related("items__product").all()
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -316,21 +317,10 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         if user.is_authenticated and not user.is_staff:
             return self.queryset.filter(user=user).order_by("-created_at")
         return self.queryset.order_by("-created_at")
-    
-class OrderListCreateView(generics.ListCreateAPIView):
-    serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        # Nur Bestellungen des eingeloggten Benutzers anzeigen
-        user = self.request.user
-        return Order.objects.filter(user=user).order_by('-created_at')
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 # ------------------------------------------------------------
-# 🔐 CSRF Cookie für Angular (Initial-Request)
+# 🔐 CSRF Cookie
 # ------------------------------------------------------------
 @ensure_csrf_cookie
 def get_csrf_token(request):
