@@ -11,7 +11,6 @@ from .views import (
     get_csrf_token,
     ReviewViewSet,
     OrderViewSet,
-    OrderListCreateView,
 )
 
 router = DefaultRouter()
@@ -42,6 +41,4 @@ urlpatterns = [
 
     # CSRF-Token für Frontend
     path("cart/csrf/", get_csrf_token, name="get-csrf-token"),
-    path("orders/", OrderListCreateView.as_view(), name="order-list-create"),
-
 ]
