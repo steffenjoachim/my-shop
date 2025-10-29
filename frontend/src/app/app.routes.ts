@@ -60,6 +60,14 @@ export const routes: Routes = [
         m => m.Orders
       ),
   },
+  {
+    path: 'orders/:id',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/orders/components/order-details/order-details').then(
+        (m) => m.OrderDetails
+      ),
+  },
   {path: 'reviews',
     loadComponent: () =>
       import('./features/reviews/reviews').then(
