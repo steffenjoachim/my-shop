@@ -11,7 +11,7 @@ import { Product } from '../../../shared/models/products.model';
     <div
       class="bg-white rounded-2xl shadow-md hover:shadow-lg transition overflow-hidden flex flex-col"
     >
-      <a [routerLink]="['/product', product.id]" class="block relative">
+      <a [routerLink]="['/products', product.id]" class="block relative">
         <img
           [src]="product.main_image || product.external_image || 'https://via.placeholder.com/300x200?text=Kein+Bild'"
           [alt]="product.title"
