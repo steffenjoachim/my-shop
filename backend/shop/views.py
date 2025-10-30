@@ -1,8 +1,9 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, generics, permissions
+from rest_framework import status, permissions
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.exceptions import PermissionDenied
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
@@ -45,18 +46,21 @@ class DeliveryTimeViewSet(ModelViewSet):
 
 
 # ------------------------------------------------------------
+# 💬 Produktbewertungen (Reviews)
+# ------------------------------------------------------------
+class ReviewViewSet(ModelViewSet):
+    queryset = Review.objects.select_related("product", "user").all()
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+# ------------------------------------------------------------
 # 🟨 Produkt in den Warenkorb legen
 # ------------------------------------------------------------
 class AddToCartView(APIView):
-    """
-    Erwartet POST-Daten:
-    {
-      "productId": 1,
-      "quantity": 2,
-      "selectedAttributes": {"Größe": "L", "Farbe": "Rot"}
-    }
-    """
-
     def post(self, request, product_id=None):
         cart = request.session.get("cart", {})
 
@@ -110,11 +114,6 @@ class CartView(APIView):
 # 🔴 Produkt aus Warenkorb entfernen
 # ------------------------------------------------------------
 class RemoveFromCartView(APIView):
-    """
-    Erwartet DELETE mit body:
-    { "productId": 1, "selectedAttributes": {"RAM": "8 GB"} }
-    """
-
     def delete(self, request, product_id=None):
         cart = request.session.get("cart", {})
 
@@ -167,11 +166,6 @@ class UpdateCartItemView(APIView):
 # ------------------------------------------------------------
 @method_decorator(csrf_exempt, name="dispatch")
 class PlaceOrderView(APIView):
-    """
-    Erzeugt eine Order + OrderItems, reduziert Bestände atomar und leert den Session-Warenkorb.
-    Erwartet optional address/paymentMethod im Body.
-    """
-
     def post(self, request):
         if not request.user or not request.user.is_authenticated:
             return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -200,56 +194,33 @@ class PlaceOrderView(APIView):
                 total = 0
 
                 for key, qty in cart.items():
-                    try:
-                        pid, attributes = key.split("|", 1)
-                        pid = int(pid)
-                        selected_attributes = ast.literal_eval(attributes)
-                    except Exception:
-                        transaction.set_rollback(True)
-                        return Response({"error": "Ungültiger Warenkorb-Eintrag"}, status=400)
-
+                    pid, attributes = key.split("|", 1)
+                    pid = int(pid)
+                    selected_attributes = ast.literal_eval(attributes)
                     product = get_object_or_404(Product, pk=pid)
 
-                    # Variante finden
                     variant = None
                     for v in product.variations.prefetch_related("attributes__attribute_type"):
                         v_attrs = {a.attribute_type.name.strip().lower(): a.value.strip().lower() for a in v.attributes.all()}
                         selected_attrs_normalized = {k.strip().lower(): str(vv).strip().lower() for k, vv in selected_attributes.items()}
-                        if v_attrs == selected_attrs_normalized and len(v_attrs) == len(selected_attrs_normalized):
+                        if v_attrs == selected_attrs_normalized:
                             variant = v
                             break
 
                     if not variant:
-                        transaction.set_rollback(True)
-                        return Response({"error": f"Variante nicht gefunden für {product.title}"}, status=400)
+                        raise ValueError(f"Variante nicht gefunden für {product.title}")
 
                     if (variant.stock or 0) < qty:
-                        transaction.set_rollback(True)
-                        return Response({"error": f"Nicht genug Lager für {product.title}"}, status=400)
+                        raise ValueError(f"Nicht genug Lager für {product.title}")
 
                     variant.stock -= qty
                     variant.save(update_fields=["stock"])
 
-                    # 🖼 Bildquelle bereinigen
                     image = None
-                    # 1️⃣ Falls Frontend ein Bild mitschickt
-                    frontend_items = request.data.get("cartItems", [])
-                    frontend_item = next((i for i in frontend_items if int(i.get("id", 0)) == product.id), None)
-                    if frontend_item:
-                        raw_img = frontend_item.get("product_image", "")
-                        image = unquote(raw_img)
-                        if image.startswith("/https"):
-                            image = image[1:]
-                    # 2️⃣ Falls nicht, fallback auf Model-Felder
-                    if not image:
-                        if product.main_image:
-                            image = request.build_absolute_uri(product.main_image.url)
-                        elif product.external_image:
-                            image = unquote(product.external_image)
-                            if image.startswith("/https"):
-                                image = image[1:]
-
-                    print("🖼 gespeichertes Bild:", image)
+                    if product.main_image:
+                        image = request.build_absolute_uri(product.main_image.url)
+                    elif product.external_image:
+                        image = unquote(product.external_image).lstrip("/")
 
                     OrderItem.objects.create(
                         order=order,
@@ -260,63 +231,44 @@ class PlaceOrderView(APIView):
                         price=product.price,
                         quantity=qty,
                     )
-
                     total += float(product.price) * int(qty)
 
                 order.total = total
                 order.save(update_fields=["total"])
-
                 request.session["cart"] = {}
                 request.session.modified = True
 
-                return Response({
-                    "message": "Bestellung erfolgreich erstellt",
-                    "order_id": order.id,
-                    "total": total,
-                }, status=status.HTTP_201_CREATED)
-
+                return Response({"message": "Bestellung erfolgreich erstellt", "order_id": order.id}, status=201)
         except Exception as exc:
             transaction.set_rollback(True)
-            return Response(
-                {"error": "Fehler beim Erstellen der Bestellung", "detail": str(exc)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-# ------------------------------------------------------------
-# 🟩 Bewertungen
-# ------------------------------------------------------------
-class ReviewViewSet(ModelViewSet):
-    queryset = Review.objects.select_related("product", "user").filter(approved=True)
-    serializer_class = ReviewSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        product_id = self.request.query_params.get("product")
-        if product_id:
-            qs = qs.filter(product_id=product_id)
-        return qs
-
-    def perform_create(self, serializer):
-        if self.request.user.is_authenticated:
-            serializer.save(user=self.request.user)
-        else:
-            raise permissions.exceptions.NotAuthenticated()
+            return Response({"error": str(exc)}, status=500)
 
 
 # ------------------------------------------------------------
 # 🧾 Bestellungen anzeigen
 # ------------------------------------------------------------
 class OrderViewSet(ModelViewSet):
-    queryset = Order.objects.prefetch_related("items__product").all()
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_authenticated and not user.is_staff:
-            return self.queryset.filter(user=user).order_by("-created_at")
-        return self.queryset.order_by("-created_at")
+        if user.is_authenticated:
+            return (
+                Order.objects.filter(user=user)
+                .prefetch_related("items__product")
+                .select_related("user")
+                .order_by("-created_at")
+            )
+        return Order.objects.none()
+
+    def retrieve(self, request, *args, **kwargs):
+        user = request.user
+        order = get_object_or_404(Order, pk=kwargs["pk"])
+        if order.user != user:
+            raise PermissionDenied("Du hast keinen Zugriff auf diese Bestellung.")
+        serializer = self.get_serializer(order)
+        return Response(serializer.data, status=200)
 
 
 # ------------------------------------------------------------
