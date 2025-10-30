@@ -13,7 +13,7 @@ import { CartItem } from '../../shared/models/products.model';
   standalone: true,
   imports: [RouterModule, PopupAlert, CommonModule, PrimaryButton],
   template: `
-    <article class="container mx-auto mt-4 p-4 bg-white rounded shadow">
+    <article class="min-h-120 container mx-auto mt-4 p-4 bg-white rounded shadow">
       <h2 class="text-3xl font-bold mb-4">Cart</h2>
 
       @if (products().length === 0) {
