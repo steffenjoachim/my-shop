@@ -20,7 +20,7 @@ export class AuthService {
   public readonly user = this._user.asReadonly();
 
   constructor(private http: HttpClient, private router: Router) {
-    this.initCsrfToken(); // 🆕 zuerst CSRF-Cookie setzen
+    this.initCsrfToken(); 
     this.checkSession();
   }
 
@@ -30,7 +30,6 @@ export class AuthService {
         withCredentials: true,
       })
       .subscribe({
-        next: () => console.log('[AuthService] CSRF-Cookie erhalten'),
         error: (err) =>
           console.error('[AuthService] Fehler beim Abruf des CSRF-Tokens', err),
       });
