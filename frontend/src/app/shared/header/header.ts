@@ -90,10 +90,11 @@ export class Header {
 
   // ✅ Computed Signal für Cart-Count
   cartCount = computed(() =>
-    this.cartService
-      .cart()
-      .reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
-  );
+  this.cartService
+    .items()
+    .reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
+);
+
 
   isLoggedIn = () => this.auth.isLoggedIn();
   user = () => this.auth.user();
