@@ -168,17 +168,19 @@ class UpdateCartItemView(APIView):
 class PlaceOrderView(APIView):
     def post(self, request):
         if not request.user or not request.user.is_authenticated:
-            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Authentication required"}, status=401)
 
+        # ✅ Frontend sendet cartItems im Body → Session Cart wird ignoriert
+        cart_items = request.data.get("cartItems", [])
         address = request.data.get("address", {})
         payment_method = request.data.get("paymentMethod", "paypal")
-        cart = request.session.get("cart", {})
 
-        if not cart:
-            return Response({"error": "Warenkorb ist leer"}, status=status.HTTP_400_BAD_REQUEST)
+        if not cart_items:
+            return Response({"error": "cartItems missing"}, status=400)
 
         try:
             with transaction.atomic():
+
                 order = Order.objects.create(
                     user=request.user,
                     total=0,
@@ -193,17 +195,29 @@ class PlaceOrderView(APIView):
 
                 total = 0
 
-                for key, qty in cart.items():
-                    pid, attributes = key.split("|", 1)
-                    pid = int(pid)
-                    selected_attributes = ast.literal_eval(attributes)
+                for item in cart_items:
+                    pid = item.get("product") or item.get("id")
+                    qty = int(item.get("quantity", 1))
+                    selected_attributes = item.get("selectedAttributes", {})
+
+                    if not pid:
+                        raise ValueError("Product ID missing in cart item")
+
                     product = get_object_or_404(Product, pk=pid)
 
+                    # ✅ Variante anhand der Attribute suchen
                     variant = None
+                    selected_norm = {
+                        str(k).strip().lower(): str(v).strip().lower()
+                        for k, v in selected_attributes.items()
+                    }
+
                     for v in product.variations.prefetch_related("attributes__attribute_type"):
-                        v_attrs = {a.attribute_type.name.strip().lower(): a.value.strip().lower() for a in v.attributes.all()}
-                        selected_attrs_normalized = {k.strip().lower(): str(vv).strip().lower() for k, vv in selected_attributes.items()}
-                        if v_attrs == selected_attrs_normalized:
+                        attrs = {
+                            a.attribute_type.name.strip().lower(): a.value.strip().lower()
+                            for a in v.attributes.all()
+                        }
+                        if attrs == selected_norm:
                             variant = v
                             break
 
@@ -213,14 +227,19 @@ class PlaceOrderView(APIView):
                     if (variant.stock or 0) < qty:
                         raise ValueError(f"Nicht genug Lager für {product.title}")
 
+                    # ✅ Lagerbestand reduzieren
                     variant.stock -= qty
                     variant.save(update_fields=["stock"])
 
-                    image = None
-                    if product.main_image:
-                        image = request.build_absolute_uri(product.main_image.url)
-                    elif product.external_image:
-                        image = unquote(product.external_image).lstrip("/")
+                    # ✅ Produktbild übernehmen
+                    image = item.get("product_image")
+                    if image:
+                        image = unquote(image).lstrip("/")
+                    else:
+                        if product.main_image:
+                            image = request.build_absolute_uri(product.main_image.url)
+                        elif product.external_image:
+                            image = unquote(product.external_image).lstrip("/")
 
                     OrderItem.objects.create(
                         order=order,
@@ -231,18 +250,20 @@ class PlaceOrderView(APIView):
                         price=product.price,
                         quantity=qty,
                     )
-                    total += float(product.price) * int(qty)
+
+                    total += float(product.price) * qty
 
                 order.total = total
                 order.save(update_fields=["total"])
-                request.session["cart"] = {}
-                request.session.modified = True
 
-                return Response({"message": "Bestellung erfolgreich erstellt", "order_id": order.id}, status=201)
+                # ✅ LocalStorage Cart bleibt unberührt → Angular löscht ihn selbst
+                return Response(
+                    {"message": "Bestellung erfolgreich erstellt", "order_id": order.id},
+                    status=201,
+                )
+
         except Exception as exc:
-            transaction.set_rollback(True)
             return Response({"error": str(exc)}, status=500)
-
 
 # ------------------------------------------------------------
 # 🧾 Bestellungen anzeigen

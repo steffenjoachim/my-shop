@@ -16,7 +16,7 @@ import { CartItem } from '../../shared/models/products.model';
   imports: [CommonModule, RouterLink, PrimaryButton, FormsModule, PopupAlert],
   template: `
     <div class="p-8 max-w-3xl mx-auto">
-      <h1 class="text-3xl font-bold mb-6">Checkout</h1>
+      <h1 class="text-3xl font-bold mb-6">Kasse</h1>
 
       @if (cartItems().length) {
       <form #form="ngForm" (ngSubmit)="onPlaceOrder()" class="space-y-6">
@@ -90,7 +90,7 @@ import { CartItem } from '../../shared/models/products.model';
 
         @if (isLoggedIn()) {
         <app-primary-button
-          label="Place Order"
+          label="Kostenpflichtig Bestellen"
           type="submit"
           [disabled]="!form.valid"
         />
@@ -148,47 +148,43 @@ export class Checkout {
    *  - Fallback auf erstes Bild aus `images`
    */
   onPlaceOrder() {
-    const decodedCart = this.cartItems().map((item) => {
-      // ✅ Korrekt: nutze erstes Bild aus item.images[]
-      let cleanImage = item.main_image || item.images?.[0]?.image || '';
+  const items = this.cartItems().map(item => {
+    let cleanImage = item.main_image || item.images?.[0]?.image || "";
 
-      try {
-        cleanImage = decodeURIComponent(cleanImage);
-      } catch {
-        /* ignore */
-      }
+    try { cleanImage = decodeURIComponent(cleanImage); } catch {}
 
-      if (cleanImage.startsWith('/https')) cleanImage = cleanImage.slice(1);
+    if (cleanImage.startsWith("/https")) cleanImage = cleanImage.slice(1);
 
-      return {
-        id: item.id,
-        product: item.id,
-        title: item.title,
-        product_image: cleanImage,
-        price: item.price,
-        quantity: item.quantity,
-        // kein Variation-Objekt mit ID vorhanden, daher null
-        variation: null,
-      };
-    });
-
-    const payload = {
-      cartItems: decodedCart,
-      address: this.address,
-      paymentMethod: this.paymentMethod,
+    return {
+      product: item.id,               
+      variation: null,                
+      product_title: item.title,
+      product_image: cleanImage,
+      price: item.price,
+      quantity: item.quantity
     };
+  });
 
-    this.http
-      .post(`${environment.apiBaseUrl}cart/place-order/`, payload, {
-        withCredentials: true,
-      })
-      .subscribe({
-        next: () => {
-          this.cartService.clearCart();
-          this.successMessage = 'Danke für deine Bestellung!';
-          this.showSuccessAlert = true;
-        },
-        error: (err) => console.error('Fehler bei Bestellung:', err),
-      });
+  const payload = {
+    items,
+    name: this.address.name,
+    street: this.address.street,
+    zip: this.address.zip,
+    city: this.address.city,
+    payment_method: this.paymentMethod
+  };
+
+  this.http
+    .post(`${environment.apiBaseUrl}order/place/`, payload, {
+      withCredentials: true,
+    })
+    .subscribe({
+      next: () => {
+        this.cartService.clearCart();
+        this.successMessage = 'Danke für deine Bestellung!';
+        this.showSuccessAlert = true;
+      },
+      error: (err) => console.error('Fehler bei Bestellung:', err),
+    });
   }
 }

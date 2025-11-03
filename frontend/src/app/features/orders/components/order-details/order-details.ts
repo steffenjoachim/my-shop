@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TitleCasePipe, DatePipe } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
+import { CartService } from '../../../../shared/services/cart.service';
 
 @Component({
   selector: 'app-order-details',
@@ -101,7 +102,8 @@ export class OrderDetails implements OnInit {
   constructor(
     private http: HttpClient,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private cartService: CartService
   ) {}
 
   ngOnInit(): void {
@@ -139,20 +141,36 @@ export class OrderDetails implements OnInit {
   }
 
   /** ✅ Buy Again → direkt in den Cart und weiterleiten */
-  buyAgain(item: any) {
-    const payload = {
-      product_id: item.product,
-      variation_id: item.variation,
-      quantity: 1
-    };
+ buyAgain(item: any) {
+  // 1. Produkt + Variation laden (weil CartService das vollständige Produkt benötigt)
+  this.http
+    .get(`${environment.apiBaseUrl}products/${item.product}/`)
+    .subscribe({
+      next: (product: any) => {
+        
+        // Variation anwenden
+        let selectedAttributes: { [key: string]: string } = {};
 
-    this.http
-      .post(`${environment.apiBaseUrl}cart/add/`, payload, { withCredentials: true })
-      .subscribe({
-        next: () => this.router.navigate(['/cart']),
-        error: err => console.error("Fehler beim Hinzufügen:", err)
-      });
-  }
+        if (item.variation_details?.attributes) {
+          item.variation_details.attributes.forEach((attr: any) => {
+            selectedAttributes[attr.attribute_type] = attr.value;
+          });
+        }
+
+        // 2. In Clientseitigen Warenkorb legen
+        // ✅ quantity = 1
+        // ✅ selectedAttributes = genau wie bei der Bestellung
+        this.cartService.addToCart(product, 1, selectedAttributes);
+
+        // 3. Weiterleiten
+        this.router.navigate(['/cart']);
+      },
+      error: (err) => {
+        console.error("Produkt konnte nicht geladen werden:", err);
+      }
+    });
+}
+
 
   /** ✅ Review Platzhalter */
   openReview(item: any) {
