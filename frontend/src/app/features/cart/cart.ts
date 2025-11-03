@@ -68,7 +68,7 @@ import { CartItem } from '../../shared/models/products.model';
             <button
               (click)="remove(product)"
               class="self-end sm:self-auto mt-2 sm:mt-0 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
-              Remove
+              Entfernen
             </button>
 
           </div>
@@ -81,7 +81,7 @@ import { CartItem } from '../../shared/models/products.model';
 
       <div class="flex justify-between mt-6">
         <app-primary-button routerLink="/" [label]="'Weiter einkaufen'"/>
-        <app-primary-button (click)="proceedToCheckout()" [label]="'Proceed to Checkout'"/>
+        <app-primary-button (click)="proceedToCheckout()" [label]="'Zur Kasse gehen'"/>
       </div>
 
       }
