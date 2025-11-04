@@ -74,7 +74,7 @@ import { CartService } from '../../../../shared/services/cart.service';
                 (click)="buyAgain(item)"
                 class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
               >
-                Buy Again
+                Nochmals kaufen
               </button>
 
             </div>

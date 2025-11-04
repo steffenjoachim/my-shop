@@ -148,43 +148,42 @@ export class Checkout {
    *  - Fallback auf erstes Bild aus `images`
    */
   onPlaceOrder() {
-  const items = this.cartItems().map(item => {
-    let cleanImage = item.main_image || item.images?.[0]?.image || "";
+  const cartItems = this.cartItems().map(item => {
+    let cleanImage = item.main_image || "";
 
     try { cleanImage = decodeURIComponent(cleanImage); } catch {}
 
     if (cleanImage.startsWith("/https")) cleanImage = cleanImage.slice(1);
 
     return {
-      product: item.id,               
-      variation: null,                
-      product_title: item.title,
+      product: item.id,
+      quantity: item.quantity,
       product_image: cleanImage,
-      price: item.price,
-      quantity: item.quantity
+      selectedAttributes: item.selectedAttributes ?? {}
     };
   });
 
   const payload = {
-    items,
-    name: this.address.name,
-    street: this.address.street,
-    zip: this.address.zip,
-    city: this.address.city,
-    payment_method: this.paymentMethod
+    cartItems, // ✅ richtig!
+    address: {   // ✅ als Objekt!
+      name: this.address.name,
+      street: this.address.street,
+      zip: this.address.zip,
+      city: this.address.city
+    },
+    paymentMethod: this.paymentMethod // ✅ CamelCase
   };
 
-  this.http
-    .post(`${environment.apiBaseUrl}order/place/`, payload, {
-      withCredentials: true,
-    })
-    .subscribe({
-      next: () => {
-        this.cartService.clearCart();
-        this.successMessage = 'Danke für deine Bestellung!';
-        this.showSuccessAlert = true;
-      },
-      error: (err) => console.error('Fehler bei Bestellung:', err),
-    });
-  }
+  this.http.post(`${environment.apiBaseUrl}order/place/`, payload, {
+    withCredentials: true,
+  })
+  .subscribe({
+    next: () => {
+      this.cartService.clearCart();
+      this.successMessage = 'Danke für deine Bestellung!';
+      this.showSuccessAlert = true;
+    },
+    error: (err) => console.error('Fehler bei Bestellung:', err),
+  });
+}
 }
