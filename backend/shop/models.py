@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db.models import Avg, Count
 from django.dispatch import receiver
 from django.db.models.signals import post_save, post_delete
+from django.utils.text import slugify
 
 
 class Category(models.Model):
@@ -19,37 +20,56 @@ class DeliveryTime(models.Model):
     max_days = models.PositiveIntegerField()
     is_default = models.BooleanField(default=False)
 
-    def save(self, *args, **kwargs):
-        if self.is_default:
-            DeliveryTime.objects.exclude(pk=self.pk).update(is_default=False)
-        super().save(*args, **kwargs)
-
+    # ✅ fehlerhafte slug-Zeile ENTFERNT
     def __str__(self):
         return f"{self.name} ({self.min_days}-{self.max_days} Tage)"
 
 
 class Product(models.Model):
-    """Hauptprodukt (z. B. T-Shirt)"""
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=False, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     main_image = models.ImageField(upload_to="products/", blank=True, null=True)
-    external_image = models.URLField(max_length=500, blank=True, null=True)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
+    external_image = models.URLField(blank=True, null=True)
+
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="products"
+    )
     delivery_time = models.ForeignKey(
         DeliveryTime,
-        null=True,
-        blank=True,
         on_delete=models.SET_NULL,
-        related_name="products",
+        null=True,
+        related_name="products"
     )
 
-    # gecachte Bewertungsfelder
-    rating_avg = models.DecimalField(max_digits=3, decimal_places=2, default=0)
-    rating_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # ✅ Automatische Slug-Generierung
+        if not self.slug:
+            generated = slugify(self.title)
+            self.slug = generated or f"product-{self.id or ''}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
+
+    @property
+    def image_url(self):
+        """Gibt das korrekte Bild zurück — lokal oder extern."""
+        if self.main_image:
+            return self.main_image.url
+        if self.external_image:
+            return self.external_image
+        return "/media/default.png"
+
+    @property
+    def stock_total(self):
+        return sum((v.stock or 0) for v in self.variations.all())
 
 
 class ProductImage(models.Model):
@@ -79,19 +99,35 @@ class AttributeValue(models.Model):
 
 
 class ProductVariation(models.Model):
-    """Kombination von Attributen für ein bestimmtes Produkt (z. B. T-Shirt Rot M)"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="variations")
-    attributes = models.ManyToManyField(AttributeValue, related_name="product_variations")
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="variations"
+    )
+    attributes = models.ManyToManyField(AttributeValue, related_name="variations")
     stock = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        attrs = ", ".join([v.value for v in self.attributes.all()])
-        return f"{self.product.title} ({attrs}) - {self.stock} Stück"
+        attrs = ", ".join([f"{a.attribute_type.name}: {a.value}" for a in self.attributes.all()])
+        return f"{self.product.title} ({attrs})"
+
+    @property
+    def attributes_dict(self):
+        return {
+            a.attribute_type.name.lower(): a.value.lower()
+            for a in self.attributes.all()
+        }
+
+    @property
+    def is_in_stock(self):
+        return self.stock > 0
+
+    @property
+    def variation_key(self):
+        """Ein stabiler Key für Varianten-Vergleiche."""
+        return "|".join([f"{k}:{v}" for k, v in self.attributes_dict.items()])
 
 
-# -------------------------
-# Bestell-/Rechnungsmodelle
-# -------------------------
 class Order(models.Model):
     STATUS_CHOICES = (
         ("pending", "Pending"),
@@ -125,10 +161,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     variation = models.ForeignKey(ProductVariation, null=True, blank=True, on_delete=models.PROTECT)
 
-    # 🖼️ Zusatzinfos (damit spätere Preis-/Bildänderungen die Rechnung nicht verändern)
     product_title = models.CharField(max_length=200, blank=True, null=True)
-
-    # 🔧 URLField → CharField, um Auto-Encoding zu verhindern
     product_image = models.CharField(max_length=500, blank=True, null=True)
 
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -137,18 +170,16 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.quantity} × {self.product_title} (Order #{self.order_id})"
 
-# -------------------------
-# Review / Rating Modell
-# -------------------------
+
 class Review(models.Model):
     """Produktbewertung (1-5 Sterne)"""
     product = models.ForeignKey(Product, related_name="reviews", on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_reviews")
-    order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.SET_NULL, help_text="Optional: Order reference to ensure purchase")
-    rating = models.PositiveSmallIntegerField()  # erwartete Werte 1..5
+    order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.SET_NULL)
+    rating = models.PositiveSmallIntegerField()
     title = models.CharField(max_length=200, blank=True)
     body = models.TextField(blank=True)
-    approved = models.BooleanField(default=True)  # moderation flag
+    approved = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -161,9 +192,6 @@ class Review(models.Model):
         return f"Review {self.rating}★ for {self.product.title} by {self.user}"
 
 
-# -------------------------
-# Signals: Rating-Cache aktualisieren
-# -------------------------
 def _recalculate_product_rating(product: Product):
     agg = product.reviews.filter(approved=True).aggregate(
         avg=Avg("rating"),
@@ -171,10 +199,9 @@ def _recalculate_product_rating(product: Product):
     )
     avg = agg["avg"] or 0
     cnt = agg["cnt"] or 0
-    # speichern, falls sich etwas ändert
+
     if product.rating_count != cnt or float(product.rating_avg) != float(avg):
         product.rating_count = cnt
-        # DecimalField erwartet Decimal; cast via str to keep precision
         product.rating_avg = round(float(avg) if avg is not None else 0.0, 2)
         product.save(update_fields=["rating_avg", "rating_count"])
 

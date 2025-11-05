@@ -61,81 +61,124 @@ class ReviewViewSet(ModelViewSet):
 # ------------------------------------------------------------
 @method_decorator(csrf_exempt, name="dispatch")
 class PlaceOrderView(APIView):
-    def post(self, request):
-        if not request.user or not request.user.is_authenticated:
-            return Response({"error": "Authentication required"}, status=401)
+    """
+    POST /api/order/place/
 
-        # ✅ Frontend sendet cartItems im Body → Session Cart wird ignoriert
+    Erwartet:
+    {
+        "address": {...},
+        "paymentMethod": "paypal",
+        "cartItems": [
+            {
+                "id": 3,
+                "quantity": 2,
+                "selectedAttributes": {
+                    "farbe": "schwarz",
+                    "größe": "L"
+                },
+                "product_image": "...optional..."
+            }
+        ]
+    }
+    """
+
+    def post(self, request):
+        # ✅ Benutzer muss eingeloggt sein
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {"error": "Login erforderlich"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
         cart_items = request.data.get("cartItems", [])
         address = request.data.get("address", {})
         payment_method = request.data.get("paymentMethod", "paypal")
 
+        # ✅ Validierung 1: cartItems vorhanden?
         if not cart_items:
-            return Response({"error": "cartItems missing"}, status=400)
+            return Response(
+                {"error": "cartItems fehlt oder ist leer"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ✅ Validierung 2: Adresse korrekt?
+        required_fields = ["name", "street", "zip", "city"]
+        missing = [f for f in required_fields if not address.get(f)]
+
+        if missing:
+            return Response(
+                {"error": f"Folgende Felder fehlen: {', '.join(missing)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             with transaction.atomic():
 
+                # ✅ Bestellung erstellen
                 order = Order.objects.create(
                     user=request.user,
                     total=0,
                     paid=False,
                     status="pending",
-                    name=address.get("name", ""),
-                    street=address.get("street", ""),
-                    zip=address.get("zip", ""),
-                    city=address.get("city", ""),
+                    name=address["name"],
+                    street=address["street"],
+                    zip=address["zip"],
+                    city=address["city"],
                     payment_method=payment_method,
                 )
 
                 total = 0
+                errors = []
 
                 for item in cart_items:
-                    pid = item.get("product") or item.get("id")
-                    qty = int(item.get("quantity", 1))
+                    pid = item.get("id") or item.get("product")
+                    qty = item.get("quantity")
                     selected_attributes = item.get("selectedAttributes", {})
 
-                    if not pid:
-                        raise ValueError("Product ID missing in cart item")
+                    # ✅ Validierung pro Produkt
+                    if not pid or not qty:
+                        errors.append({"item": item, "error": "ID oder quantity fehlt"})
+                        continue
 
-                    product = get_object_or_404(Product, pk=pid)
+                    # ✅ Produkt laden
+                    product = Product.objects.filter(pk=pid).first()
+                    if not product:
+                        errors.append({"id": pid, "error": "Produkt existiert nicht"})
+                        continue
 
-                    # ✅ Variante anhand der Attribute suchen
-                    variant = None
-                    selected_norm = {
-                        str(k).strip().lower(): str(v).strip().lower()
-                        for k, v in selected_attributes.items()
-                    }
-
-                    for v in product.variations.prefetch_related("attributes__attribute_type"):
-                        attrs = {
-                            a.attribute_type.name.strip().lower(): a.value.strip().lower()
-                            for a in v.attributes.all()
-                        }
-                        if attrs == selected_norm:
-                            variant = v
-                            break
-
+                    # ✅ Variante suchen
+                    variant = self.find_variant(product, selected_attributes)
                     if not variant:
-                        raise ValueError(f"Variante nicht gefunden für {product.title}")
+                        errors.append({
+                            "product": product.title,
+                            "selected": selected_attributes,
+                            "error": "Keine passende Variante gefunden"
+                        })
+                        continue
 
+                    # ✅ Lager prüfen
                     if (variant.stock or 0) < qty:
-                        raise ValueError(f"Nicht genug Lager für {product.title}")
+                        errors.append({
+                            "product": product.title,
+                            "lager": variant.stock,
+                            "gewünscht": qty,
+                            "error": "Nicht genug Lagerbestand"
+                        })
+                        continue
 
-                    # ✅ Lagerbestand reduzieren
+                    # ✅ Bestand reduzieren
                     variant.stock -= qty
                     variant.save(update_fields=["stock"])
 
-                    # ✅ Produktbild übernehmen
+                    # ✅ Bild wählen
                     image = item.get("product_image")
-                    if image:
-                        image = unquote(image).lstrip("/")
-                    else:
+                    if not image:
                         if product.main_image:
                             image = request.build_absolute_uri(product.main_image.url)
                         elif product.external_image:
                             image = unquote(product.external_image).lstrip("/")
 
+                    # ✅ Order Item erstellen
                     OrderItem.objects.create(
                         order=order,
                         product=product,
@@ -148,17 +191,55 @@ class PlaceOrderView(APIView):
 
                     total += float(product.price) * qty
 
+                # ✅ Total aktualisieren
                 order.total = total
-                order.save(update_fields=["total"])
+                order.save()
 
-                # ✅ LocalStorage Cart bleibt unberührt → Angular löscht ihn selbst
+                # ✅ Wenn Fehler → Bestellprozess abbrechen
+                if errors:
+                    transaction.set_rollback(True)
+                    return Response(
+                        {"error": "Bestellung konnte nicht abgeschlossen werden", "details": errors},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # ✅ Erfolg
                 return Response(
                     {"message": "Bestellung erfolgreich erstellt", "order_id": order.id},
-                    status=201,
+                    status=status.HTTP_201_CREATED
                 )
 
         except Exception as exc:
-            return Response({"error": str(exc)}, status=500)
+            return Response(
+                {"error": "Interner Fehler", "details": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    # ✅ Verbesserte Variantensuche
+    def find_variant(self, product, selected_attributes: dict):
+        """
+        Vergleicht ausgewählte Attribute des Frontends mit der Variantentabelle im Backend.
+        Vergleich ist case-insensitive und whitespace-insensitive.
+        """
+
+        if not selected_attributes:
+            return None
+
+        selected_norm = {
+            str(k).strip().lower(): str(v).strip().lower()
+            for k, v in selected_attributes.items()
+        }
+
+        for variant in product.variations.prefetch_related("attributes__attribute_type"):
+            variant_attrs = {
+                a.attribute_type.name.strip().lower(): a.value.strip().lower()
+                for a in variant.attributes.all()
+            }
+
+            if variant_attrs == selected_norm:
+                return variant
+
+        return None
 
 # ------------------------------------------------------------
 # 🧾 Bestellungen anzeigen
