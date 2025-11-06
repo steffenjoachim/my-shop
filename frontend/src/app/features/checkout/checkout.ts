@@ -2,13 +2,13 @@ import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
+import { CartItem } from '../../shared/models/products.model';
 import { PrimaryButton } from '../../shared/primary-button/primary-button';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { AuthService } from '../../shared/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { CartItem } from '../../shared/models/products.model';
 
 @Component({
   selector: 'app-checkout',
@@ -20,10 +20,9 @@ import { CartItem } from '../../shared/models/products.model';
 
       @if (cartItems().length) {
       <form #form="ngForm" (ngSubmit)="onPlaceOrder()" class="space-y-6">
+
         <section>
-          <h2 class="text-xl font-semibold mb-2">
-            Shipping and Billing Address
-          </h2>
+          <h2 class="text-xl font-semibold mb-2">Shipping and Billing Address</h2>
 
           <input
             class="w-full border p-2 rounded"
@@ -89,24 +88,20 @@ import { CartItem } from '../../shared/models/products.model';
         </div>
 
         @if (isLoggedIn()) {
-        <app-primary-button
-          label="Kostenpflichtig Bestellen"
-          type="submit"
-          [disabled]="!form.valid"
-        />
+          <app-primary-button
+            label="Kostenpflichtig Bestellen"
+            type="submit"
+            [disabled]="!form.valid"
+          />
         } @else {
-        <div class="mt-6 border-t pt-4 text-sm text-gray-600">
-          <p>
-            Um die Bestellung abzuschließen, bitte
-            <a routerLink="/login" class="text-blue-500 hover:underline"
-              >einloggen</a
-            >
-            oder
-            <a routerLink="/register" class="text-blue-500 hover:underline"
-              >registrieren</a
-            >.
-          </p>
-        </div>
+          <div class="mt-6 border-t pt-4 text-sm text-gray-600">
+            <p>
+              Um die Bestellung abzuschließen, bitte
+              <a routerLink="/login" class="text-blue-500 hover:underline">einloggen</a>
+              oder
+              <a routerLink="/register" class="text-blue-500 hover:underline">registrieren</a>.
+            </p>
+          </div>
         }
       </form>
       }
@@ -115,7 +110,7 @@ import { CartItem } from '../../shared/models/products.model';
         [message]="successMessage"
         [type]="'success'"
         [visible]="showSuccessAlert"
-      ></app-popup-alert>
+      />
     </div>
   `,
 })
@@ -129,10 +124,7 @@ export class Checkout {
   total = computed<number>(() =>
     this.cartService
       .getCartItems()
-      .reduce(
-        (sum: number, item: CartItem) => sum + item.price * item.quantity,
-        0
-      )
+      .reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0)
   );
 
   isLoggedIn = this.auth.isLoggedIn;
@@ -142,48 +134,44 @@ export class Checkout {
   successMessage = '';
   showSuccessAlert = false;
 
-  /**
-   * 🧾 Bestellung absenden
-   *  - URL-Decoding für externe Bilder
-   *  - Fallback auf erstes Bild aus `images`
-   */
+  /** ✅ Bestellung absenden */
   onPlaceOrder() {
-  const cartItems = this.cartItems().map(item => {
-    let cleanImage = item.main_image || "";
+    const cartItems = this.cartItems().map(item => {
+      let cleanImage = item.main_image || "";
 
-    try { cleanImage = decodeURIComponent(cleanImage); } catch {}
+      try { cleanImage = decodeURIComponent(cleanImage); } catch {}
 
-    if (cleanImage.startsWith("/https")) cleanImage = cleanImage.slice(1);
+      if (cleanImage.startsWith("/https")) cleanImage = cleanImage.slice(1);
 
-    return {
-      product: item.id,
-      quantity: item.quantity,
-      product_image: cleanImage,
-      selectedAttributes: item.selectedAttributes ?? {}
+      return {
+        product: item.id,
+        quantity: item.quantity,
+        product_image: cleanImage,
+        selectedAttributes: item.selectedAttributes ?? {}
+      };
+    });
+
+    const payload = {
+      cartItems,
+      address: {
+        name: this.address.name,
+        street: this.address.street,
+        zip: this.address.zip,
+        city: this.address.city
+      },
+      paymentMethod: this.paymentMethod
     };
-  });
 
-  const payload = {
-    cartItems, // ✅ richtig!
-    address: {   // ✅ als Objekt!
-      name: this.address.name,
-      street: this.address.street,
-      zip: this.address.zip,
-      city: this.address.city
-    },
-    paymentMethod: this.paymentMethod // ✅ CamelCase
-  };
-
-  this.http.post(`${environment.apiBaseUrl}order/place/`, payload, {
-    withCredentials: true,
-  })
-  .subscribe({
-    next: () => {
-      this.cartService.clearCart();
-      this.successMessage = 'Danke für deine Bestellung!';
-      this.showSuccessAlert = true;
-    },
-    error: (err) => console.error('Fehler bei Bestellung:', err),
-  });
-}
+    this.http.post(`${environment.apiBaseUrl}order/place/`, payload, {
+      withCredentials: true,
+    })
+    .subscribe({
+      next: () => {
+        this.cartService.clearCart();
+        this.successMessage = 'Danke für deine Bestellung!';
+        this.showSuccessAlert = true;
+      },
+      error: (err) => console.error('Fehler bei Bestellung:', err),
+    });
+  }
 }

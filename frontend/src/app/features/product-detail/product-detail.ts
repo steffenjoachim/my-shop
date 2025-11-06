@@ -22,31 +22,28 @@ import { Subscription } from 'rxjs';
         </h1>
 
         <!-- 🖼 Hauptbild -->
-        @if (product.main_image || product.external_image) {
         <img
-          [src]="sanitizeImageUrl(product.main_image || product.external_image)"
+          [src]="sanitizeImageUrl(product.image_url)"
           alt="{{ product.title }}"
           class="w-full max-h-80 object-contain mb-6 rounded"
         />
-        }
 
         <!-- 🖼 Zusatzbilder -->
         @if (productImages.length > 0) {
         <div class="flex gap-3 overflow-x-auto mb-6">
           @for (img of productImages; track img.id) {
-          <img
-            [src]="sanitizeImageUrl(img.image)"
-            alt="Zusatzbild"
-            class="h-24 w-auto object-contain rounded border"
-          />
+            <img
+              [src]="img.image"
+              alt="Zusatzbild"
+              class="h-24 w-auto object-contain rounded border"
+            />
           }
         </div>
         }
 
-        <!-- 📜 Beschreibung -->
         <div class="mb-4 text-gray-600 space-y-2">
           @for (line of descriptionLines; track line) {
-          <p>{{ line }}</p>
+            <p>{{ line }}</p>
           }
         </div>
 
@@ -54,74 +51,70 @@ import { Subscription } from 'rxjs';
           {{ product.price }} €
         </p>
 
+        <!-- Bewertungen (Placeholder) -->
         <div class="mb-6">
-          <div
-            class="flex items-center gap-1 text-2xl text-gray-400"
-            aria-hidden="true"
-            title="Bewertungen"
-          >
-            <span>☆</span><span>☆</span><span>☆</span><span>☆</span
-            ><span>☆</span>
+          <div class="flex items-center gap-1 text-2xl text-gray-400">
+            <span>☆</span><span>☆</span><span>☆</span><span>☆</span><span>☆</span>
           </div>
           <div class="text-xs text-gray-600 mb-4">
             Bis jetzt noch keine Bewertungen vorhanden.
           </div>
         </div>
 
-        <!-- 🧩 Attribute / Varianten -->
+        <!-- Attribute -->
         @for (attr of dynamicAttributes(); track attr.name) {
-        <div class="mb-6">
-          <span class="block font-medium mb-2">
-            {{ attr.name | titlecase }}:
-          </span>
+          <div class="mb-6">
+            <span class="block font-medium mb-2">
+              {{ attr.name | titlecase }}:
+            </span>
 
-          <div class="flex gap-3 flex-wrap">
-            @for (val of attr.values; track val.value) {
-            <button
-              type="button"
-              (click)="selectAttribute(attr.name, val.value)"
-              [disabled]="val.stock === 0"
-              [ngClass]="{
-                'ring-2 ring-blue-500 scale-105':
-                  selectedAttributes()[attr.name] === val.value,
-                'opacity-50 cursor-not-allowed': val.stock === 0
-              }"
-              [ngStyle]="getAttributeStyle(attr.name, val.value)"
-              class="transition-transform duration-150 shadow-sm focus:outline-none"
-            >
-              @if (!isColorAttribute(attr.name)) {
-              {{ val.value }}
+            <div class="flex gap-3 flex-wrap">
+              @for (val of attr.values; track val.value) {
+                <button
+                  type="button"
+                  (click)="selectAttribute(attr.name, val.value)"
+                  [disabled]="val.stock === 0"
+                  [ngClass]="{
+                    'ring-2 ring-blue-500 scale-105':
+                      selectedAttributes()[attr.name] === val.value,
+                    'opacity-50 cursor-not-allowed': val.stock === 0
+                  }"
+                  [ngStyle]="getAttributeStyle(attr.name, val.value)"
+                  class="transition-transform duration-150 shadow-sm focus:outline-none"
+                >
+                  @if (!isColorAttribute(attr.name)) {
+                    {{ val.value }}
+                  }
+                </button>
               }
-            </button>
-            }
+            </div>
           </div>
-        </div>
         }
 
-        <!-- 📦 Lagerbestand-Hinweis -->
+        <!-- Lagerhinweise -->
         @if (getCurrentStock() === 0) {
-        <div
-          class="mt-3 p-3 rounded-lg text-center font-medium bg-gray-200 text-gray-700 border border-gray-300"
-        >
-          Produkt momentan nicht verfügbar!
-        </div>
+          <div
+            class="mt-3 p-3 rounded-lg text-center font-medium bg-gray-200 text-gray-700 border border-gray-300"
+          >
+            Produkt momentan nicht verfügbar!
+          </div>
         } @else if (shouldShowStockWarning()) {
-        <div
-          class="mt-3 p-3 rounded-lg text-center font-medium"
-          [ngClass]="getStockWarningClass()"
-        >
-          Nur noch {{ getCurrentStock() }} Stück verfügbar
-        </div>
+          <div
+            class="mt-3 p-3 rounded-lg text-center font-medium"
+            [ngClass]="getStockWarningClass()"
+          >
+            Nur noch {{ getCurrentStock() }} Stück verfügbar
+          </div>
         }
 
         <!-- Lieferzeit -->
         @if (product.delivery_time) {
-        <div class="mb-4 mt-4 text-gray-700 font-medium">
-          🚚 Lieferzeit: {{ displayDeliveryTime(product.delivery_time) }}
-        </div>
+          <div class="mb-4 mt-4 text-gray-700 font-medium">
+            🚚 Lieferzeit: {{ displayDeliveryTime(product.delivery_time) }}
+          </div>
         }
 
-        <!-- 🛒 In den Warenkorb -->
+        <!-- In den Warenkorb -->
         <button
           (click)="addToCart()"
           [disabled]="!canAddToCart()"
@@ -131,7 +124,6 @@ import { Subscription } from 'rxjs';
           In den Warenkorb
         </button>
 
-        <!-- ⚠️ Popup -->
         <app-popup-alert
           [message]="alertMessage"
           [visible]="showWarning()"
@@ -161,7 +153,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   alertMessage = '';
   alertType: 'success' | 'info' | 'error' = 'info';
 
-  /** 🎨 Farb-Map für visuelle Kreise */
   private colorMap: Record<string, string> = {
     rot: 'red',
     blau: 'blue',
@@ -186,7 +177,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       this.loadProduct(id);
     }
 
-    // 🎯 Event-Listener für Bestellabschluss
     window.addEventListener('orderCompleted', this.handleOrderCompleted);
   }
 
@@ -195,46 +185,44 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     window.removeEventListener('orderCompleted', this.handleOrderCompleted);
   }
 
-  /** 🎯 Handler für Bestellabschluss-Event */
-  private handleOrderCompleted = (event: Event) => {
-    console.log(
-      'Bestellung abgeschlossen, Produktdaten werden aktualisiert...'
-    );
+  private handleOrderCompleted = () => {
     const currentId = this.route.snapshot.paramMap.get('id');
     if (currentId) {
       this.loadProduct(currentId);
     }
   };
 
-  /** 🔄 Produktdaten laden */
   private loadProduct(id: string) {
     this.http
       .get<Product>(`${environment.apiBaseUrl}products/${id}/`)
       .subscribe({
         next: (product) => {
           this.product = product;
-          this.descriptionLines =
-            product.description
-              ?.split(/\r?\n/)
-              .filter((l) => l.trim() !== '') || [];
 
-          // 🧩 Attribute aus generischen Variation-Attributen ableiten
-          const grouped: Record<string, { value: string; stock: number }[]> =
-            {};
+          this.descriptionLines =
+            product.description?.split(/\r?\n/).filter((l) => l.trim() !== '') ||
+            [];
+
+          // Attribute gruppieren
+          const grouped: Record<
+            string,
+            { value: string; stock: number }[]
+          > = {};
 
           (product.variations || []).forEach((variation) => {
-            if (variation.attributes && variation.attributes.length > 0) {
+            // Neue Struktur
+            if (variation.attributes?.length) {
               variation.attributes.forEach((attr) => {
                 const typeName = attr.attribute_type;
                 if (!grouped[typeName]) grouped[typeName] = [];
 
-                // Prüfen, ob der Wert existiert
-                const existingValue = grouped[typeName].find(
+                const existing = grouped[typeName].find(
                   (v) => v.value === attr.value
                 );
-                if (existingValue) {
-                  existingValue.stock = Math.max(
-                    existingValue.stock,
+
+                if (existing) {
+                  existing.stock = Math.max(
+                    existing.stock,
                     variation.stock ?? 0
                   );
                 } else {
@@ -246,29 +234,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
               });
               return;
             }
-
-            // 🧩 Fallback Altstruktur (color / size)
-            if (variation.color) {
-              if (!grouped['Farbe']) grouped['Farbe'] = [];
-              if (!grouped['Farbe'].some((v) => v.value === variation.color)) {
-                grouped['Farbe'].push({
-                  value: variation.color,
-                  stock: variation.stock ?? 0,
-                });
-              }
-            }
-            if (variation.size) {
-              if (!grouped['Größe']) grouped['Größe'] = [];
-              if (!grouped['Größe'].some((v) => v.value === variation.size)) {
-                grouped['Größe'].push({
-                  value: variation.size,
-                  stock: variation.stock ?? 0,
-                });
-              }
-            }
           });
 
-          // 🔢 Sortierung für Größenattribute
           const attrsArray = Object.entries(grouped).map(([name, values]) => {
             if (this.isSizeAttribute(name)) {
               values = this.sortSizes(values);
@@ -278,77 +245,66 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
           this.attributes.set(attrsArray);
 
-          // 🟢 Auto-Auswahl bei Einzelauswahl
-          const autoSelected: { [key: string]: string } = {};
+          const autoSelected: Record<string, string> = {};
           attrsArray.forEach((attr) => {
             if (attr.values.length === 1 && attr.values[0].stock > 0) {
               autoSelected[attr.name] = attr.values[0].value;
             }
           });
+
           this.selectedAttributes.set(autoSelected);
         },
-        error: (err) => console.error('Fehler beim Laden des Produkts:', err),
       });
   }
 
-  /** 🖼 Zusatzbilder */
-  get productImages(): { id: number; image: string }[] {
-    return (this.product?.images as { id: number; image: string }[]) ?? [];
+  get productImages() {
+    return (
+      this.product?.images?.map((img) => ({
+        id: img.id,
+        image: this.sanitizeImageUrl(img.image),
+      })) ?? []
+    );
   }
 
-  /** 🧹 Korrigiert fehlerhafte URLs */
   sanitizeImageUrl(url?: string | null): string {
     if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+
+    url = url.trim().replace(/^\/+/, '');
+
     if (url.startsWith('https:/') && !url.startsWith('https://')) {
-      return url.replace('https:/', 'https://');
+      url = url.replace('https:/', 'https://');
     }
+
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
+
     return `${environment.apiBaseUrl.replace('/api/', '')}${url}`;
   }
 
-  /** 🔁 Getter für dynamische Attribute */
   dynamicAttributes() {
     return this.attributes();
   }
 
-  /** Prüft, ob Attribut eine Größe ist */
   isSizeAttribute(name: string): boolean {
     const lower = name.toLowerCase();
     return lower === 'size' || lower === 'größe' || lower === 'groesse';
   }
 
-  /** Sortiert Größen in der richtigen Reihenfolge */
-  sortSizes(values: { value: string; stock: number }[]): {
-    value: string;
-    stock: number;
-  }[] {
-    const sizeOrder = [
-      'XS',
-      'S',
-      'M',
-      'L',
-      'XL',
-      'XXL',
-      'XXXL',
-      '3XL',
-      '4XL',
-      '5XL',
-    ];
+  sortSizes(values: { value: string; stock: number }[]) {
+    const order = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '3XL'];
 
     return values.sort((a, b) => {
-      const aIndex = sizeOrder.indexOf(a.value.toUpperCase());
-      const bIndex = sizeOrder.indexOf(b.value.toUpperCase());
+      const ai = order.indexOf(a.value.toUpperCase());
+      const bi = order.indexOf(b.value.toUpperCase());
 
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
       return a.value.localeCompare(b.value);
     });
   }
 
-  /** Attribut auswählen */
   selectAttribute(name: string, value: string) {
     this.selectedAttributes.update((prev) => ({
       ...prev,
@@ -356,29 +312,24 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }));
   }
 
-  /** Prüft, ob Attribut eine Farbe ist */
   isColorAttribute(name: string): boolean {
-    const lower = name.toLowerCase();
-    return lower === 'color' || lower === 'farbe';
+    return ['color', 'farbe'].includes(name.toLowerCase());
   }
 
-  /** 🎨 Style für Buttons */
   getAttributeStyle(attrName: string, value: string) {
     const isColor = this.isColorAttribute(attrName);
     const lower = value.toLowerCase();
-    const colorValue =
-      this.colorMap[lower] || (CSS.supports('color', lower) ? lower : '');
+    const color =
+      this.colorMap[lower] ||
+      (CSS.supports('color', lower) ? lower : '#888888');
 
     if (isColor) {
-      const color = colorValue || (lower === 'schwarz' ? '#000000' : '#888888');
       return {
         backgroundColor: color,
         width: '40px',
         height: '40px',
         borderRadius: '50%',
-        border: color === 'white' ? '2px solid #d1d5db' : '1px solid #999',
-        cursor: 'pointer',
-        transition: 'transform 0.15s ease',
+        border: color === 'white' ? '2px solid #ccc' : '1px solid #999',
       };
     }
 
@@ -387,98 +338,66 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       borderRadius: '0.375rem',
       border: '1px solid #ccc',
       backgroundColor: 'white',
-      fontWeight: '600',
-      cursor: 'pointer',
     };
   }
 
-  /** Button aktiv, wenn alle Attribute gewählt und Lager > 0 */
   canAddToCart(): boolean {
     if (!this.product) return false;
+
     const attrs = this.attributes();
-    if (!attrs.length) return true;
-    const allSelected = attrs.every(
-      (attr) => !!this.selectedAttributes()[attr.name]
-    );
-    if (!allSelected) return false;
+    const selected = this.selectedAttributes();
 
-    const selectedCombo = this.selectedAttributes();
-    const matched = this.product.variations?.find((variation) => {
-      if (variation.attributes && variation.attributes.length > 0) {
-        const requiredPairs = Object.entries(selectedCombo);
-        return requiredPairs.every(([typeName, val]) =>
-          variation.attributes!.some(
-            (a) => a.attribute_type === typeName && a.value === val
-          )
-        );
-      }
-      const colorOk =
-        !variation.color || variation.color === selectedCombo['Farbe'];
-      const sizeOk =
-        !variation.size || variation.size === selectedCombo['Größe'];
-      return colorOk && sizeOk;
-    });
+    if (attrs.length > 0) {
+      const allSelected = attrs.every((a) => !!selected[a.name]);
+      if (!allSelected) return false;
+    }
 
-    return matched ? (matched.stock ?? 0) > 0 : false;
+    return this.getCurrentStock() > 0;
   }
 
-  /** 📦 Aktueller Lagerbestand für gewählte Kombination */
   getCurrentStock(): number {
     if (!this.product) return 0;
 
-    const selectedCombo = this.selectedAttributes();
-    const matched = this.product.variations?.find((variation) => {
-      if (variation.attributes && variation.attributes.length > 0) {
-        const requiredPairs = Object.entries(selectedCombo);
-        return requiredPairs.every(([typeName, val]) =>
-          variation.attributes!.some(
-            (a) => a.attribute_type === typeName && a.value === val
-          )
-        );
-      }
-      const colorOk =
-        !variation.color || variation.color === selectedCombo['Farbe'];
-      const sizeOk =
-        !variation.size || variation.size === selectedCombo['Größe'];
-      return colorOk && sizeOk;
-    });
+    const selected = this.selectedAttributes();
 
-    return matched ? matched.stock ?? 0 : 0;
+    const match = this.product.variations?.find((variation) =>
+      Object.entries(selected).every(([typeName, value]) =>
+        variation.attributes?.some(
+          (a) =>
+            a.attribute_type === typeName &&
+            a.value.toLowerCase() === value.toLowerCase()
+        )
+      )
+    );
+
+    return match ? match.stock ?? 0 : 0;
   }
 
-  /** Liefert lesbaren Lieferzeit‑Text (String oder Objekt) */
-  displayDeliveryTime(dt?: string | DeliveryTime | null): string {
+  displayDeliveryTime(dt: DeliveryTime | string | null): string {
     if (!dt) return '';
     if (typeof dt === 'string') return dt;
 
-    // Objekt: bevorzugt name
-    if (dt.name && dt.name.trim() !== '') return dt.name;
+    if (dt.name?.trim()) return dt.name;
 
     const min = dt.min_days ?? '';
     const max = dt.max_days ?? '';
     const dash = min && max ? '–' : '';
-    const combined = `${min}${dash}${max}`.trim();
 
-    return combined !== '' ? combined : '';
+    return `${min}${dash}${max}`.trim();
   }
 
-  /** 📦 Prüft, ob Lagerbestand-Hinweis angezeigt werden soll */
   shouldShowStockWarning(): boolean {
     const stock = this.getCurrentStock();
     return stock > 0 && stock <= 10;
   }
 
-  /** 📦 CSS-Klasse für Lagerbestand-Hinweis */
   getStockWarningClass(): string {
     const stock = this.getCurrentStock();
-    if (stock <= 3) {
-      return 'bg-red-100 text-red-800 border border-red-300';
-    } else {
-      return 'bg-green-100 text-green-800 border border-green-300';
-    }
+    return stock <= 3
+      ? 'bg-red-100 text-red-800 border border-red-300'
+      : 'bg-green-100 text-green-800 border border-green-300';
   }
 
-  /** 🛒 In den Warenkorb legen */
   addToCart() {
     if (!this.auth.isLoggedIn()) {
       this.alertMessage = 'Bitte melde dich zuerst an.';
@@ -489,7 +408,11 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }
 
     if (this.product) {
-      this.cartService.addToCart(this.product, 1, this.selectedAttributes());
+      this.cartService.addToCart(
+        this.product,
+        1,
+        this.selectedAttributes()
+      );
       this.alertMessage = 'Produkt wurde in den Warenkorb gelegt.';
       this.alertType = 'success';
       this.showWarning.set(true);
