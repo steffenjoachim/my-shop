@@ -13,7 +13,7 @@ import { Product } from '../../../shared/models/products.model';
     >
       <a [routerLink]="['/products', product.id]" class="block relative">
         <img
-          [src]="product.main_image || product.external_image || 'https://via.placeholder.com/300x200?text=Kein+Bild'"
+          [src]="getImageUrl()"
           [alt]="product.title"
           class="w-full h-48 object-contain p-4 bg-gray-50"
         />
@@ -44,4 +44,12 @@ import { Product } from '../../../shared/models/products.model';
 })
 export class ProductCardComponent {
   @Input() product!: Product;
+
+  getImageUrl(): string {
+    if (this.product?.image_url) return this.product.image_url;
+    if (this.product?.main_image) return this.product.main_image;
+    if (this.product?.external_image) return this.product.external_image;
+
+    return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+  }
 }

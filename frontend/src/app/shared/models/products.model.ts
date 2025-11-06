@@ -1,35 +1,60 @@
-export interface DeliveryTime {
-  id?: number;
-  name?: string;
-  min_days?: number;
-  max_days?: number;
-  is_default?: boolean;
+// ✅ Produktbilder
+export interface ProductImage {
+  id: number;
+  image: string;
 }
 
+// ✅ Attribut-Werte
+export interface AttributeValue {
+  id: number;
+  value: string;
+  attribute_type: string;
+}
+
+// ✅ Produktvariationen
+export interface ProductVariation {
+  id: number;
+  stock: number;
+  attributes: AttributeValue[];
+}
+
+// ✅ Lieferzeit
+export interface DeliveryTime {
+  id: number;
+  name: string;
+  min_days: number;
+  max_days: number;
+  is_default: boolean;
+}
+
+// ✅ Produkt
 export interface Product {
   id: number;
   title: string;
+  description: string;
   price: number;
-  main_image: string;
-  description?: string;
-  variations?: ProductVariation[];
-  stock?: number;
-  external_image?: string;
-  images?: { id: number; image: string }[];
-  delivery_time?: string | DeliveryTime; 
+
+  main_image: string | null;
+  external_image: string | null;
+  image_url: string | null;
+
+  images: ProductImage[];
+  variations: ProductVariation[];
+  delivery_time: DeliveryTime | null;
+
+  rating_avg: number;
+  rating_count: number;
+  recent_reviews: any[];
 }
 
-export interface ProductVariation {
-  // Generische Attributdarstellung aus dem Backend (ManyToMany AttributeValue)
-  attributes?: { attribute_type: string; value: string }[];
-  // Kompatibilität zu älteren Datenständen (direkte Felder)
-  color?: string;
-  size?: string;
-  stock: number;
-  price?: number;
-}
+export interface CartItem {
+  id: number;
+  title: string;
+  price: number;
 
-export interface CartItem extends Product {
+  main_image: string | null;
+  selectedAttributes: { [key: string]: string };
+
   quantity: number;
-  selectedAttributes?: { [key: string]: string };
 }
+

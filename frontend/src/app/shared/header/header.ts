@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { PrimaryButton } from '../primary-button/primary-button';
 import { CartService } from '../services/cart.service';
-import { AuthService } from '../services/auth.service';
 import { CartItem } from '../models/products.model';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -91,7 +91,7 @@ export class Header {
   // ✅ Computed Signal für Cart-Count
   cartCount = computed(() =>
   this.cartService
-    .items()
+    .getCartItems()
     .reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
 );
 

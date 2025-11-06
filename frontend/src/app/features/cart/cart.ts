@@ -100,10 +100,10 @@ export class Cart {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  products = computed(() => this.cartService.items());
+  products = computed(() => this.cartService.getCartItems());
 
   totalPrice = computed(() =>
-    this.cartService.items().reduce((sum, p) => sum + p.price * p.quantity, 0)
+    this.cartService.getCartItems().reduce((sum, p) => sum + p.price * p.quantity, 0)
   );
 
   showWarning = signal(false);
