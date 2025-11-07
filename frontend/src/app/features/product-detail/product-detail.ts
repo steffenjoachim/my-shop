@@ -41,6 +41,7 @@ import { Subscription } from 'rxjs';
         </div>
         }
 
+        <!-- Beschreibung -->
         <div class="mb-4 text-gray-600 space-y-2">
           @for (line of descriptionLines; track line) {
             <p>{{ line }}</p>
@@ -51,7 +52,7 @@ import { Subscription } from 'rxjs';
           {{ product.price }} €
         </p>
 
-        <!-- Bewertungen (Placeholder) -->
+        <!-- Bewertungen -->
         <div class="mb-6">
           <div class="flex items-center gap-1 text-2xl text-gray-400">
             <span>☆</span><span>☆</span><span>☆</span><span>☆</span><span>☆</span>
@@ -173,9 +174,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.loadProduct(id);
-    }
+    if (id) this.loadProduct(id);
 
     window.addEventListener('orderCompleted', this.handleOrderCompleted);
   }
@@ -187,9 +186,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   private handleOrderCompleted = () => {
     const currentId = this.route.snapshot.paramMap.get('id');
-    if (currentId) {
-      this.loadProduct(currentId);
-    }
+    if (currentId) this.loadProduct(currentId);
   };
 
   private loadProduct(id: string) {
@@ -203,14 +200,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
             product.description?.split(/\r?\n/).filter((l) => l.trim() !== '') ||
             [];
 
-          // Attribute gruppieren
           const grouped: Record<
             string,
             { value: string; stock: number }[]
           > = {};
 
           (product.variations || []).forEach((variation) => {
-            // Neue Struktur
             if (variation.attributes?.length) {
               variation.attributes.forEach((attr) => {
                 const typeName = attr.attribute_type;
@@ -232,7 +227,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
                   });
                 }
               });
-              return;
             }
           });
 
@@ -254,6 +248,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
           this.selectedAttributes.set(autoSelected);
         },
+        error: (err) => console.error('Fehler beim Laden des Produkts:', err),
       });
   }
 
@@ -266,20 +261,33 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     );
   }
 
+  // ✅ Die zentrale Normalisierung
   sanitizeImageUrl(url?: string | null): string {
     if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
 
-    url = url.trim().replace(/^\/+/, '');
+    let s = String(url).trim();
 
-    if (url.startsWith('https:/') && !url.startsWith('https://')) {
-      url = url.replace('https:/', 'https://');
-    }
+    // remove leading slashes
+    s = s.replace(/^\/+/, '');
 
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
+    // decode %3A → :
+    try {
+      const decoded = decodeURIComponent(s);
+      if (decoded && decoded !== s) s = decoded;
+    } catch {}
 
-    return `${environment.apiBaseUrl.replace('/api/', '')}${url}`;
+    // fix wrong https:/ → https://
+    if (s.startsWith('https:/') && !s.startsWith('https://'))
+      s = s.replace('https:/', 'https://');
+    if (s.startsWith('http:/') && !s.startsWith('http://'))
+      s = s.replace('http:/', 'http://');
+
+    // already correct absolute URL
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+
+    // fallback: local media
+    const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
+    return `${host}/${s}`;
   }
 
   dynamicAttributes() {
@@ -301,6 +309,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       if (ai !== -1 && bi !== -1) return ai - bi;
       if (ai !== -1) return -1;
       if (bi !== -1) return 1;
+
       return a.value.localeCompare(b.value);
     });
   }
@@ -376,7 +385,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   displayDeliveryTime(dt: DeliveryTime | string | null): string {
     if (!dt) return '';
     if (typeof dt === 'string') return dt;
-
     if (dt.name?.trim()) return dt.name;
 
     const min = dt.min_days ?? '';
@@ -413,6 +421,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         1,
         this.selectedAttributes()
       );
+
       this.alertMessage = 'Produkt wurde in den Warenkorb gelegt.';
       this.alertType = 'success';
       this.showWarning.set(true);

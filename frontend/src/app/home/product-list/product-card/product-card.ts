@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Product } from '../../../shared/models/products.model';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-product-card',
@@ -45,10 +46,45 @@ import { Product } from '../../../shared/models/products.model';
 export class ProductCardComponent {
   @Input() product!: Product;
 
+  // vereinheitlichte Normalisierung für alle Komponenten
+  private normalizeImageUrl(url?: string | null): string {
+    if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+
+    let s = String(url).trim();
+
+    // 1) Entferne wiederholte führende Slashes
+    s = s.replace(/^\/+/, '');
+
+    // 2) decode percent-encoding falls vorhanden (sicher in try/catch)
+    try {
+      const decoded = decodeURIComponent(s);
+      // nur übernehmen, wenn decode sinnvoll aussieht
+      if (decoded && decoded !== s) s = decoded;
+    } catch (e) {
+      // ignore decode errors, benutze das originale s
+    }
+
+    // 3) Korrigiere falsch formatierte schema-Strings
+    if (s.startsWith('https:/') && !s.startsWith('https://')) {
+      s = s.replace('https:/', 'https://');
+    }
+    if (s.startsWith('http:/') && !s.startsWith('http://')) {
+      s = s.replace('http:/', 'http://');
+    }
+
+    // 4) Wenn es jetzt eine absolute URL ist, zurückgeben
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+
+    // 5) Sonst base-url + s (z.B. lokale media-pfade)
+    const host = environment.apiBaseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    return `${host}/${s}`;
+  }
+
   getImageUrl(): string {
-    if (this.product?.image_url) return this.product.image_url;
-    if (this.product?.main_image) return this.product.main_image;
-    if (this.product?.external_image) return this.product.external_image;
+    // priorität: image_url, main_image, external_image, placeholder
+    if (this.product?.image_url) return this.normalizeImageUrl(this.product.image_url);
+    if (this.product?.main_image) return this.normalizeImageUrl(this.product.main_image);
+    if (this.product?.external_image) return this.normalizeImageUrl(this.product.external_image);
 
     return 'https://via.placeholder.com/300x200?text=Kein+Bild';
   }
