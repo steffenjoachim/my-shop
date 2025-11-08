@@ -12,7 +12,7 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-    
+
 
 class DeliveryTime(models.Model):
     name = models.CharField(max_length=100)
@@ -20,7 +20,6 @@ class DeliveryTime(models.Model):
     max_days = models.PositiveIntegerField()
     is_default = models.BooleanField(default=False)
 
-    # ✅ fehlerhafte slug-Zeile ENTFERNT
     def __str__(self):
         return f"{self.name} ({self.min_days}-{self.max_days} Tage)"
 
@@ -30,7 +29,9 @@ class Product(models.Model):
     slug = models.SlugField(max_length=255, unique=False, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    main_image = models.ImageField(upload_to="products/", blank=True, null=True)
+
+    # SPEICHERUNG als CharField → KEIN .url !!!
+    main_image = models.CharField(max_length=500, blank=True, null=True)
     external_image = models.URLField(blank=True, null=True)
 
     category = models.ForeignKey(
@@ -49,7 +50,6 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        # ✅ Automatische Slug-Generierung
         if not self.slug:
             generated = slugify(self.title)
             self.slug = generated or f"product-{self.id or ''}"
@@ -60,11 +60,29 @@ class Product(models.Model):
 
     @property
     def image_url(self):
-        """Gibt das korrekte Bild zurück — lokal oder extern."""
+        """
+        Gibt eine korrekte Bild-URL zurück,
+        egal ob main_image ein relativer Pfad oder eine vollständige URL ist.
+        """
+
+        # Vollständige URL?
+        if self.main_image and (
+            self.main_image.startswith("http://")
+            or self.main_image.startswith("https://")
+        ):
+            return self.main_image
+
+        # Lokaler Pfad wie "products/img1.jpg" oder "/media/img1.jpg"
         if self.main_image:
-            return self.main_image.url
+            if self.main_image.startswith("/"):
+                return self.main_image  # schon ein vollständiger Pfad
+            return f"{settings.MEDIA_URL}{self.main_image}"
+
+        # Externes Bild
         if self.external_image:
             return self.external_image
+
+        # Fallback
         return "/media/default.png"
 
     @property
@@ -75,14 +93,27 @@ class Product(models.Model):
 class ProductImage(models.Model):
     """Zusätzliche Bilder zu einem Produkt"""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField(upload_to="products/")
+
+    # Wieder CharField → KEIN .url !!!
+    image = models.CharField(max_length=500)
 
     def __str__(self):
         return f"Image for {self.product.title}"
 
+    @property
+    def image_url(self):
+        """Wie beim Produkt — volle oder relative URL korrekt zurückgeben"""
+
+        if self.image.startswith("http://") or self.image.startswith("https://"):
+            return self.image
+
+        if self.image.startswith("/"):
+            return self.image
+
+        return f"{settings.MEDIA_URL}{self.image}"
+
 
 class AttributeType(models.Model):
-    """Art des Attributs (z. B. Farbe, Größe)"""
     name = models.CharField(max_length=50)
 
     def __str__(self):
@@ -90,7 +121,6 @@ class AttributeType(models.Model):
 
 
 class AttributeValue(models.Model):
-    """Möglicher Wert eines Attributs (z. B. Rot, M, XL)"""
     attribute_type = models.ForeignKey(AttributeType, on_delete=models.CASCADE, related_name="values")
     value = models.CharField(max_length=50)
 
@@ -124,7 +154,6 @@ class ProductVariation(models.Model):
 
     @property
     def variation_key(self):
-        """Ein stabiler Key für Varianten-Vergleiche."""
         return "|".join([f"{k}:{v}" for k, v in self.attributes_dict.items()])
 
 
@@ -142,13 +171,11 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     paid = models.BooleanField(default=False)
 
-    # 🏠 Liefer-/Rechnungsadresse
     name = models.CharField(max_length=150, blank=True, null=True)
     street = models.CharField(max_length=200, blank=True, null=True)
     zip = models.CharField(max_length=20, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
 
-    # 💳 Zahlungsart
     payment_method = models.CharField(max_length=50, default="paypal")
 
     def __str__(self):
@@ -156,7 +183,6 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    """Einzelposition in einer Bestellung (inkl. Produktdaten zum Zeitpunkt der Bestellung)"""
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     variation = models.ForeignKey(ProductVariation, null=True, blank=True, on_delete=models.PROTECT)
@@ -172,7 +198,6 @@ class OrderItem(models.Model):
 
 
 class Review(models.Model):
-    """Produktbewertung (1-5 Sterne)"""
     product = models.ForeignKey(Product, related_name="reviews", on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_reviews")
     order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.SET_NULL)
@@ -200,10 +225,9 @@ def _recalculate_product_rating(product: Product):
     avg = agg["avg"] or 0
     cnt = agg["cnt"] or 0
 
-    if product.rating_count != cnt or float(product.rating_avg) != float(avg):
-        product.rating_count = cnt
-        product.rating_avg = round(float(avg) if avg is not None else 0.0, 2)
-        product.save(update_fields=["rating_avg", "rating_count"])
+    product.rating_count = cnt
+    product.rating_avg = round(float(avg), 2)
+    product.save(update_fields=["rating_avg", "rating_count"])
 
 
 @receiver(post_save, sender=Review)
