@@ -263,32 +263,40 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   // ✅ Die zentrale Normalisierung
   sanitizeImageUrl(url?: string | null): string {
-    if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+  if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
 
-    let s = String(url).trim();
+  let s = String(url).trim();
 
-    // remove leading slashes
-    s = s.replace(/^\/+/, '');
+  // remove leading slashes
+  s = s.replace(/^\/+/, '');
 
-    // decode %3A → :
-    try {
-      const decoded = decodeURIComponent(s);
-      if (decoded && decoded !== s) s = decoded;
-    } catch {}
+  // decode %3A → :
+  try {
+    const decoded = decodeURIComponent(s);
+    if (decoded && decoded !== s) s = decoded;
+  } catch {}
 
-    // fix wrong https:/ → https://
-    if (s.startsWith('https:/') && !s.startsWith('https://'))
-      s = s.replace('https:/', 'https://');
-    if (s.startsWith('http:/') && !s.startsWith('http://'))
-      s = s.replace('http:/', 'http://');
-
-    // already correct absolute URL
-    if (s.startsWith('http://') || s.startsWith('https://')) return s;
-
-    // fallback: local media
-    const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
-    return `${host}/${s}`;
+  // ✅ FIX: Amazon images stored like “/https:/…”
+  if (s.startsWith('https:/') && !s.startsWith('https://')) {
+    s = s.replace('https:/', 'https://');
   }
+
+  if (s.startsWith('/https:/')) {
+    s = s.replace('/https:/', 'https://');
+  }
+
+  if (s.startsWith('/http:/')) {
+    s = s.replace('/http:/', 'http://');
+  }
+
+  // ✅ absolute URL
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+
+  // ✅ fallback for local media
+  const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
+  return `${host}/${s}`;
+}
+
 
   dynamicAttributes() {
     return this.attributes();
