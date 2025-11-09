@@ -14,9 +14,9 @@ from .models import (
     OrderItem,
 )
 
-# ============================================================
+# ==================================================================
 # 🖼️ Produktbilder
-# ============================================================
+# ==================================================================
 
 class ProductImageSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
@@ -26,18 +26,29 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ["id", "image"]
 
     def get_image(self, obj):
+        """
+        Produktbild-URL generieren.
+        Da 'image' ein CharField ist, niemals .url verwenden.
+        """
         if not obj.image:
             return None
 
-        request = self.context.get("request")
-        url = obj.image.url
+        image = str(obj.image).lstrip("/")
 
+        # Externe URL?
+        if image.startswith("http://") or image.startswith("https://"):
+            return image
+
+        # Lokale Datei → /media/
+        url = "/media/" + image
+
+        request = self.context.get("request")
         return request.build_absolute_uri(url) if request else url
 
 
-# ============================================================
-# 🎨 Attribute (Farbe, Größe)
-# ============================================================
+# ==================================================================
+# 🎨 Attribute
+# ==================================================================
 
 class AttributeValueSerializer(serializers.ModelSerializer):
     attribute_type = serializers.StringRelatedField()
@@ -47,9 +58,9 @@ class AttributeValueSerializer(serializers.ModelSerializer):
         fields = ["id", "value", "attribute_type"]
 
 
-# ============================================================
+# ==================================================================
 # 🧩 Produktvariationen
-# ============================================================
+# ==================================================================
 
 class ProductVariationSerializer(serializers.ModelSerializer):
     attributes = AttributeValueSerializer(many=True)
@@ -59,9 +70,9 @@ class ProductVariationSerializer(serializers.ModelSerializer):
         fields = ["id", "attributes", "stock"]
 
 
-# ============================================================
-# 🏷️ Kategorie
-# ============================================================
+# ==================================================================
+# 🏷️ Kategorien
+# ==================================================================
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -69,9 +80,9 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
-# ============================================================
+# ==================================================================
 # 🚚 Lieferzeit
-# ============================================================
+# ==================================================================
 
 class DeliveryTimeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -79,9 +90,9 @@ class DeliveryTimeSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "min_days", "max_days", "is_default"]
 
 
-# ============================================================
+# ==================================================================
 # 🛍️ Produkt
-# ============================================================
+# ==================================================================
 
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
@@ -89,7 +100,7 @@ class ProductSerializer(serializers.ModelSerializer):
     variations = ProductVariationSerializer(many=True, read_only=True)
     delivery_time = DeliveryTimeSerializer(read_only=True)
 
-    # ✅ Wichtig: eigene korrekt berechnete Felder
+    # Eigene Serializer-Felder
     main_image = serializers.SerializerMethodField()
     external_image = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
@@ -109,7 +120,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "category",
             "main_image",
             "external_image",
-            "image_url",           # ✅ wichtigste Ausgabe!
+            "image_url",
             "images",
             "variations",
             "delivery_time",
@@ -118,54 +129,61 @@ class ProductSerializer(serializers.ModelSerializer):
             "recent_reviews",
         ]
 
-    # ✅ Bild #1: Hauptbild aus MEDIA
+    # ------------------------------------------------------
+    # ✅  Bild #1: main_image (CharField)
+    # ------------------------------------------------------
     def get_main_image(self, obj):
         if not obj.main_image:
             return None
 
-        request = self.context.get("request")
+        img = str(obj.main_image).lstrip("/")
 
-        try:
-            url = obj.main_image.url
-        except:
-            return None
+        if img.startswith("http://") or img.startswith("https://"):
+            return img
 
-        return request.build_absolute_uri(url) if request else url
+        url = "/media/" + img
+        req = self.context.get("request")
 
-    # ✅ Bild #2: externe URL immer korrekt ohne "/"
+        return req.build_absolute_uri(url) if req else url
+
+    # ------------------------------------------------------
+    # ✅ Bild #2: external_image (immer externe URL)
+    # ------------------------------------------------------
     def get_external_image(self, obj):
         if not obj.external_image:
             return None
 
-        url = str(obj.external_image).lstrip("/")
-        return url
+        return str(obj.external_image).lstrip("/")
 
-    # ✅ Bild #3: universelle Bildausgabe → Angular nutzt dieses Feld!
+    # ------------------------------------------------------
+    # ✅ Bild #3: Hauptbild für Angular
+    # ------------------------------------------------------
     def get_image_url(self, obj):
 
-        # Vorrang 1: Lokales Bild
+        # ✅ Vorrang 1: main_image
         if obj.main_image:
-            try:
-                return obj.main_image.url
-            except:
-                pass
+            img = str(obj.main_image).lstrip("/")
+            if img.startswith("http"):
+                return img
+            return "/media/" + img
 
-        # Vorrang 2: Externes Bild
+        # ✅ Vorrang 2: external_image
         if obj.external_image:
-            url = str(obj.external_image).lstrip("/")
-            return url
+            return str(obj.external_image).lstrip("/")
 
-        # Fallback
         return None
 
+    # ------------------------------------------------------
+    # ✅ Bewertungen
+    # ------------------------------------------------------
     def get_recent_reviews(self, obj):
         qs = obj.reviews.filter(approved=True).order_by("-created_at")[:3]
         return ReviewSerializer(qs, many=True).data
 
 
-# ============================================================
-# 🗨️ Bewertungen
-# ============================================================
+# ==================================================================
+# 🗨️ Reviews
+# ==================================================================
 
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField()
@@ -185,9 +203,9 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "user", "approved", "created_at"]
 
 
-# ============================================================
-# 🧾 Bestellung → Einzelposition
-# ============================================================
+# ==================================================================
+# 🧾 Bestellposition
+# ==================================================================
 
 class OrderItemSerializer(serializers.ModelSerializer):
     variation_details = serializers.SerializerMethodField()
@@ -211,13 +229,15 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
         return {
             "id": obj.variation.id,
-            "attributes": AttributeValueSerializer(obj.variation.attributes.all(), many=True).data,
+            "attributes": AttributeValueSerializer(
+                obj.variation.attributes.all(), many=True
+            ).data,
         }
 
 
-# ============================================================
-# 🧾 Bestellung (lesen)
-# ============================================================
+# ==================================================================
+# 🧾 Bestellung
+# ==================================================================
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
