@@ -42,8 +42,8 @@ export interface Product {
   variations: ProductVariation[];
   delivery_time: DeliveryTime | null;
 
-  rating_avg: number;
-  rating_count: number;
+  rating_avg: number | null;
+  rating_count: number | null;
   recent_reviews: any[];
 }
 
@@ -57,4 +57,3 @@ export interface CartItem {
 
   quantity: number;
 }
-

@@ -67,7 +67,7 @@ import { CartService } from '../../../../shared/services/cart.service';
                 (click)="openReview(item)"
                 class="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-semibold"
               >
-                Bewertung
+                Jetzt Bewertung abgeben
               </button>
 
               <button
@@ -172,9 +172,20 @@ export class OrderDetails implements OnInit {
 }
 
 
-  /** ✅ Review Platzhalter */
+  /** ✅ Review öffnen */
   openReview(item: any) {
-    alert("Review-Funktion folgt 👉 später ein Dialog oder eigene Seite");
+    const productId = item.product;
+    const orderId = this.order?.id;
+    
+    if (productId && orderId) {
+      this.router.navigate(['/submit-review', productId], {
+        queryParams: { orderId: orderId }
+      });
+    } else if (productId) {
+      this.router.navigate(['/submit-review', productId]);
+    } else {
+      console.error('Produkt-ID fehlt');
+    }
   }
 
   goBack() {

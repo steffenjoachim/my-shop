@@ -27,11 +27,12 @@ class ProductVariationInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "price", "delivery_time")
+    list_display = ("title", "category", "price", "delivery_time", "rating_avg", "rating_count")
     fields = (
         "title", "description", "price", "main_image", "external_image",
-        "category", "delivery_time"
+        "category", "delivery_time", "rating_avg", "rating_count"
     )
+    readonly_fields = ("rating_avg", "rating_count")
     list_filter = ("category",)
     search_fields = ("title", "description")
     inlines = [ProductImageInline, ProductVariationInline]
