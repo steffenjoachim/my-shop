@@ -47,6 +47,10 @@ class Product(models.Model):
         related_name="products"
     )
 
+    # Bewertungsfelder
+    rating_avg = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
+    rating_count = models.PositiveIntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

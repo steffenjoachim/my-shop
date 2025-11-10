@@ -32,11 +32,11 @@ import { Subscription } from 'rxjs';
         @if (productImages.length > 0) {
         <div class="flex gap-3 overflow-x-auto mb-6">
           @for (img of productImages; track img.id) {
-            <img
-              [src]="img.image"
-              alt="Zusatzbild"
-              class="h-24 w-auto object-contain rounded border"
-            />
+          <img
+            [src]="img.image"
+            alt="Zusatzbild"
+            class="h-24 w-auto object-contain rounded border"
+          />
           }
         </div>
         }
@@ -44,7 +44,7 @@ import { Subscription } from 'rxjs';
         <!-- Beschreibung -->
         <div class="mb-4 text-gray-600 space-y-2">
           @for (line of descriptionLines; track line) {
-            <p>{{ line }}</p>
+          <p>{{ line }}</p>
           }
         </div>
 
@@ -54,65 +54,87 @@ import { Subscription } from 'rxjs';
 
         <!-- Bewertungen -->
         <div class="mb-6">
+          @if (product.rating_count && product.rating_count > 0) {
+          <div class="flex items-center gap-2 mb-2">
+            <div class="flex items-center gap-1 text-2xl">
+              @for (star of getStars(); track $index) {
+              <span
+                [ngClass]="star === '★' ? 'text-yellow-400' : 'text-gray-300'"
+              >
+                {{ star }}
+              </span>
+              }
+            </div>
+            <span class="text-lg font-semibold">{{
+              formatRating(product.rating_avg)
+            }}</span>
+            <span class="text-sm text-gray-600">
+              ({{ product.rating_count }}
+              {{ product.rating_count === 1 ? 'Bewertung' : 'Bewertungen' }})
+            </span>
+          </div>
+          } @else {
           <div class="flex items-center gap-1 text-2xl text-gray-400">
-            <span>☆</span><span>☆</span><span>☆</span><span>☆</span><span>☆</span>
+            <span>☆</span><span>☆</span><span>☆</span><span>☆</span
+            ><span>☆</span>
           </div>
           <div class="text-xs text-gray-600 mb-4">
             Bis jetzt noch keine Bewertungen vorhanden.
           </div>
+          }
         </div>
 
         <!-- Attribute -->
         @for (attr of dynamicAttributes(); track attr.name) {
-          <div class="mb-6">
-            <span class="block font-medium mb-2">
-              {{ attr.name | titlecase }}:
-            </span>
+        <div class="mb-6">
+          <span class="block font-medium mb-2">
+            {{ attr.name | titlecase }}:
+          </span>
 
-            <div class="flex gap-3 flex-wrap">
-              @for (val of attr.values; track val.value) {
-                <button
-                  type="button"
-                  (click)="selectAttribute(attr.name, val.value)"
-                  [disabled]="val.stock === 0"
-                  [ngClass]="{
-                    'ring-2 ring-blue-500 scale-105':
-                      selectedAttributes()[attr.name] === val.value,
-                    'opacity-50 cursor-not-allowed': val.stock === 0
-                  }"
-                  [ngStyle]="getAttributeStyle(attr.name, val.value)"
-                  class="transition-transform duration-150 shadow-sm focus:outline-none"
-                >
-                  @if (!isColorAttribute(attr.name)) {
-                    {{ val.value }}
-                  }
-                </button>
+          <div class="flex gap-3 flex-wrap">
+            @for (val of attr.values; track val.value) {
+            <button
+              type="button"
+              (click)="selectAttribute(attr.name, val.value)"
+              [disabled]="val.stock === 0"
+              [ngClass]="{
+                'ring-2 ring-blue-500 scale-105':
+                  selectedAttributes()[attr.name] === val.value,
+                'opacity-50 cursor-not-allowed': val.stock === 0
+              }"
+              [ngStyle]="getAttributeStyle(attr.name, val.value)"
+              class="transition-transform duration-150 shadow-sm focus:outline-none"
+            >
+              @if (!isColorAttribute(attr.name)) {
+              {{ val.value }}
               }
-            </div>
+            </button>
+            }
           </div>
+        </div>
         }
 
         <!-- Lagerhinweise -->
         @if (getCurrentStock() === 0) {
-          <div
-            class="mt-3 p-3 rounded-lg text-center font-medium bg-gray-200 text-gray-700 border border-gray-300"
-          >
-            Produkt momentan nicht verfügbar!
-          </div>
+        <div
+          class="mt-3 p-3 rounded-lg text-center font-medium bg-gray-200 text-gray-700 border border-gray-300"
+        >
+          Produkt momentan nicht verfügbar!
+        </div>
         } @else if (shouldShowStockWarning()) {
-          <div
-            class="mt-3 p-3 rounded-lg text-center font-medium"
-            [ngClass]="getStockWarningClass()"
-          >
-            Nur noch {{ getCurrentStock() }} Stück verfügbar
-          </div>
+        <div
+          class="mt-3 p-3 rounded-lg text-center font-medium"
+          [ngClass]="getStockWarningClass()"
+        >
+          Nur noch {{ getCurrentStock() }} Stück verfügbar
+        </div>
         }
 
         <!-- Lieferzeit -->
         @if (product.delivery_time) {
-          <div class="mb-4 mt-4 text-gray-700 font-medium">
-            🚚 Lieferzeit: {{ displayDeliveryTime(product.delivery_time) }}
-          </div>
+        <div class="mb-4 mt-4 text-gray-700 font-medium">
+          🚚 Lieferzeit: {{ displayDeliveryTime(product.delivery_time) }}
+        </div>
         }
 
         <!-- In den Warenkorb -->
@@ -197,13 +219,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           this.product = product;
 
           this.descriptionLines =
-            product.description?.split(/\r?\n/).filter((l) => l.trim() !== '') ||
-            [];
+            product.description
+              ?.split(/\r?\n/)
+              .filter((l) => l.trim() !== '') || [];
 
-          const grouped: Record<
-            string,
-            { value: string; stock: number }[]
-          > = {};
+          const grouped: Record<string, { value: string; stock: number }[]> =
+            {};
 
           (product.variations || []).forEach((variation) => {
             if (variation.attributes?.length) {
@@ -263,40 +284,39 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   // ✅ Die zentrale Normalisierung
   sanitizeImageUrl(url?: string | null): string {
-  if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+    if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
 
-  let s = String(url).trim();
+    let s = String(url).trim();
 
-  // remove leading slashes
-  s = s.replace(/^\/+/, '');
+    // remove leading slashes
+    s = s.replace(/^\/+/, '');
 
-  // decode %3A → :
-  try {
-    const decoded = decodeURIComponent(s);
-    if (decoded && decoded !== s) s = decoded;
-  } catch {}
+    // decode %3A → :
+    try {
+      const decoded = decodeURIComponent(s);
+      if (decoded && decoded !== s) s = decoded;
+    } catch {}
 
-  // ✅ FIX: Amazon images stored like “/https:/…”
-  if (s.startsWith('https:/') && !s.startsWith('https://')) {
-    s = s.replace('https:/', 'https://');
+    // ✅ FIX: Amazon images stored like “/https:/…”
+    if (s.startsWith('https:/') && !s.startsWith('https://')) {
+      s = s.replace('https:/', 'https://');
+    }
+
+    if (s.startsWith('/https:/')) {
+      s = s.replace('/https:/', 'https://');
+    }
+
+    if (s.startsWith('/http:/')) {
+      s = s.replace('/http:/', 'http://');
+    }
+
+    // ✅ absolute URL
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+
+    // ✅ fallback for local media
+    const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
+    return `${host}/${s}`;
   }
-
-  if (s.startsWith('/https:/')) {
-    s = s.replace('/https:/', 'https://');
-  }
-
-  if (s.startsWith('/http:/')) {
-    s = s.replace('/http:/', 'http://');
-  }
-
-  // ✅ absolute URL
-  if (s.startsWith('http://') || s.startsWith('https://')) return s;
-
-  // ✅ fallback for local media
-  const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
-  return `${host}/${s}`;
-}
-
 
   dynamicAttributes() {
     return this.attributes();
@@ -414,6 +434,27 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       : 'bg-green-100 text-green-800 border border-green-300';
   }
 
+  getStars(): string[] {
+    if (
+      !this.product ||
+      this.product.rating_avg == null ||
+      this.product.rating_avg === undefined
+    ) {
+      return ['☆', '☆', '☆', '☆', '☆'];
+    }
+    const rating = Math.round(Number(this.product.rating_avg));
+    const stars: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      stars.push(i < rating ? '★' : '☆');
+    }
+    return stars;
+  }
+
+  formatRating(rating: number | null | undefined): string {
+    if (rating == null || rating === undefined) return '0.0';
+    return Number(rating).toFixed(1);
+  }
+
   addToCart() {
     if (!this.auth.isLoggedIn()) {
       this.alertMessage = 'Bitte melde dich zuerst an.';
@@ -424,11 +465,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }
 
     if (this.product) {
-      this.cartService.addToCart(
-        this.product,
-        1,
-        this.selectedAttributes()
-      );
+      this.cartService.addToCart(this.product, 1, this.selectedAttributes());
 
       this.alertMessage = 'Produkt wurde in den Warenkorb gelegt.';
       this.alertType = 'success';

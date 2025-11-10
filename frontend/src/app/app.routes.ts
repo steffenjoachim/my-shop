@@ -6,14 +6,12 @@ export const routes: Routes = [
   {
     path: 'cart',
     pathMatch: 'full',
-    loadComponent: () =>
-      import('./features/cart/cart').then((m) => m.Cart),
+    loadComponent: () => import('./features/cart/cart').then((m) => m.Cart),
   },
   {
     path: 'login',
     pathMatch: 'full',
-    loadComponent: () =>
-      import('./features/login/login').then((m) => m.Login),
+    loadComponent: () => import('./features/login/login').then((m) => m.Login),
   },
   {
     path: 'register',
@@ -38,27 +36,26 @@ export const routes: Routes = [
   {
     path: 'imprint',
     loadComponent: () =>
-      import('./features/imprint/imprint').then(m => m.Imprint),
+      import('./features/imprint/imprint').then((m) => m.Imprint),
   },
   {
     path: 'data-protection',
     loadComponent: () =>
       import('./features/data-protection/data-protection').then(
-        m => m.DataProtection
+        (m) => m.DataProtection
       ),
   },
   {
     path: 'terms-and-conditions',
     loadComponent: () =>
       import('./features/terms-and-conditions/terms-and-conditions').then(
-        m => m.TermsAndConditions
+        (m) => m.TermsAndConditions
       ),
   },
-  {path: 'orders',
+  {
+    path: 'orders',
     loadComponent: () =>
-      import('./features/orders/orders').then(
-        m => m.Orders
-      ),
+      import('./features/orders/orders').then((m) => m.Orders),
   },
   {
     path: 'orders/:id',
@@ -68,10 +65,17 @@ export const routes: Routes = [
         (m) => m.OrderDetails
       ),
   },
-  {path: 'reviews',
+  {
+    path: 'submit-review/:productId',
+    pathMatch: 'full',
     loadComponent: () =>
-      import('./features/reviews/reviews').then(
-        m => m.Reviews
+      import('./features/submit-review/submit-review').then(
+        (m) => m.SubmitReview
       ),
+  },
+  {
+    path: 'reviews',
+    loadComponent: () =>
+      import('./features/reviews/reviews').then((m) => m.Reviews),
   },
 ];
