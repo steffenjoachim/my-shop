@@ -187,12 +187,16 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField()
+    product_title = serializers.SerializerMethodField()
+    product_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
         fields = [
             "id",
             "product",
+            "product_title",
+            "product_image",
             "user",
             "rating",
             "title",
@@ -202,6 +206,21 @@ class ReviewSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "user", "approved", "created_at"]
 
+    def get_product_title(self, obj):
+        return obj.product.title
+
+    def get_product_image(self, obj):
+        if obj.product.main_image:
+            img = str(obj.product.main_image).lstrip("/")
+            if img.startswith("http://") or img.startswith("https://"):
+                return img
+            request = self.context.get("request")
+            url = "/media/" + img
+            return request.build_absolute_uri(url) if request else url
+        if obj.product.external_image:
+            return str(obj.product.external_image).lstrip("/")
+        return None
+
 
 # ==================================================================
 # 🧾 Bestellposition
@@ -209,6 +228,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     variation_details = serializers.SerializerMethodField()
+    has_review = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
@@ -221,6 +241,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "product_image",
             "price",
             "quantity",
+            "has_review",
         ]
 
     def get_variation_details(self, obj):
@@ -233,6 +254,16 @@ class OrderItemSerializer(serializers.ModelSerializer):
                 obj.variation.attributes.all(), many=True
             ).data,
         }
+
+    def get_has_review(self, obj):
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            from .models import Review
+            return Review.objects.filter(
+                product=obj.product,
+                user=request.user
+            ).exists()
+        return False
 
 
 # ==================================================================

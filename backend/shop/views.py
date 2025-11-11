@@ -49,9 +49,14 @@ class DeliveryTimeViewSet(ModelViewSet):
 # 💬 Produktbewertungen (Reviews)
 # ------------------------------------------------------------
 class ReviewViewSet(ModelViewSet):
-    queryset = Review.objects.select_related("product", "user").all()
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return Review.objects.filter(user=user).select_related("product", "user").order_by("-created_at")
+        return Review.objects.none()
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -264,7 +269,7 @@ class OrderViewSet(ModelViewSet):
         order = get_object_or_404(Order, pk=kwargs["pk"])
         if order.user != user:
             raise PermissionDenied("Du hast keinen Zugriff auf diese Bestellung.")
-        serializer = self.get_serializer(order)
+        serializer = self.get_serializer(order, context={"request": request})
         return Response(serializer.data, status=200)
 
 
