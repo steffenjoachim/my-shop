@@ -202,9 +202,10 @@ class ReviewSerializer(serializers.ModelSerializer):
             "title",
             "body",
             "approved",
-            "created_at"
+            "created_at",
+            "updated_at"
         ]
-        read_only_fields = ["id", "user", "approved", "created_at"]
+        read_only_fields = ["id", "user", "approved", "created_at", "updated_at"]
 
     def get_product_title(self, obj):
         return obj.product.title

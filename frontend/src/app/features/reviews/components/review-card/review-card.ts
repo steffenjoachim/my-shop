@@ -13,6 +13,7 @@ export interface Review {
   body: string;
   approved: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 @Component({
@@ -33,7 +34,7 @@ export interface Review {
         />
         }
         <div class="flex-1 min-w-0">
-          <h3 class="font-semibold text-lg mb-1">{{ review.product_title }}</h3>
+          <h3 class="font-bold text-lg mb-1">{{ review.product_title }}</h3>
           <button
             (click)="goToProduct(review.product)"
             class="text-sm text-blue-600 hover:text-blue-800 underline"
@@ -57,7 +58,7 @@ export interface Review {
 
       <!-- Titel -->
       @if (review.title) {
-      <h4 class="font-medium text-gray-800 mb-2">{{ review.title }}</h4>
+      <h4 class="font-bold text-gray-800 mb-2">{{ review.title }}</h4>
       }
 
       <!-- Text -->
@@ -67,9 +68,20 @@ export interface Review {
         }
       </div>
 
-      <!-- Datum -->
-      <div class="text-xs text-gray-500 border-t pt-2 mt-auto">
-        Bewertet am {{ review.created_at | date : 'dd.MM.yyyy' }}
+      <!-- Datum und Edit-Button -->
+      <div
+        class="text-xs text-gray-500 border-t pt-2 mt-auto flex justify-between items-center"
+      >
+        <span>
+          Bewertet am
+          {{ review.updated_at || review.created_at | date : 'dd.MM.yyyy' }}
+        </span>
+        <button
+          (click)="editReview()"
+          class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+        >
+          Bewertung editieren
+        </button>
       </div>
     </div>
   `,
@@ -94,5 +106,11 @@ export class ReviewCard {
 
   goToProduct(productId: number): void {
     this.router.navigate(['/products', productId]);
+  }
+
+  editReview(): void {
+    this.router.navigate(['/submit-review', this.review.product], {
+      queryParams: { reviewId: this.review.id },
+    });
   }
 }

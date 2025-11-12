@@ -61,6 +61,14 @@ class ReviewViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def perform_update(self, serializer):
+        # Sicherstellen, dass nur der Besitzer die Review aktualisieren kann
+        instance = self.get_object()
+        if instance.user != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Sie können nur Ihre eigenen Bewertungen bearbeiten.")
+        serializer.save()
+
 # ------------------------------------------------------------
 # 🟩 Bestellung abschließen & Lagerbestand reduzieren
 # ------------------------------------------------------------

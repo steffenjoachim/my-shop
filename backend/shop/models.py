@@ -210,6 +210,7 @@ class Review(models.Model):
     body = models.TextField(blank=True)
     approved = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]

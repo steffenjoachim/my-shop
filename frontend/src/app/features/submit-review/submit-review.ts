@@ -20,7 +20,7 @@ import { AuthService } from '../../shared/services/auth.service';
         ← Zurück
       </button>
 
-      <h2 class="text-2xl font-bold mb-4">Bewertung abgeben</h2>
+      <h2 class="text-2xl font-bold mb-4">{{ isEditMode ? 'Bewertung bearbeiten' : 'Bewertung abgeben' }}</h2>
 
       @if (product) {
         <!-- Produktinfo -->
@@ -119,7 +119,7 @@ import { AuthService } from '../../shared/services/auth.service';
               @if (submitting) {
                 Bewertung wird gespeichert...
               } @else {
-                Bewertung absenden
+                {{ isEditMode ? 'Änderungen speichern' : 'Bewertung absenden' }}
               }
             </button>
             <button
@@ -141,6 +141,7 @@ import { AuthService } from '../../shared/services/auth.service';
 export class SubmitReview implements OnInit {
   productId: number | null = null;
   orderId: number | null = null;
+  reviewId: number | null = null;
   productTitle: string = '';
   productImage: string = '';
   product: any = null;
@@ -151,6 +152,7 @@ export class SubmitReview implements OnInit {
   submitting: boolean = false;
   errorMessage: string = '';
   successMessage: string = '';
+  isEditMode: boolean = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -164,6 +166,7 @@ export class SubmitReview implements OnInit {
     const productIdParam = this.route.snapshot.paramMap.get('productId');
     const orderIdParam = this.route.snapshot.paramMap.get('orderId') || 
                          this.route.snapshot.queryParamMap.get('orderId');
+    const reviewIdParam = this.route.snapshot.queryParamMap.get('reviewId');
     
     if (productIdParam) {
       this.productId = Number(productIdParam);
@@ -171,9 +174,16 @@ export class SubmitReview implements OnInit {
     if (orderIdParam) {
       this.orderId = Number(orderIdParam);
     }
+    if (reviewIdParam) {
+      this.reviewId = Number(reviewIdParam);
+      this.isEditMode = true;
+    }
 
     if (this.productId) {
       this.loadProduct();
+      if (this.isEditMode && this.reviewId) {
+        this.loadReview();
+      }
     } else {
       this.errorMessage = 'Produkt-ID fehlt';
     }
@@ -193,6 +203,24 @@ export class SubmitReview implements OnInit {
         error: (err) => {
           console.error('Fehler beim Laden des Produkts:', err);
           this.errorMessage = 'Produkt konnte nicht geladen werden';
+        }
+      });
+  }
+
+  loadReview(): void {
+    if (!this.reviewId) return;
+
+    this.http
+      .get(`${environment.apiBaseUrl}reviews/${this.reviewId}/`, { withCredentials: true })
+      .subscribe({
+        next: (review: any) => {
+          this.selectedRating = review.rating;
+          this.reviewTitle = review.title || '';
+          this.reviewBody = review.body || '';
+        },
+        error: (err) => {
+          console.error('Fehler beim Laden der Bewertung:', err);
+          this.errorMessage = 'Bewertung konnte nicht geladen werden';
         }
       });
   }
@@ -245,32 +273,58 @@ export class SubmitReview implements OnInit {
       reviewData.order = this.orderId;
     }
 
-    this.http
-      .post(`${environment.apiBaseUrl}reviews/`, reviewData, { withCredentials: true })
-      .subscribe({
-        next: () => {
-          this.successMessage = 'Ihre Bewertung wurde erfolgreich abgegeben!';
-          this.submitting = false;
-          
-          // Nach 2 Sekunden zurück navigieren
-          setTimeout(() => {
-            if (this.orderId) {
-              this.router.navigate(['/orders', this.orderId]);
-            } else {
-              this.router.navigate(['/products', this.productId]);
-            }
-          }, 2000);
-        },
-        error: (err) => {
-          console.error('Fehler beim Speichern der Bewertung:', err);
-          this.errorMessage = err.error?.error || err.error?.detail || 'Fehler beim Speichern der Bewertung';
-          this.submitting = false;
-        }
-      });
+    // Update oder Create?
+    if (this.isEditMode && this.reviewId) {
+      // Update bestehende Bewertung
+      this.http
+        .patch(`${environment.apiBaseUrl}reviews/${this.reviewId}/`, reviewData, { withCredentials: true })
+        .subscribe({
+          next: () => {
+            this.successMessage = 'Ihre Bewertung wurde erfolgreich aktualisiert!';
+            this.submitting = false;
+            
+            // Nach 2 Sekunden zurück navigieren
+            setTimeout(() => {
+              this.router.navigate(['/reviews']);
+            }, 2000);
+          },
+          error: (err) => {
+            console.error('Fehler beim Aktualisieren der Bewertung:', err);
+            this.errorMessage = err.error?.error || err.error?.detail || 'Fehler beim Aktualisieren der Bewertung';
+            this.submitting = false;
+          }
+        });
+    } else {
+      // Neue Bewertung erstellen
+      this.http
+        .post(`${environment.apiBaseUrl}reviews/`, reviewData, { withCredentials: true })
+        .subscribe({
+          next: () => {
+            this.successMessage = 'Ihre Bewertung wurde erfolgreich abgegeben!';
+            this.submitting = false;
+            
+            // Nach 2 Sekunden zurück navigieren
+            setTimeout(() => {
+              if (this.orderId) {
+                this.router.navigate(['/orders', this.orderId]);
+              } else {
+                this.router.navigate(['/products', this.productId]);
+              }
+            }, 2000);
+          },
+          error: (err) => {
+            console.error('Fehler beim Speichern der Bewertung:', err);
+            this.errorMessage = err.error?.error || err.error?.detail || 'Fehler beim Speichern der Bewertung';
+            this.submitting = false;
+          }
+        });
+    }
   }
 
   goBack(): void {
-    if (this.orderId) {
+    if (this.isEditMode) {
+      this.router.navigate(['/reviews']);
+    } else if (this.orderId) {
       this.router.navigate(['/orders', this.orderId]);
     } else if (this.productId) {
       this.router.navigate(['/products', this.productId]);
