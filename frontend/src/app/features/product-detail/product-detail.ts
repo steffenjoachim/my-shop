@@ -1,10 +1,14 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
-import { Product, DeliveryTime } from '../../shared/models/products.model';
+import {
+  Product,
+  DeliveryTime,
+  Review,
+} from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { TitleCasePipe, NgClass, NgStyle } from '@angular/common';
+import { TitleCasePipe, NgClass, NgStyle, DatePipe } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { Subscription } from 'rxjs';
@@ -12,7 +16,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [TitleCasePipe, PopupAlert, NgClass, NgStyle],
+  imports: [TitleCasePipe, PopupAlert, NgClass, NgStyle, DatePipe], 
   template: `
     @if (product) {
     <div class="container mx-auto px-8 mt-6">
@@ -55,7 +59,10 @@ import { Subscription } from 'rxjs';
         <!-- Bewertungen -->
         <div class="mb-6">
           @if (product.rating_count && product.rating_count > 0) {
-          <div class="flex items-center gap-2 mb-2">
+          <button
+            (click)="scrollToReviews()"
+            class="flex items-center gap-2 mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+          >
             <div class="flex items-center gap-1 text-2xl">
               @for (star of getStars(); track $index) {
               <span
@@ -72,7 +79,7 @@ import { Subscription } from 'rxjs';
               ({{ product.rating_count }}
               {{ product.rating_count === 1 ? 'Bewertung' : 'Bewertungen' }})
             </span>
-          </div>
+          </button>
           } @else {
           <div class="flex items-center gap-1 text-2xl text-gray-400">
             <span>☆</span><span>☆</span><span>☆</span><span>☆</span
@@ -146,6 +153,59 @@ import { Subscription } from 'rxjs';
         >
           In den Warenkorb
         </button>
+
+        <!-- Bewertungsabschnitt -->
+        @if (product.recent_reviews && product.recent_reviews.length > 0) {
+        <div id="reviews-section" class="mt-12 pt-8 border-t border-gray-200">
+          <h2 class="text-2xl font-bold mb-6 text-gray-800">
+            Produktbewertungen von Kunden
+          </h2>
+
+          <div class="space-y-6">
+            @for (review of product.recent_reviews; track review.id) {
+            <div class="bg-gray-50 rounded-lg p-4">
+              <!-- Sterne und Benutzername -->
+              <div class="flex items-center gap-3 mb-3">
+                <div class="flex items-center gap-1">
+                  @for (star of getReviewStars(review.rating); track $index) {
+                  <span
+                    [ngClass]="
+                      star === '★' ? 'text-yellow-400' : 'text-gray-300'
+                    "
+                    class="text-lg"
+                  >
+                    {{ star }}
+                  </span>
+                  }
+                </div>
+                <span class="font-medium text-gray-700">
+                  {{ review.user || 'Anonym' }}
+                </span>
+              </div>
+
+              <!-- Titel -->
+              @if (review.title) {
+              <h3 class="font-semibold text-lg text-gray-800 mb-2">
+                {{ review.title }}
+              </h3>
+              }
+
+              <!-- Bewertungstext -->
+              @if (review.body) {
+              <p class="text-gray-600 leading-relaxed">
+                {{ review.body }}
+              </p>
+              }
+              
+              <!-- Datum -->
+              <span class="text-sm text-gray-500 mt-2 block">
+                Bewertet am {{ (review.updated_at || review.created_at) | date:'dd.MM.yyyy' }}
+              </span>
+            </div>
+            }
+          </div>
+        </div>
+        }
 
         <app-popup-alert
           [message]="alertMessage"
@@ -273,6 +333,21 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       });
   }
 
+  scrollToReviews() {
+    const reviewsSection = document.getElementById('reviews-section');
+    if (reviewsSection) {
+      reviewsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  getReviewStars(rating: number): string[] {
+    const stars: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      stars.push(i < rating ? '★' : '☆');
+    }
+    return stars;
+  }
+
   get productImages() {
     return (
       this.product?.images?.map((img) => ({
@@ -282,22 +357,17 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ✅ Die zentrale Normalisierung
   sanitizeImageUrl(url?: string | null): string {
     if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
 
     let s = String(url).trim();
-
-    // remove leading slashes
     s = s.replace(/^\/+/, '');
 
-    // decode %3A → :
     try {
       const decoded = decodeURIComponent(s);
       if (decoded && decoded !== s) s = decoded;
     } catch {}
 
-    // ✅ FIX: Amazon images stored like “/https:/…”
     if (s.startsWith('https:/') && !s.startsWith('https://')) {
       s = s.replace('https:/', 'https://');
     }
@@ -310,10 +380,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       s = s.replace('/http:/', 'http://');
     }
 
-    // ✅ absolute URL
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
 
-    // ✅ fallback for local media
     const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
     return `${host}/${s}`;
   }
