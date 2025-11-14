@@ -8,15 +8,22 @@ import {
 } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { TitleCasePipe, NgClass, NgStyle, DatePipe } from '@angular/common';
+import { TitleCasePipe, NgClass, NgStyle, DatePipe, NgFor, NgIf } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { Subscription } from 'rxjs';
+import { ProductReviewCard } from '../product-detail/components/review-card/product-review-card';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [TitleCasePipe, PopupAlert, NgClass, NgStyle, DatePipe], 
+  imports: [
+    TitleCasePipe, 
+    PopupAlert, 
+    NgClass, 
+    NgStyle, 
+    ProductReviewCard
+  ], 
   template: `
     @if (product) {
     <div class="container mx-auto px-8 mt-6">
@@ -163,45 +170,7 @@ import { Subscription } from 'rxjs';
 
           <div class="space-y-6">
             @for (review of product.recent_reviews; track review.id) {
-            <div class="bg-gray-50 rounded-lg p-4">
-              <!-- Sterne und Benutzername -->
-              <div class="flex items-center gap-3 mb-3">
-                <div class="flex items-center gap-1">
-                  @for (star of getReviewStars(review.rating); track $index) {
-                  <span
-                    [ngClass]="
-                      star === '★' ? 'text-yellow-400' : 'text-gray-300'
-                    "
-                    class="text-lg"
-                  >
-                    {{ star }}
-                  </span>
-                  }
-                </div>
-                <span class="font-medium text-gray-700">
-                  {{ review.user || 'Anonym' }}
-                </span>
-              </div>
-
-              <!-- Titel -->
-              @if (review.title) {
-              <h3 class="font-semibold text-lg text-gray-800 mb-2">
-                {{ review.title }}
-              </h3>
-              }
-
-              <!-- Bewertungstext -->
-              @if (review.body) {
-              <p class="text-gray-600 leading-relaxed">
-                {{ review.body }}
-              </p>
-              }
-              
-              <!-- Datum -->
-              <span class="text-sm text-gray-500 mt-2 block">
-                Bewertet am {{ (review.updated_at || review.created_at) | date:'dd.MM.yyyy' }}
-              </span>
-            </div>
+            <app-product-review-card [review]="review" />
             }
           </div>
         </div>
@@ -338,14 +307,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     if (reviewsSection) {
       reviewsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }
-
-  getReviewStars(rating: number): string[] {
-    const stars: string[] = [];
-    for (let i = 0; i < 5; i++) {
-      stars.push(i < rating ? '★' : '☆');
-    }
-    return stars;
   }
 
   get productImages() {
