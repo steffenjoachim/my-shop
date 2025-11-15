@@ -8,7 +8,7 @@ import {
 } from '../../shared/models/products.model';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { TitleCasePipe, NgClass, NgStyle, DatePipe, NgFor, NgIf } from '@angular/common';
+import { TitleCasePipe, NgClass, NgStyle } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { Subscription } from 'rxjs';
@@ -18,15 +18,15 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
   selector: 'app-product-detail',
   standalone: true,
   imports: [
-    TitleCasePipe, 
-    PopupAlert, 
-    NgClass, 
-    NgStyle, 
-    ProductReviewCard
-  ], 
+    TitleCasePipe,
+    PopupAlert,
+    NgClass,
+    NgStyle,
+    ProductReviewCard,
+  ],
   template: `
     @if (product) {
-    <div class="container mx-auto px-8 mt-6">
+    <div class="container mx-auto px-4 sm:px-8 mt-6">
       <div class="bg-white rounded-2xl shadow-lg p-6 md:max-w-2xl mx-auto">
         <h1 class="text-3xl font-bold mb-4 text-gray-800">
           {{ product.title }}
@@ -112,8 +112,7 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
               (click)="selectAttribute(attr.name, val.value)"
               [disabled]="val.stock === 0"
               [ngClass]="{
-                'ring-2 ring-blue-500 scale-105':
-                  selectedAttributes()[attr.name] === val.value,
+                'ring-2 ring-blue-500 scale-105': selectedAttributes()[attr.name] === val.value,
                 'opacity-50 cursor-not-allowed': val.stock === 0
               }"
               [ngStyle]="getAttributeStyle(attr.name, val.value)"
@@ -164,12 +163,70 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
         <!-- Bewertungsabschnitt -->
         @if (product.recent_reviews && product.recent_reviews.length > 0) {
         <div id="reviews-section" class="mt-12 pt-8 border-t border-gray-200">
-          <h2 class="text-2xl font-bold mb-6 text-gray-800">
+          <h2 class="text-2xl font-bold mb-4 text-gray-800">
             Produktbewertungen von Kunden
           </h2>
 
+          <!-- Sort / Filter UI (responsive) -->
+          <div class="flex flex-wrap items-center justify-between mb-6 gap-3 max-w-full">
+            <div class="flex flex-wrap items-center gap-2 min-w-0">
+              <button
+                type="button"
+                (click)="reviewSort.set('newest')"
+                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'newest', 'bg-gray-100 text-gray-800': reviewSort() !== 'newest' }"
+                class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
+              >
+                Neueste
+              </button>
+              <button
+                type="button"
+                (click)="reviewSort.set('oldest')"
+                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'oldest', 'bg-gray-100 text-gray-800': reviewSort() !== 'oldest' }"
+                class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
+              >
+                Älteste
+              </button>
+              <button
+                type="button"
+                (click)="reviewSort.set('best')"
+                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'best', 'bg-gray-100 text-gray-800': reviewSort() !== 'best' }"
+                class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
+              >
+                Beste
+              </button>
+              <button
+                type="button"
+                (click)="reviewSort.set('worst')"
+                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'worst', 'bg-gray-100 text-gray-800': reviewSort() !== 'worst' }"
+                class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
+              >
+                Schlechteste
+              </button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 min-w-0">
+              <span class="text-xs sm:text-sm md:text-base mr-1">Min. Sterne:</span>
+              <button
+                type="button"
+                (click)="reviewFilterRating.set(null)"
+                [ngClass]="{ 'bg-blue-600 text-white': reviewFilterRating() === null, 'bg-gray-100 text-gray-800': reviewFilterRating() !== null }"
+                class="px-2 py-1 rounded text-xs sm:text-sm whitespace-nowrap"
+              >Alle</button>
+              @for (r of [5,4,3,2,1]; track r) {
+              <button
+                type="button"
+                (click)="reviewFilterRating.set(r)"
+                [ngClass]="{ 'bg-blue-600 text-white': reviewFilterRating() === r, 'bg-gray-100 text-gray-800': reviewFilterRating() !== r }"
+                class="px-2 py-1 rounded text-xs sm:text-sm whitespace-nowrap"
+              >
+                {{ r }}★
+              </button>
+              }
+            </div>
+          </div>
+
           <div class="space-y-6">
-            @for (review of product.recent_reviews; track review.id) {
+            @for (review of reviewsToShow(); track review.id) {
             <app-product-review-card [review]="review" />
             }
           </div>
@@ -187,6 +244,7 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
   `,
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
+ 
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private cartService = inject(CartService);
@@ -204,6 +262,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   showWarning = signal(false);
   alertMessage = '';
   alertType: 'success' | 'info' | 'error' = 'info';
+
+  // Review sort/filter signals
+  reviewSort = signal<'newest' | 'oldest' | 'best' | 'worst'>('newest');
+  reviewFilterRating = signal<number | null>(null);
 
   private colorMap: Record<string, string> = {
     rot: 'red',
@@ -501,5 +563,40 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       this.showWarning.set(true);
       setTimeout(() => this.showWarning.set(false), 2000);
     }
+  }
+
+  // Gibt die gefilterten und sortierten Reviews zurück
+  reviewsToShow(): Review[] {
+    const reviews = (this.product?.recent_reviews ?? []).slice();
+
+    // Sortieren
+    switch (this.reviewSort()) {
+      case 'newest':
+        reviews.sort((a, b) =>
+          (new Date(b.updated_at || b.created_at)).getTime() -
+          (new Date(a.updated_at || a.created_at)).getTime()
+        );
+        break;
+      case 'oldest':
+        reviews.sort((a, b) =>
+          (new Date(a.updated_at || a.created_at)).getTime() -
+          (new Date(b.updated_at || b.created_at)).getTime()
+        );
+        break;
+      case 'best':
+        reviews.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+        break;
+      case 'worst':
+        reviews.sort((a, b) => (a.rating ?? 0) - (b.rating ?? 0));
+        break;
+    }
+
+    // Filter nach minimaler Bewertung
+    const minStars = this.reviewFilterRating();
+    if (minStars != null) {
+      return reviews.filter((r) => Math.round(r.rating ?? 0) >= minStars);
+    }
+
+    return reviews;
   }
 }
