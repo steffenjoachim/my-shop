@@ -9,6 +9,7 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.db import transaction
+from django.contrib.auth.models import Group
 import ast
 from urllib.parse import unquote
 
@@ -279,6 +280,83 @@ class OrderViewSet(ModelViewSet):
             raise PermissionDenied("Du hast keinen Zugriff auf diese Bestellung.")
         serializer = self.get_serializer(order, context={"request": request})
         return Response(serializer.data, status=200)
+
+
+# ------------------------------------------------------------
+# 🚚 Shipping-Mitarbeiter: Bestellungen verwalten
+# ------------------------------------------------------------
+def is_shipping_staff(user):
+    """Prüft, ob der User in der 'shipping' Group ist."""
+    if not user or not user.is_authenticated:
+        return False
+    return user.groups.filter(name="shipping").exists()
+
+
+class ShippingOrderViewSet(ModelViewSet):
+    """
+    ViewSet für Shipping-Mitarbeiter.
+    Zeigt nur Orders mit Status 'pending' an.
+    """
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not is_shipping_staff(user):
+            return Order.objects.none()
+        
+        queryset = (
+            Order.objects.filter(status="pending")
+            .prefetch_related("items__product")
+            .select_related("user")
+            .order_by("-created_at")
+        )
+        
+        # Suche nach Auftragsnummer
+        search = self.request.query_params.get("search", None)
+        if search:
+            try:
+                order_id = int(search)
+                queryset = queryset.filter(id=order_id)
+            except ValueError:
+                # Wenn keine Zahl, dann keine Ergebnisse
+                queryset = queryset.none()
+        
+        return queryset
+
+    def update(self, request, *args, **kwargs):
+        """Status-Update für Shipping-Mitarbeiter."""
+        if not is_shipping_staff(request.user):
+            raise PermissionDenied("Nur Shipping-Mitarbeiter können Bestellungen aktualisieren.")
+        
+        order = self.get_object()
+        
+        # Nur Status-Update erlauben
+        new_status = request.data.get("status")
+        if not new_status:
+            return Response(
+                {"error": "Status-Feld ist erforderlich"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validiere Status
+        valid_statuses = [choice[0] for choice in Order.STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            return Response(
+                {"error": f"Ungültiger Status. Erlaubt: {', '.join(valid_statuses)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Status aktualisieren
+        order.status = new_status
+        order.save(update_fields=["status"])
+        
+        serializer = self.get_serializer(order, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        """PATCH-Update für Status-Änderung."""
+        return self.update(request, *args, **kwargs)
 
 
 # ------------------------------------------------------------

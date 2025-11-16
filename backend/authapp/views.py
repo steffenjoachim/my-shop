@@ -43,5 +43,11 @@ def logout_view(request):
 @api_view(["GET"])
 def session_view(request):
     if request.user.is_authenticated:
-        return JsonResponse({"isAuthenticated": True, "username": request.user.username})
-    return JsonResponse({"isAuthenticated": False})
+        # Gruppen des Users abrufen
+        groups = list(request.user.groups.values_list("name", flat=True))
+        return JsonResponse({
+            "isAuthenticated": True,
+            "username": request.user.username,
+            "groups": groups
+        })
+    return JsonResponse({"isAuthenticated": False, "groups": []})

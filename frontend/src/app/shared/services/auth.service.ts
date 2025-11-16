@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 export interface User {
   username: string;
   email?: string;
+  groups?: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,7 +39,7 @@ export class AuthService {
   // ✅ Session prüfen
   checkSession() {
     this.http
-      .get<{ isAuthenticated: boolean; username?: string }>(
+      .get<{ isAuthenticated: boolean; username?: string; groups?: string[] }>(
         this.apiUrl + 'session',
         { withCredentials: true }
       )
@@ -46,7 +47,10 @@ export class AuthService {
         next: (res) => {
           if (res.isAuthenticated) {
             this._isLoggedIn.set(true);
-            this._user.set({ username: res.username! });
+            this._user.set({ 
+              username: res.username!,
+              groups: res.groups || []
+            });
           } else {
             this._isLoggedIn.set(false);
             this._user.set(null);
@@ -80,7 +84,20 @@ export class AuthService {
   // ✅ Öffentliche Helper für UI-Status nach erfolgreichem Login/Logout
   applyLogin(username: string): void {
     this._isLoggedIn.set(true);
-    this._user.set({ username });
+    this._user.set({ username, groups: [] });
+    // Session neu prüfen, um Gruppen zu laden
+    this.checkSession();
+  }
+
+  // ✅ Prüft, ob User in einer bestimmten Gruppe ist
+  hasRole(roleName: string): boolean {
+    const user = this._user();
+    return user?.groups?.includes(roleName) || false;
+  }
+
+  // ✅ Prüft, ob User Shipping-Mitarbeiter ist
+  isShippingStaff(): boolean {
+    return this.hasRole('shipping');
   }
 
   applyLogout(): void {

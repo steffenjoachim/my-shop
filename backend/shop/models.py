@@ -165,8 +165,9 @@ class Order(models.Model):
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("paid", "Paid"),
-        ("shipped", "Shipped"),
-        ("cancelled", "Cancelled"),
+        ("ready_to_ship", "Versandbereit"),
+        ("shipped", "Versandt"),
+        ("cancelled", "Storniert"),
     )
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
