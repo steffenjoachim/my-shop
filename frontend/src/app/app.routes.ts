@@ -53,7 +53,24 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'shipping/orders',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/orders/components/shipping-orders/shipping-orders').then(
+        (m) => m.ShippingOrders
+      ),
+  },
+  {
+    path: 'shipping/orders/:id',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/orders/components/shipping-order-details/shipping-order-details').then(
+        (m) => m.ShippingOrderDetails
+      ),
+  },
+  {
     path: 'orders',
+    pathMatch: 'full',
     loadComponent: () =>
       import('./features/orders/orders').then((m) => m.Orders),
   },

@@ -7,6 +7,7 @@ from .views import (
     get_csrf_token,
     ReviewViewSet,
     OrderViewSet,
+    ShippingOrderViewSet,
 )
 
 # Router für REST-ViewSets
@@ -14,7 +15,8 @@ router = DefaultRouter()
 router.register(r"products", ProductViewSet, basename="product")
 router.register(r"delivery-times", DeliveryTimeViewSet, basename="deliverytime")
 router.register(r"reviews", ReviewViewSet, basename="review")
-router.register(r"orders", OrderViewSet, basename="order")  
+router.register(r"orders", OrderViewSet, basename="order")
+router.register(r"shipping/orders", ShippingOrderViewSet, basename="shipping-order")  
 
 urlpatterns = [
     # REST-Routen
