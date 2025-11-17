@@ -25,7 +25,7 @@ import { CartService } from '../../../../shared/services/cart.service';
 
       <!-- Zusammenfassung -->
       <div class="bg-gray-50 border p-4 rounded-lg text-sm mb-6">
-        <div><b>Status:</b> {{ order.status | titlecase }}</div>
+        <div><b>Status:</b> {{ getStatusText(order.status) }}</div>
         <div><b>Zahlungsart:</b> {{ order.payment_method }}</div>
         <div>
           <b>Datum:</b> {{ order.created_at | date : 'dd.MM.yyyy HH:mm' }}
@@ -117,6 +117,17 @@ export class OrderDetails implements OnInit {
     this.loadOrder(orderId);
   }
 
+  getStatusText(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'Ausstehend',
+      'paid': 'Bezahlt',
+      'ready_to_ship': 'Versandbereit',
+      'shipped': 'Versandt',
+      'cancelled': 'Storniert'
+    };
+    return statusMap[status] || status;
+  }
+
   /** ✅ Bestellung laden */
   loadOrder(id: number): void {
     this.http
@@ -148,12 +159,10 @@ export class OrderDetails implements OnInit {
 
   /** ✅ Buy Again → direkt in den Cart und weiterleiten */
   buyAgain(item: any) {
-    // 1. Produkt + Variation laden (weil CartService das vollständige Produkt benötigt)
     this.http
       .get(`${environment.apiBaseUrl}products/${item.product}/`)
       .subscribe({
         next: (product: any) => {
-          // Variation anwenden
           let selectedAttributes: { [key: string]: string } = {};
 
           if (item.variation_details?.attributes) {
@@ -162,12 +171,7 @@ export class OrderDetails implements OnInit {
             });
           }
 
-          // 2. In Clientseitigen Warenkorb legen
-          // ✅ quantity = 1
-          // ✅ selectedAttributes = genau wie bei der Bestellung
           this.cartService.addToCart(product, 1, selectedAttributes);
-
-          // 3. Weiterleiten
           this.router.navigate(['/cart']);
         },
         error: (err) => {
