@@ -18,11 +18,12 @@ import { Router } from '@angular/router';
           class="px-3 py-1 text-sm rounded-full"
           [ngClass]="{
             'bg-yellow-100 text-yellow-800': order.status === 'pending',
-            'bg-green-100 text-green-800': order.status === 'paid' || order.status === 'completed',
+            'bg-blue-100 text-blue-800': order.status === 'paid',
+            'bg-green-100 text-green-800': order.status === 'ready_to_ship' || order.status === 'shipped',
             'bg-red-100 text-red-800': order.status === 'cancelled'
           }"
         >
-          {{ order.status | titlecase }}
+          {{ getStatusText(order.status) }}
         </span>
       </div>
 
@@ -62,8 +63,18 @@ export class OrderCard {
 
   constructor(private router: Router) {}
 
+  getStatusText(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'Ausstehend',
+      'paid': 'Bezahlt',
+      'ready_to_ship': 'Versandbereit',
+      'shipped': 'Versandt',
+      'cancelled': 'Storniert'
+    };
+    return statusMap[status] || status;
+  }
+
   goToDetails() {
     this.router.navigate(['/orders', this.order.id]);
-    
   }
 }

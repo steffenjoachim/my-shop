@@ -129,8 +129,8 @@ export class ShippingOrderDetails implements OnInit {
   statusMessageType: 'success' | 'error' | null = null;
 
   statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'paid', label: 'Paid' },
+    { value: 'pending', label: 'Ausstehend' },
+    { value: 'paid', label: 'Bezahlt' },
     { value: 'ready_to_ship', label: 'Versandbereit' },
     { value: 'shipped', label: 'Versandt' },
     { value: 'cancelled', label: 'Storniert' },
@@ -226,4 +226,3 @@ export class ShippingOrderDetails implements OnInit {
     this.router.navigate(['/shipping/orders']);
   }
 }
-
