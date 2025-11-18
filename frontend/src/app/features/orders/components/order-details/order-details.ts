@@ -1,14 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { TitleCasePipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
 import { CartService } from '../../../../shared/services/cart.service';
+import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
 
 @Component({
   selector: 'app-order-details',
   standalone: true,
-  imports: [TitleCasePipe, DatePipe],
+  imports: [DatePipe, PopupAlert],
   template: `
     <div class="max-w-4xl mx-auto p-4">
       @if (!loading && order) {
@@ -94,9 +95,52 @@ import { CartService } from '../../../../shared/services/cart.service';
         <span>{{ order.total }} €</span>
       </div>
 
+      <!-- Stornieren Button -->
+      @if (order.status === 'pending') {
+        <div class="mt-6 flex justify-center">
+          <button
+            (click)="showCancelConfirmation.set(true)"
+            class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg font-semibold transition-colors"
+          >
+            Bestellung stornieren
+          </button>
+        </div>
+      }
+
       } @else {
       <p class="text-center text-lg py-10">⏳ Lade Bestelldetails…</p>
       }
+
+      <!-- Bestätigungs-Popup -->
+      @if (showCancelConfirmation()) {
+      <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+        <div class="bg-white border rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+          <div class="flex flex-col items-center gap-4">
+            <span class="text-lg font-medium">Möchten Sie diese Bestellung wirklich stornieren?</span>
+            <div class="flex gap-3">
+              <button
+                class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded text-gray-800 font-medium transition"
+                (click)="showCancelConfirmation.set(false)"
+              >
+                Abbrechen
+              </button>
+              <button
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium transition"
+                (click)="cancelOrder()"
+              >
+                Stornieren
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      }
+
+      <app-popup-alert
+        [message]="alertMessage"
+        [visible]="showAlert()"
+        [type]="alertType"
+      />
     </div>
   `,
   styles: [``],
@@ -104,6 +148,11 @@ import { CartService } from '../../../../shared/services/cart.service';
 export class OrderDetails implements OnInit {
   order: any = null;
   loading = true;
+
+  showAlert = signal(false);
+  showCancelConfirmation = signal(false);
+  alertMessage = '';
+  alertType: 'success' | 'error' | 'info' = 'info';
 
   constructor(
     private http: HttpClient,
@@ -194,6 +243,34 @@ export class OrderDetails implements OnInit {
     } else {
       console.error('Produkt-ID fehlt');
     }
+  }
+
+  /** ✅ Bestellung stornieren */
+  cancelOrder() {
+    this.showCancelConfirmation.set(false);
+    
+    this.http.patch(
+      `${environment.apiBaseUrl}orders/${this.order.id}/cancel/`,
+      {},
+      { withCredentials: true }
+    ).subscribe({
+      next: (response: any) => {
+        // Status lokal aktualisieren
+        this.order.status = 'cancelled';
+        // Erfolgsmeldung anzeigen
+        this.alertMessage = 'Bestellung wurde erfolgreich storniert.';
+        this.alertType = 'success';
+        this.showAlert.set(true);
+        setTimeout(() => this.showAlert.set(false), 3000);
+      },
+      error: (err) => {
+        console.error('Fehler beim Stornieren der Bestellung:', err);
+        this.alertMessage = 'Fehler beim Stornieren der Bestellung. Bitte versuchen Sie es später erneut.';
+        this.alertType = 'error';
+        this.showAlert.set(true);
+        setTimeout(() => this.showAlert.set(false), 3000);
+      }
+    });
   }
 
   goBack() {
