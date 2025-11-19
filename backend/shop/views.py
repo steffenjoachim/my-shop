@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import action
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
@@ -261,6 +262,27 @@ class PlaceOrderView(APIView):
 class OrderViewSet(ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+    @action(detail=True, methods=["patch"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        """
+        PATCH /api/orders/{pk}/cancel/
+        Setzt status auf 'cancelled' falls Berechtigung und order pending ist.
+        """
+        order = self.get_object()
+
+        # einfache Berechtigungsprüfung: Eigentümer oder staff
+        if not (request.user.is_authenticated and (request.user == order.user or request.user.is_staff)):
+            return Response({"error": "Kein Zugriff"}, status=status.HTTP_403_FORBIDDEN)
+
+        if order.status != "pending":
+            return Response({"error": "Bestellung kann nicht storniert werden"}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.status = "cancelled"
+        order.save(update_fields=["status"])
+
+        ser = OrderSerializer(order, context={"request": request})
+        return Response(ser.data, status=status.HTTP_200_OK)
 
     def get_queryset(self):
         user = self.request.user
