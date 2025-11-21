@@ -1,3 +1,4 @@
+// ...existing code...
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -67,7 +68,7 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
             >
               ✓ Produkt wurde von dir bereits bewertet
             </div>
-            } @else {
+            } @else if (order.status === 'shipped') {
             <button
               (click)="openReview(item)"
               class="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-semibold"
@@ -75,7 +76,6 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
               Jetzt Bewertung abgeben
             </button>
             }
-
             <button
               (click)="buyAgain(item)"
               class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
@@ -277,3 +277,4 @@ export class OrderDetails implements OnInit {
     this.router.navigate(['/orders']);
   }
 }
+// ...existing code...
