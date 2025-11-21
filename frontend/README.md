@@ -1,143 +1,265 @@
 # MyShop
 
-MyShop is a simple e-commerce application built with Angular for the frontend and a placeholder backend folder for future server-side development.
+MyShop ist eine kleine E‑Commerce‑Applikation. Das Frontend ist mit Angular umgesetzt, das Backend liegt als Django/DRF‑Projekt im Ordner `backend` (teilweise implementiert). Dieses README ist auf dem aktuellen Stand des Repositories (Frontend Angular + Backend Django REST Framework).
 
-## Features
+## Hauptfeatures
 
-- **Frontend**: Built with Angular, showcasing a product list, product cards, and a cart system.
-- **Backend**: Placeholder folder for future backend implementation.
+- Frontend: Angular (Standalone Components, Signals), Tailwind CSS für Styling.
+- Backend: Django + Django REST Framework (API‑Endpunkte unter `/api/`).
+- Produktübersicht, Produktdetailseite mit Bewertungen, Warenkorb, Bestellverwaltung.
+- Versandverwaltung (separate Route für Shipping‑User: `/shipping/orders`).
+- Authentifizierung (Session / CSRF) und einfache Order‑APIs.
 
-## Project Structure
+## Projektstruktur (auszugsweise)
 
-The project is organized as follows:
-
-```
 my-shop/
-├── backend/                      # Placeholder for backend implementation
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── app.component.ts          # Root component
-│   │   │   ├── app.config.ts             # Application configuration
-│   │   │   ├── app.routes.ts             # Application routes
-│   │   │   ├── features/
-│   │   │   │   └── cart/
-│   │   │   │       └── cart.component.ts         # Cart component
-│   │   │   ├── home/                     # Home module
-│   │   │   │   └── product-list/
-│   │   │   │       ├── product-list.component.ts  # Product list component
-│   │   │   │       └── product-card/
-│   │   │   │           └── product-card.component.ts  # Product card component
-│   │   │   ├── shared/
-│   │   │       ├── header/
-│   │   │       │   └── header.component.ts  # Header component
-│   │   │       ├── primary-button/
-│   │   │       │   └── primary-button.component.ts  # Reusable button component
-│   │   │       └── models/
-│   │   │           └── products.model.ts  # Product model
-```
+- backend/                      # Django + DRF (app: `shop`)
+  - manage.py
+  - requirements.txt
+  - shop/
+    - models.py
+    - views.py
+    - serializers.py
+    - urls.py
+- frontend/
+  - package.json
+  - src/
+    - app/
+      - app.routes.ts
+      - app.component.ts
+      - features/
+        - product-detail/
+        - orders/
+          - components/
+            - order-card/
+            - order-details/
+        - ...
+      - shared/
+        - header/
+        - services/
+          - auth.service.ts
+          - cart.service.ts
+        - popup-alert/
+    - environments/
+      - environment.ts
+  - README.md (diese Datei)
 
-## Technologies Used
+## Installation & Entwicklung
 
-### Frontend
+Voraussetzungen:
+- Node.js (16+)
+- Angular CLI (optional, empfohlen)
+- Python 3.10+ (für Backend)
+- pip / virtualenv
 
-- **Angular**: Framework for building the application.
-- **Tailwind CSS**: Utility-first CSS framework for styling.
-- **TypeScript**: Strongly typed programming language for Angular development.
-
-### Backend
-
-- Currently empty. Placeholder for future backend implementation.
-
-## Getting Started
-
-### Prerequisites
-
-Ensure you have the following installed:
-
-- [Node.js](https://nodejs.org/) (v16 or higher)
-- [Angular CLI](https://angular.io/cli)
-
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone <repository-url>
-   cd my-shop
-   ```
-
-2. Navigate to the `frontend` folder and install dependencies:
-
-   ```bash
+Frontend (Entwicklung)
+1. In das frontend‑Verzeichnis wechseln:
    cd frontend
+2. Abhängigkeiten installieren:
    npm install
-   ```
+3. Dev‑Server starten:
+   ng serve
+4. App öffnen:
+   http://localhost:4200
 
-### Development Server
+Backend (Entwicklung)
+1. Virtualenv erstellen und aktivieren:
+   python -m venv .venv
+   .venv\Scripts\activate    (Windows) oder source .venv/bin/activate (mac/linux)
+2. Abhängigkeiten installieren:
+   pip install -r requirements.txt
+3. Migrationen ausführen:
+   python manage.py migrate
+4. Optional Superuser anlegen:
+   python manage.py createsuperuser
+5. Dev‑Server starten:
+   python manage.py runserver
+6. API Basis-URL:
+   Standardmäßig unter http://localhost:8000/api/
 
-Run the development server for the frontend:
+Wichtig:
+- Die Frontend‑Umgebung (`src/environments/environment.ts`) enthält `apiBaseUrl` — passe diese an, falls Backend auf anderem Host/Port läuft.
+- CSRF: Es gibt einen Endpunkt `/api/cart/csrf/` (für CSRF Cookie), Session/CSRF werden in Frontend bereits berücksichtigt (withCredentials).
 
-```bash
-ng serve
-```
+## Bekannte Verhalten / Hinweise für Entwickler
 
-Navigate to `http://localhost:4200/` in your browser. The app will automatically reload if you make changes to the source files.
+- Bestellungen:
+  - Frontend erwartet eine Route zum Stornieren: `PATCH /api/orders/{id}/cancel/`. Damit diese existiert, muss im `OrderViewSet` (backend/shop/views.py) eine DRF‑Detail‑Action `@action(detail=True, methods=['patch'], url_path='cancel')` implementiert sein. Fehlt die Action → 404 beim PATCH.
+- Shipping‑User:
+  - Wenn sich ein User mit Shipping‑Rechten einloggt, leitet das Frontend standardmäßig zu `/shipping/orders` weiter. Der Header blendet für Shipping‑Accounts das Dropdown unter dem User aus.
+  - Die Erkennung des Shipping‑Users erfolgt aktuell über verschiedene mögliche Felder im User‑Objekt (z. B. `role`, `is_shipping`, `groups`).
+- Responsive UI:
+  - Die Review‑Filter UI ist responsive: bei schmalen Viewports werden Buttons umgebrochen und Button‑Padding / Schriftgröße reduziert.
+- Reviews:
+  - Produktbewertungs‑Karte ist eigenständige Komponente (`ProductReviewCard`), Bewertungen lassen sich sortieren/filtern (Neueste, Älteste, Beste, Schlechteste, Min. Sterne).
 
-### Building the Project
+## Testing
 
-To build the frontend project for production:
+Frontend:
+- Unit Tests (Jasmine/Karma) mit:
+  npm test
 
-```bash
-ng build
-```
+Backend:
+- Django‑Tests:
+  python manage.py test
 
-The build artifacts will be stored in the `dist/` directory.
+## Deployment / Build
 
-### Running Unit Tests
+Frontend Production Build:
+- cd frontend
+- ng build --configuration production
+  Die erzeugten Artefakte landen in `dist/`.
 
-To execute unit tests for the frontend:
+Backend Deployment:
+- Standard Django‑Deployment‑Schritte (WSGI/ASGI, Datenbank konfigurieren, SECRET_KEY, DEBUG=False usw.)
 
-```bash
-ng test
-```
+## Entwicklungstipps / ToDos
 
-## Components Overview
+- Backend: vollständige Serializers/Models fertigstellen (einige Dateien im `backend/shop` sind noch unvollständig).
+- API‑Routen prüfen: sicherstellen, dass alle vom Frontend verwendeten Endpoints (z. B. Cancel‑Action) vorhanden sind.
+- Auth: Rollen/Claims im User‑Objekt vereinheitlichen, damit Frontend die Shipping‑Rolle zuverlässig erkennt.
+- Unit / E2E Tests erweitern (z. B. Order Cancellation, Review Submission).
 
-### ProductCardComponent
+## Lizenz
 
-- Displays product details such as title, price, image, and stock status.
-- Includes an "Add to Cart" button.
+Dieses Projekt steht unter MIT License.
 
-### ProductListComponent
+---
 
-- Renders a list of products using the `ProductCardComponent`.
+Bei Bedarf kann ich:
+- Eine Beispiel‑Implementierung der `cancel`‑Action für `OrderViewSet` vorschlagen.
+- Die environment‑Datei Beispiel zeigen (wie `apiBaseUrl` gesetzt wird).
+- README um weitere Details ergänzen (Deploy, CI, Docker).
+```// filepath: d:\Abuabdillah\Codes\My-projects\my-shop\frontend\README.md
+# MyShop
 
-### CartComponent
+MyShop ist eine kleine E‑Commerce‑Applikation. Das Frontend ist mit Angular umgesetzt, das Backend liegt als Django/DRF‑Projekt im Ordner `backend` (teilweise implementiert). Dieses README ist auf dem aktuellen Stand des Repositories (Frontend Angular + Backend Django REST Framework).
 
-- Displays the items added to the cart.
+## Hauptfeatures
 
-### HeaderComponent
+- Frontend: Angular (Standalone Components, Signals), Tailwind CSS für Styling.
+- Backend: Django + Django REST Framework (API‑Endpunkte unter `/api/`).
+- Produktübersicht, Produktdetailseite mit Bewertungen, Warenkorb, Bestellverwaltung.
+- Versandverwaltung (separate Route für Shipping‑User: `/shipping/orders`).
+- Authentifizierung (Session / CSRF) und einfache Order‑APIs.
 
-- Displays the application header with a cart button.
+## Projektstruktur (auszugsweise)
 
-### PrimaryButtonComponent
+my-shop/
+- backend/                      # Django + DRF (app: `shop`)
+  - manage.py
+  - requirements.txt
+  - shop/
+    - models.py
+    - views.py
+    - serializers.py
+    - urls.py
+- frontend/
+  - package.json
+  - src/
+    - app/
+      - app.routes.ts
+      - app.component.ts
+      - features/
+        - product-detail/
+        - orders/
+          - components/
+            - order-card/
+            - order-details/
+        - ...
+      - shared/
+        - header/
+        - services/
+          - auth.service.ts
+          - cart.service.ts
+        - popup-alert/
+    - environments/
+      - environment.ts
+  - README.md (diese Datei)
 
-- A reusable button component with customizable labels and click events.
+## Installation & Entwicklung
 
-## Future Plans for Backend
+Voraussetzungen:
+- Node.js (16+)
+- Angular CLI (optional, empfohlen)
+- Python 3.10+ (für Backend)
+- pip / virtualenv
 
-The `backend` folder is currently empty but will be used for server-side development. Potential technologies include:
+Frontend (Entwicklung)
+1. In das frontend‑Verzeichnis wechseln:
+   cd frontend
+2. Abhängigkeiten installieren:
+   npm install
+3. Dev‑Server starten:
+   ng serve
+4. App öffnen:
+   http://localhost:4200
 
-- **Node.js** with **Express** for REST API development.
-- **MongoDB** or **PostgreSQL** for database management.
+Backend (Entwicklung)
+1. Virtualenv erstellen und aktivieren:
+   python -m venv .venv
+   .venv\Scripts\activate    (Windows) oder source .venv/bin/activate (mac/linux)
+2. Abhängigkeiten installieren:
+   pip install -r requirements.txt
+3. Migrationen ausführen:
+   python manage.py migrate
+4. Optional Superuser anlegen:
+   python manage.py createsuperuser
+5. Dev‑Server starten:
+   python manage.py runserver
+6. API Basis-URL:
+   Standardmäßig unter http://localhost:8000/api/
 
-## License
+Wichtig:
+- Die Frontend‑Umgebung (`src/environments/environment.ts`) enthält `apiBaseUrl` — passe diese an, falls Backend auf anderem Host/Port läuft.
+- CSRF: Es gibt einen Endpunkt `/api/cart/csrf/` (für CSRF Cookie), Session/CSRF werden in Frontend bereits berücksichtigt (withCredentials).
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+## Bekannte Verhalten / Hinweise für Entwickler
 
-## Acknowledgments
+- Bestellungen:
+  - Frontend erwartet eine Route zum Stornieren: `PATCH /api/orders/{id}/cancel/`. Damit diese existiert, muss im `OrderViewSet` (backend/shop/views.py) eine DRF‑Detail‑Action `@action(detail=True, methods=['patch'], url_path='cancel')` implementiert sein. Fehlt die Action → 404 beim PATCH.
+- Shipping‑User:
+  - Wenn sich ein User mit Shipping‑Rechten einloggt, leitet das Frontend standardmäßig zu `/shipping/orders` weiter. Der Header blendet für Shipping‑Accounts das Dropdown unter dem User aus.
+  - Die Erkennung des Shipping‑Users erfolgt aktuell über verschiedene mögliche Felder im User‑Objekt (z. B. `role`, `is_shipping`, `groups`).
+- Responsive UI:
+  - Die Review‑Filter UI ist responsive: bei schmalen Viewports werden Buttons umgebrochen und Button‑Padding / Schriftgröße reduziert.
+- Reviews:
+  - Produktbewertungs‑Karte ist eigenständige Komponente (`ProductReviewCard`), Bewertungen lassen sich sortieren/filtern (Neueste, Älteste, Beste, Schlechteste, Min. Sterne).
 
-- [Fake Store API](https://fakestoreapi.com/) for product data.
-- [Angular](https://angular.io/) for the framework.
-- [Tailwind CSS](https://tailwindcss.com/) for styling.
+## Testing
+
+Frontend:
+- Unit Tests (Jasmine/Karma) mit:
+  npm test
+
+Backend:
+- Django‑Tests:
+  python manage.py test
+
+## Deployment / Build
+
+Frontend Production Build:
+- cd frontend
+- ng build --configuration production
+  Die erzeugten Artefakte landen in `dist/`.
+
+Backend Deployment:
+- Standard Django‑Deployment‑Schritte (WSGI/ASGI, Datenbank konfigurieren, SECRET_KEY, DEBUG=False usw.)
+
+## Entwicklungstipps / ToDos
+
+- Backend: vollständige Serializers/Models fertigstellen (einige Dateien im `backend/shop` sind noch unvollständig).
+- API‑Routen prüfen: sicherstellen, dass alle vom Frontend verwendeten Endpoints (z. B. Cancel‑Action) vorhanden sind.
+- Auth: Rollen/Claims im User‑Objekt vereinheitlichen, damit Frontend die Shipping‑Rolle zuverlässig erkennt.
+- Unit / E2E Tests erweitern (z. B. Order Cancellation, Review Submission).
+
+## Lizenz
+
+Dieses Projekt steht unter MIT License.
+
+---
+
+Bei Bedarf kann ich:
+- Eine Beispiel‑Implementierung der `cancel`‑Action für `OrderViewSet` vorschlagen.
+- Die environment‑Datei Beispiel zeigen (wie `apiBaseUrl` gesetzt wird).
+- README um weitere Details ergänzen (Deploy, CI, Docker).

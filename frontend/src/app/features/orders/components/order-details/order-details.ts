@@ -1,4 +1,3 @@
-// ...existing code...
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -277,4 +276,3 @@ export class OrderDetails implements OnInit {
     this.router.navigate(['/orders']);
   }
 }
-// ...existing code...
