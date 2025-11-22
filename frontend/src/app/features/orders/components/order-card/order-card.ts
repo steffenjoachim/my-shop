@@ -1,3 +1,4 @@
+// ...existing code...
 import { Component, Input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -46,17 +47,30 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
         {{ order.created_at | date : 'd. MMMM yyyy' : '' : 'de-DE' }}
       </p>
 
-      <!-- Stornieren Button -->
-      @if (order.status === 'pending') {
-        <div class="mt-3 pt-3 border-t border-gray-200 flex justify-end">
+      <!-- Details (immer sichtbar links) + Stornieren (rechts, nur wenn pending) -->
+      <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+        <!-- Links: Details (immer sichtbar). stopPropagation damit der card-click nicht doppelt navigiert -->
+        <div class="flex-shrink-0">
           <button
-            (click)="$event.stopPropagation(); showCancelConfirmation.set(true)"
-            class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors"
+            (click)="$event.stopPropagation(); goToDetails()"
+            class="inline-block px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-semibold"
           >
-            Bestellung stornieren
+            Details
           </button>
         </div>
-      }
+
+        <!-- Rechts: Stornieren nur wenn pending -->
+        <div class="flex-shrink-0">
+          @if (order.status === 'pending') {
+            <button
+              (click)="$event.stopPropagation(); showCancelConfirmation.set(true)"
+              class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors"
+            >
+              Bestellung stornieren
+            </button>
+          }
+        </div>
+      </div>
 
       <!-- Bestätigungs-Popup -->
       @if (showCancelConfirmation()) {
@@ -66,13 +80,13 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
             <span class="text-lg font-medium">Möchten Sie diese Bestellung wirklich stornieren?</span>
             <div class="flex gap-3">
               <button
-                class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded text-gray-800 font-medium transition"
+                class="px-3 py-1 bg-gray-300 hover:bg-gray-400 rounded text-gray-800 font-medium transition"
                 (click)="showCancelConfirmation.set(false)"
               >
                 Abbrechen
               </button>
               <button
-                class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium transition"
+                class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-white font-medium transition"
                 (click)="cancelOrder()"
               >
                 Stornieren
@@ -159,3 +173,4 @@ export class OrderCard {
     });
   }
 }
+// ...existing code...
