@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [ReviewCard, CommonModule],
   template: `
-    <div class="min-h-screen m-8 px-8 max-w-7xl mx-auto">
+    <div class="min-h-screen m-8 px-8 max-w-7xl ml-auto mr-auto">
       <h1 class="text-2xl font-bold mb-4">Meine Bewertungen:</h1>
 
       @if (isLoggedIn()) { @if (loading) {
