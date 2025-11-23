@@ -22,7 +22,7 @@ export interface Review {
   imports: [DatePipe, NgClass],
   template: `
     <div
-      class="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col"
+      class="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col max-w-[600px]"
     >
       <!-- Produktinfo -->
       <div class="flex gap-4 mb-4">

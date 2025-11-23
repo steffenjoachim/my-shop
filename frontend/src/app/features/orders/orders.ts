@@ -18,7 +18,7 @@ interface Order {
   standalone: true,
   imports: [OrderCard],
   template: `
-    <div class="min-h-screen m-8">
+    <div class="min-h-screen m-8 flex flex-col items-center ">
       <h1 class="text-2xl font-bold mb-4">Meine Bestellungen:</h1>
 
       @if (isLoggedIn()) { @if (orders().length > 0) {

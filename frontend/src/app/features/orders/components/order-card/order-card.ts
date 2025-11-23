@@ -1,4 +1,3 @@
-// ...existing code...
 import { Component, Input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -12,7 +11,7 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
   imports: [CommonModule, PopupAlert],
   template: `
     <div
-      class="p-4 bg-white shadow-md rounded-xl border border-gray-200 cursor-pointer hover:shadow-lg transition relative"
+      class="p-4 bg-white shadow-md rounded-xl border border-gray-200 cursor-pointer hover:shadow-lg transition relative max-w-[700px] md:min-w-[500px] lg:min-w-[600px]"
       (click)="goToDetails()"
     >
       <div class="flex justify-between items-center mb-2">
@@ -173,4 +172,3 @@ export class OrderCard {
     });
   }
 }
-// ...existing code...
