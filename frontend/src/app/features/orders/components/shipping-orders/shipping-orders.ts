@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../shared/services/auth.service';
 import { environment } from '../../../../../environments/environment';
+import { ShippingOrderCard } from '../shipping-order-card/shipping-order-card';
 
 interface Order {
   id: number;
@@ -21,7 +22,7 @@ interface Order {
 @Component({
   selector: 'app-shipping-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ShippingOrderCard],
   template: `
     <div class="min-h-screen m-8">
       @if (!isShippingStaff()) {
@@ -58,61 +59,24 @@ interface Order {
           </div>
         </div>
 
-        <!-- Bestellungen -->
+        <!-- Bestellungen: zentriert darstellen, Karten haben eigene max-width -->
         @if (loading()) {
         <p class="text-center text-lg py-10">⏳ Lade Bestellungen…</p>
         } @else if (orders().length > 0) {
-        <div class="grid gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
           @for (order of orders(); track order.id) {
-          <div
-            class="p-4 bg-white shadow-md rounded-xl border border-gray-200 hover:shadow-lg transition cursor-pointer"
-            (click)="goToDetails(order.id)"
-          >
-            <div class="flex justify-between items-start mb-3">
-              <div>
-                <h2 class="font-semibold text-lg">Bestellung #{{ order.id }}</h2>
-                <p class="text-sm text-gray-600">
-                  Kunde: {{ order.name || order.user }}
-                </p>
-                @if (order.city) {
-                <p class="text-sm text-gray-500">{{ order.city }}</p>
-                }
-              </div>
-              <span
-                class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800"
-              >
-                {{ order.status | titlecase }}
-              </span>
-            </div>
-
-            <div class="flex justify-between items-center">
-              <div>
-                <p class="text-gray-600">
-                  Gesamt: <b>{{ order.total }} €</b>
-                </p>
-                <p class="text-gray-500 text-sm">
-                  Erstellt am
-                  {{ order.created_at | date : 'd. MMMM yyyy HH:mm' : '' : 'de-DE' }}
-                </p>
-              </div>
-              <button
-                (click)="goToDetails(order.id); $event.stopPropagation()"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
-              >
-                Details anzeigen
-              </button>
-            </div>
-          </div>
+            <app-shipping-order-card [order]="order"></app-shipping-order-card>
           }
         </div>
         } @else {
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+        <div
+          class="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center"
+        >
           <p class="text-gray-500 text-lg">
-            @if (searchQuery) {
-            Keine Bestellungen mit der Nummer "{{ searchQuery }}" gefunden.
-            } @else {
-            Keine Bestellungen mit Status "Pending" vorhanden.
-            }
+            @if (searchQuery) { Keine Bestellungen mit der Nummer "{{
+              searchQuery
+            }}" gefunden. } @else { Keine Bestellungen mit Status "Pending"
+            vorhanden. }
           </p>
         </div>
         }
@@ -175,9 +139,8 @@ export class ShippingOrders implements OnInit {
     this.loadOrders();
   }
 
-  /** 📋 Zur Detailansicht */
+  /** 📋 Zur Detailansicht (bleibt falls benötigt) */
   goToDetails(orderId: number) {
     this.router.navigate(['/shipping/orders', orderId]);
   }
 }
-
