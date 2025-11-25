@@ -317,10 +317,11 @@ def is_shipping_staff(user):
 class ShippingOrderViewSet(ModelViewSet):
     """
     ViewSet für Shipping-Mitarbeiter.
-    Zeigt nur Orders mit Status 'pending' an.
+    Zeigt nur relevante Orders (pending / ready_to_ship) an.
     """
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
+    visible_statuses = ("pending", "ready_to_ship")
 
     def get_queryset(self):
         user = self.request.user
@@ -328,7 +329,7 @@ class ShippingOrderViewSet(ModelViewSet):
             return Order.objects.none()
         
         queryset = (
-            Order.objects.filter(status="pending")
+            Order.objects.filter(status__in=self.visible_statuses)
             .prefetch_related("items__product")
             .select_related("user")
             .order_by("-created_at")
@@ -347,32 +348,100 @@ class ShippingOrderViewSet(ModelViewSet):
         return queryset
 
     def update(self, request, *args, **kwargs):
-        """Status-Update für Shipping-Mitarbeiter."""
+        """Status- und Versand-Updates für Shipping-Mitarbeiter."""
         if not is_shipping_staff(request.user):
             raise PermissionDenied("Nur Shipping-Mitarbeiter können Bestellungen aktualisieren.")
-        
+
         order = self.get_object()
-        
-        # Nur Status-Update erlauben
-        new_status = request.data.get("status")
-        if not new_status:
-            return Response(
-                {"error": "Status-Feld ist erforderlich"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Validiere Status
+        payload = request.data or {}
+
+        new_status = payload.get("status", order.status)
         valid_statuses = [choice[0] for choice in Order.STATUS_CHOICES]
         if new_status not in valid_statuses:
             return Response(
                 {"error": f"Ungültiger Status. Erlaubt: {', '.join(valid_statuses)}"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
-        # Status aktualisieren
-        order.status = new_status
-        order.save(update_fields=["status"])
-        
+
+        carrier_key_present = "shipping_carrier" in payload
+        tracking_key_present = "tracking_number" in payload
+
+        carrier_raw = payload.get("shipping_carrier")
+        tracking_raw = payload.get("tracking_number")
+
+        carrier = (
+            str(carrier_raw).strip().lower()
+            if carrier_raw not in (None, "")
+            else None
+        )
+        tracking_number = (
+            str(tracking_raw).strip()
+            if tracking_raw is not None
+            else None
+        )
+        tracking_number = tracking_number or None
+
+        allowed_carriers = [choice[0] for choice in Order.SHIPPING_CARRIER_CHOICES]
+        if carrier_key_present and carrier is not None and carrier not in allowed_carriers:
+            return Response(
+                {
+                    "error": (
+                        "Ungültiger Versanddienst. Erlaubt: "
+                        f"{', '.join(dict(Order.SHIPPING_CARRIER_CHOICES).values())}"
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        requires_shipping_data = new_status in ("ready_to_ship", "shipped")
+        existing_carrier = carrier if carrier_key_present else order.shipping_carrier
+        existing_tracking = (
+            tracking_number if tracking_key_present else order.tracking_number
+        )
+
+        if requires_shipping_data and not existing_carrier:
+            return Response(
+                {
+                    "error": (
+                        "Bitte wählen Sie einen Versanddienst, um den Status "
+                        "'Versandbereit' oder 'Versandt' zu setzen."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if requires_shipping_data and not existing_tracking:
+            return Response(
+                {
+                    "error": (
+                        "Bitte hinterlegen Sie eine Tracking-Nummer, "
+                        "um den Versandstatus zu aktualisieren."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        fields_to_update = []
+        if new_status != order.status:
+            order.status = new_status
+            fields_to_update.append("status")
+
+        if carrier_key_present:
+            order.shipping_carrier = carrier
+            fields_to_update.append("shipping_carrier")
+
+        if tracking_key_present:
+            order.tracking_number = tracking_number
+            fields_to_update.append("tracking_number")
+
+        # Falls keine expliziten neuen Felder gesendet wurden, aber Status Shipping-Daten erfordert,
+        # wurden oben bereits Fehlermeldungen geworfen falls Daten fehlen.
+        if fields_to_update:
+            order.save(update_fields=fields_to_update)
+        elif requires_shipping_data and not fields_to_update:
+            # Status unverändert, aber ggf. vorhandene Daten schon gesetzt -> nichts zu speichern
+            pass
+
         serializer = self.get_serializer(order, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 

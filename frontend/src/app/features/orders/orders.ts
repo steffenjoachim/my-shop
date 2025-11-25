@@ -3,15 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { OrderCard } from './components/order-card/order-card';
 import { AuthService } from '../../shared/services/auth.service';
 import { environment } from '../../../environments/environment';
-
-interface Order {
-  id: number;
-  user: string;
-  total: number;
-  status: string;
-  paid: boolean;
-  created_at: string;
-}
+import { OrderSummary } from '../../shared/models/order.model';
 
 @Component({
   selector: 'app-orders',
@@ -41,7 +33,7 @@ export class Orders {
   private auth = inject(AuthService);
   private http = inject(HttpClient);
 
-  orders = signal<Order[]>([]);
+  orders = signal<OrderSummary[]>([]);
 
   isLoggedIn = () => this.auth.isLoggedIn();
   user = () => this.auth.user();
@@ -56,7 +48,7 @@ export class Orders {
 
     try {
       const response = await this.http
-        .get<Order[]>(`${environment.apiBaseUrl}orders/`, {
+        .get<OrderSummary[]>(`${environment.apiBaseUrl}orders/`, {
           withCredentials: true, // 🟩 wichtig für Session-Auth
         })
         .toPromise();

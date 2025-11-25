@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { PrimaryButton } from '../primary-button/primary-button';
 import { CartService } from '../services/cart.service';
-import { CartItem } from '../models/products.model';
+import { CartItem } from '../models/order.model';
 import { AuthService } from '../services/auth.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';

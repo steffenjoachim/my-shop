@@ -61,14 +61,3 @@ export interface Product {
   rating_count: number | null;
   recent_reviews: Review[];
 }
-
-export interface CartItem {
-  id: number;
-  title: string;
-  price: number;
-
-  main_image: string | null;
-  selectedAttributes: { [key: string]: string };
-
-  quantity: number;
-}
