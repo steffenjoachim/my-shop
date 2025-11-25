@@ -1,10 +1,16 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../../../environments/environment';
 import { AuthService } from '../../../../shared/services/auth.service';
+import {
+  OrderDetail,
+  SHIPPING_CARRIER_OPTIONS,
+  ShippingCarrier,
+  ShippingCarrierOption,
+} from '../../../../shared/models/order.model';
 
 @Component({
   selector: 'app-shipping-order-details',
@@ -43,7 +49,7 @@ import { AuthService } from '../../../../shared/services/auth.service';
           </select>
           <button
             (click)="updateStatus()"
-            [disabled]="updating || selectedStatus === order.status"
+            [disabled]="updating || !hasPendingChanges()"
             class="ml-3 px-4 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded text-sm font-semibold"
           >
             @if (updating) {
@@ -59,6 +65,55 @@ import { AuthService } from '../../../../shared/services/auth.service';
         <div>
           <b>Datum:</b> {{ order.created_at | date : 'dd.MM.yyyy HH:mm' }}
         </div>
+        <div>
+          <b>Versanddienst:</b>
+          {{ carrierLabel(order.shipping_carrier) || 'Noch nicht hinterlegt' }}
+        </div>
+        @if (order.tracking_number) {
+        <div><b>Tracking-Nr.:</b> {{ order.tracking_number }}</div>
+        }
+      </div>
+
+      <!-- Versandinformationen -->
+      <div class="bg-white border p-4 rounded-lg text-sm mb-6">
+        <h3 class="text-lg font-semibold mb-4">Versandinformationen</h3>
+        <div class="flex flex-col gap-4 md:flex-row">
+          <label class="flex-1 text-sm font-medium text-gray-700">
+            Versand mit
+            <select
+              [(ngModel)]="selectedCarrier"
+              [disabled]="!requiresShippingDetails()"
+              class="mt-1 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+            >
+              <option value="">Bitte auswählen</option>
+              @for (carrier of shippingCarriers; track carrier.value) {
+              <option [value]="carrier.value">{{ carrier.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="flex-1 text-sm font-medium text-gray-700">
+            Tracking-Nummer
+            <input
+              type="text"
+              [(ngModel)]="trackingNumber"
+              [disabled]="!requiresShippingDetails()"
+              placeholder="z. B. DHL123456789"
+              class="mt-1 w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+            />
+          </label>
+        </div>
+        @if (requiresShippingDetails()) {
+        <p class="text-xs text-gray-500 mt-3">
+          Versanddienst und Tracking-Nummer sind Pflicht für "Versandbereit" und
+          "Versandt".
+        </p>
+        } @else {
+        <p class="text-xs text-gray-500 mt-3">
+          Versanddetails können bearbeitet werden, sobald der Status auf
+          "Versandbereit" oder "Versandt" gestellt wird.
+        </p>
+        }
       </div>
 
       @if (statusMessage) {
@@ -86,9 +141,9 @@ import { AuthService } from '../../../../shared/services/auth.service';
           <div class="text-lg font-bold">{{ item.product_title }}</div>
 
           <!-- Variation -->
-          @if (item.variation_details?.attributes?.length > 0) {
+          @if ((item.variation_details?.attributes?.length || 0) > 0) {
           <div class="mt-2 flex flex-wrap gap-2">
-            @for (v of item.variation_details.attributes; track v.id) {
+            @for (v of (item.variation_details?.attributes || []); track v?.id) {
             <span class="px-2 py-1 bg-gray-100 rounded text-xs border">
               {{ v.attribute_type }}: {{ v.value }}
             </span>
@@ -120,21 +175,25 @@ import { AuthService } from '../../../../shared/services/auth.service';
   `,
   styles: [``],
 })
-export class ShippingOrderDetails implements OnInit {
-  order: any = null;
+export class ShippingOrderDetails implements OnInit, OnDestroy {
+  order: OrderDetail | null = null;
   loading = true;
   updating = false;
   selectedStatus = '';
+  selectedCarrier: ShippingCarrier | '' = '';
+  trackingNumber = '';
   statusMessage = '';
   statusMessageType: 'success' | 'error' | null = null;
+  private messageTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  statusOptions = [
+  readonly statusOptions = [
     { value: 'pending', label: 'Ausstehend' },
     { value: 'paid', label: 'Bezahlt' },
     { value: 'ready_to_ship', label: 'Versandbereit' },
     { value: 'shipped', label: 'Versandt' },
     { value: 'cancelled', label: 'Storniert' },
   ];
+  readonly shippingCarriers: ShippingCarrierOption[] = SHIPPING_CARRIER_OPTIONS;
 
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
@@ -152,77 +211,183 @@ export class ShippingOrderDetails implements OnInit {
     }
   }
 
-  /** ✅ Bestellung laden */
+  ngOnDestroy(): void {
+    if (this.messageTimeout) {
+      clearTimeout(this.messageTimeout);
+      this.messageTimeout = null;
+    }
+  }
+
   loadOrder(id: number): void {
+    this.loading = true;
     this.http
-      .get(`${environment.apiBaseUrl}shipping/orders/${id}/`, {
+      .get<OrderDetail>(`${environment.apiBaseUrl}shipping/orders/${id}/`, {
         withCredentials: true,
       })
       .subscribe({
-        next: (res: any) => {
-          res.items = res.items.map((item: any) => ({
-            ...item,
-            variation_details: this.convertVariation(item.variation_details),
-          }));
-          this.order = res;
-          this.selectedStatus = res.status;
+        next: (res) => {
+          this.order = this.normalizeOrder(res);
+          this.selectedStatus = this.order.status;
+          this.prefillShippingFields(this.order);
           this.loading = false;
         },
         error: (err) => {
           console.error('Fehler beim Laden:', err);
           this.loading = false;
+          this.showStatusMessage(
+            'Bestelldetails konnten nicht geladen werden.',
+            'error'
+          );
         },
       });
   }
 
-  /** ✅ Variation konvertieren */
-  convertVariation(details: any) {
-    if (!details || !details.attributes) return { attributes: [] };
-    return {
-      ...details,
-      attributes: Array.isArray(details.attributes) ? details.attributes : [],
-    };
-  }
-
-  /** 💾 Status aktualisieren */
   updateStatus(): void {
-    if (!this.order || this.selectedStatus === this.order.status) return;
+    if (!this.order || !this.hasPendingChanges()) return;
+
+    if (this.requiresShippingDetails()) {
+      if (!this.selectedCarrier) {
+        this.showStatusMessage(
+          'Bitte einen Versanddienst auswählen.',
+          'error'
+        );
+        return;
+      }
+      if (!this.normalizedTrackingInput()) {
+        this.showStatusMessage(
+          'Bitte eine Tracking-Nummer hinterlegen.',
+          'error'
+        );
+        return;
+      }
+    }
+
+    const payload: Record<string, string | null> = {
+      status: this.selectedStatus,
+    };
+
+    if (this.requiresShippingDetails() || this.shippingCarrierChanged()) {
+      payload['shipping_carrier'] = this.selectedCarrier || null;
+    }
+    if (this.requiresShippingDetails() || this.trackingNumberChanged()) {
+      payload['tracking_number'] = this.normalizedTrackingInput() || null;
+    }
 
     this.updating = true;
-    this.statusMessage = '';
-    this.statusMessageType = null;
+    this.showStatusMessage('', null);
 
     this.http
-      .patch(
+      .patch<OrderDetail>(
         `${environment.apiBaseUrl}shipping/orders/${this.order.id}/`,
-        { status: this.selectedStatus },
+        payload,
         { withCredentials: true }
       )
       .subscribe({
-        next: (res: any) => {
-          this.order = res;
-          this.order.status = res.status;
-          this.statusMessage = 'Status erfolgreich aktualisiert!';
-          this.statusMessageType = 'success';
+        next: (res) => {
+          this.order = this.normalizeOrder(res);
+          this.selectedStatus = this.order.status;
+          this.prefillShippingFields(this.order);
           this.updating = false;
-
-          // Nach 3 Sekunden Nachricht ausblenden
-          setTimeout(() => {
-            this.statusMessage = '';
-            this.statusMessageType = null;
-          }, 3000);
+          this.showStatusMessage('Änderungen gespeichert.', 'success');
         },
         error: (err) => {
           console.error('Fehler beim Aktualisieren:', err);
-          this.statusMessage =
-            err.error?.error || 'Fehler beim Aktualisieren des Status.';
-          this.statusMessageType = 'error';
           this.updating = false;
+          this.showStatusMessage(
+            err?.error?.error || 'Fehler beim Aktualisieren des Status.',
+            'error'
+          );
         },
       });
   }
 
   goBack() {
     this.router.navigate(['/shipping/orders']);
+  }
+
+  requiresShippingDetails(): boolean {
+    return (
+      this.selectedStatus === 'ready_to_ship' ||
+      this.selectedStatus === 'shipped'
+    );
+  }
+
+  hasPendingChanges(): boolean {
+    if (!this.order) return false;
+    const statusChanged = this.selectedStatus !== this.order.status;
+    return (
+      statusChanged ||
+      this.shippingCarrierChanged() ||
+      this.trackingNumberChanged()
+    );
+  }
+
+  carrierLabel(carrier?: ShippingCarrier | null): string {
+    if (!carrier) return '';
+    const option = this.shippingCarriers.find((c) => c.value === carrier);
+    return option ? option.label : carrier.toUpperCase();
+  }
+
+  private shippingCarrierChanged(): boolean {
+    if (!this.order) return false;
+    return (this.selectedCarrier || '') !== (this.order.shipping_carrier || '');
+  }
+
+  private trackingNumberChanged(): boolean {
+    if (!this.order) return false;
+    return this.normalizedTrackingInput() !== this.currentTrackingValue();
+  }
+
+  private normalizedTrackingInput(): string {
+    return (this.trackingNumber || '').trim();
+  }
+
+  private currentTrackingValue(): string {
+    return (this.order?.tracking_number || '').trim();
+  }
+
+  private normalizeOrder(raw: OrderDetail): OrderDetail {
+    const items = Array.isArray(raw.items) ? raw.items : [];
+    return {
+      ...raw,
+      items: items.map((item: any) => ({
+        ...item,
+        variation_details: this.convertVariation(item.variation_details),
+      })),
+    };
+  }
+
+  private convertVariation(details: any) {
+    if (!details || !details.attributes) {
+      return { attributes: [] };
+    }
+    return {
+      ...details,
+      attributes: Array.isArray(details.attributes) ? details.attributes : [],
+    };
+  }
+
+  private prefillShippingFields(order: OrderDetail) {
+    this.selectedCarrier = order.shipping_carrier || '';
+    this.trackingNumber = order.tracking_number || '';
+  }
+
+  private showStatusMessage(
+    message: string,
+    type: 'success' | 'error' | null
+  ) {
+    this.statusMessage = message;
+    this.statusMessageType = type;
+    if (this.messageTimeout) {
+      clearTimeout(this.messageTimeout);
+      this.messageTimeout = null;
+    }
+    if (message && type) {
+      this.messageTimeout = setTimeout(() => {
+        this.statusMessage = '';
+        this.statusMessageType = null;
+        this.messageTimeout = null;
+      }, 3000);
+    }
   }
 }

@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CartService } from '../../shared/services/cart.service';
-import { CartItem } from '../../shared/models/products.model';
+import { CartItem } from '../../shared/models/order.model';
 import { PrimaryButton } from '../../shared/primary-button/primary-button';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { AuthService } from '../../shared/services/auth.service';

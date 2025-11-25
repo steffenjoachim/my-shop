@@ -6,18 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../shared/services/auth.service';
 import { environment } from '../../../../../environments/environment';
 import { ShippingOrderCard } from '../shipping-order-card/shipping-order-card';
-
-interface Order {
-  id: number;
-  user: string;
-  total: number;
-  status: string;
-  paid: boolean;
-  created_at: string;
-  name?: string;
-  city?: string;
-  items?: any[];
-}
+import { OrderSummary } from '../../../../shared/models/order.model';
 
 @Component({
   selector: 'app-shipping-orders',
@@ -35,7 +24,8 @@ interface Order {
       <div class="mb-6">
         <h1 class="text-3xl font-bold mb-4">🚚 Versandverwaltung</h1>
         <p class="text-gray-600 mb-4">
-          Verwaltung aller Bestellungen mit Status "Pending"
+          Verwaltung aller offenen Bestellungen mit Status "Pending" oder
+          "Versandbereit"
         </p>
 
         <!-- Suche -->
@@ -75,8 +65,8 @@ interface Order {
           <p class="text-gray-500 text-lg">
             @if (searchQuery) { Keine Bestellungen mit der Nummer "{{
               searchQuery
-            }}" gefunden. } @else { Keine Bestellungen mit Status "Pending"
-            vorhanden. }
+            }}" gefunden. } @else { Keine offenen Bestellungen (Pending /
+            Versandbereit) vorhanden. }
           </p>
         </div>
         }
@@ -90,7 +80,7 @@ export class ShippingOrders implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
 
-  orders = signal<Order[]>([]);
+  orders = signal<OrderSummary[]>([]);
   loading = signal(true);
   searchQuery = '';
 
@@ -114,7 +104,7 @@ export class ShippingOrders implements OnInit {
       }
 
       const response = await this.http
-        .get<Order[]>(url, {
+        .get<OrderSummary[]>(url, {
           withCredentials: true,
         })
         .toPromise();

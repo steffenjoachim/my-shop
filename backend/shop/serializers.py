@@ -289,5 +289,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "zip",
             "city",
             "payment_method",
+            "shipping_carrier",
+            "tracking_number",
             "items",
         ]

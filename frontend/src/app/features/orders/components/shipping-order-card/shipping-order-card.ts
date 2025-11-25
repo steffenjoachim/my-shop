@@ -1,17 +1,11 @@
 import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-
-interface OrderCard {
-  id: number;
-  user?: string;
-  name?: string;
-  city?: string;
-  total: number;
-  status: string;
-  created_at: string;
-  items?: any[];
-}
+import {
+  OrderSummary,
+  SHIPPING_CARRIER_OPTIONS,
+  ShippingCarrier,
+} from '../../../../shared/models/order.model';
 
 @Component({
   selector: 'app-shipping-order-card',
@@ -37,7 +31,7 @@ interface OrderCard {
         <span
           class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800"
         >
-          {{ order.status | titlecase }}
+          {{ statusLabel(order.status) }}
         </span>
       </div>
 
@@ -48,6 +42,15 @@ interface OrderCard {
             Erstellt am
             {{ order.created_at | date : 'd. MMMM yyyy HH:mm' : '' : 'de-DE' }}
           </p>
+          @if (order.shipping_carrier || order.tracking_number) {
+            <p class="text-xs text-gray-500 mt-1">
+              Versand:
+              {{ carrierLabel(order.shipping_carrier) || 'Unbekannt' }}
+              @if (order.tracking_number) {
+                · Tracking: {{ order.tracking_number }}
+              }
+            </p>
+          }
         </div>
 
         <!-- Responsive Button: full width on small screens, compact on >=sm -->
@@ -72,9 +75,12 @@ interface OrderCard {
   `,
 })
 export class ShippingOrderCard {
-  @Input() order!: OrderCard;
+  @Input() order!: OrderSummary;
 
   private router = inject(Router);
+  private carrierLabelMap = new Map(
+    SHIPPING_CARRIER_OPTIONS.map((option) => [option.value, option.label])
+  );
 
   goToDetails() {
     if (!this.order.id) return;
@@ -85,5 +91,29 @@ export class ShippingOrderCard {
     // prevent parent click duplication (card also navigates)
     event.stopPropagation();
     this.goToDetails();
+  }
+
+  carrierLabel(value?: ShippingCarrier | null): string {
+    if (!value) return '';
+    return this.carrierLabelMap.get(value) ?? value.toUpperCase();
+  }
+
+  statusLabel(status?: string | null): string {
+    if (!status) return '';
+    switch (status) {
+      case 'pending':
+        return 'Ausstehend';
+      case 'paid':
+        return 'Bezahlt';
+      case 'ready_to_ship':
+        return 'Versandbereit';
+      case 'shipped':
+        return 'Versandt';
+      case 'cancelled':
+        return 'Storniert';
+      default:
+        // Fallback: nicer formatting of unknown statuses
+        return (status || '').replace(/_/g, ' ');
+    }
   }
 }

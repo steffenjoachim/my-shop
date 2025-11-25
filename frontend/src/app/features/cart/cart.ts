@@ -5,7 +5,7 @@ import { CartService } from '../../shared/services/cart.service';
 import { AuthService } from '../../shared/services/auth.service';
 import { PopupAlert } from '../../shared/popup-alert/popup-alert';
 import { PrimaryButton } from '../../shared/primary-button/primary-button';
-import { CartItem } from '../../shared/models/products.model';
+import { CartItem } from '../../shared/models/order.model';
 
 @Component({
   selector: 'app-cart',

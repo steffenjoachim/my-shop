@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
+import { OrderSummary } from '../../../../shared/models/order.model';
 
 @Component({
   selector: 'app-order-card',
@@ -105,20 +106,7 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
   `,
 })
 export class OrderCard {
-  @Input() order!: {
-    id: number;
-    user: string;
-    total: number;
-    status: string;
-    paid: boolean;
-    created_at: string;
-    items?: {
-      product_image?: string;
-      product_title?: string;
-      quantity: number;
-      price: number;
-    }[];
-  };
+  @Input() order!: OrderSummary;
 
   showAlert = signal(false);
   showCancelConfirmation = signal(false);
