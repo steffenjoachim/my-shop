@@ -13,63 +13,64 @@ import {
   imports: [CommonModule],
   template: `
     <div
-      class="w-full max-w-full sm:max-w-[520px] md:max-w-[600px] lg:max-w-[700px] mx-auto
-             p-4 bg-white shadow-md rounded-xl border border-gray-200 hover:shadow-lg transition cursor-pointer"
+      class="h-full flex flex-col
+     w-full max-w-full sm:max-w-[520px] md:max-w-[600px] lg:max-w-[700px] mx-auto
+     p-4 bg-white shadow-md rounded-xl border border-gray-200 hover:shadow-lg transition cursor-pointer"
       (click)="goToDetails()"
-      role="button"
-      aria-label="Bestellung {{ order.id }} öffnen"
     >
-      <div class="flex justify-between items-start mb-3">
-        <div>
-          <h2 class="font-semibold text-lg">Bestellung #{{ order.id }}</h2>
-          <p class="text-sm text-gray-600">Kunde: {{ order.name || order.user }}</p>
-          @if (order.city) {
+      <!-- Oberer dynamischer Bereich -->
+      <div class="flex-grow">
+        <div class="flex justify-between items-start mb-3">
+          <div>
+            <h2 class="font-semibold text-lg">Bestellung #{{ order.id }}</h2>
+            <p class="text-sm text-gray-600">
+              Kunde: {{ order.name || order.user }}
+            </p>
+            @if (order.city) {
             <p class="text-sm text-gray-500">{{ order.city }}</p>
-          }
+            }
+          </div>
+
+          <span
+            class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800"
+          >
+            {{ statusLabel(order.status) }}
+          </span>
         </div>
 
-        <span
-          class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800"
-        >
-          {{ statusLabel(order.status) }}
-        </span>
+        <p class="text-gray-600">
+          Gesamt: <b>{{ order.total }} €</b>
+        </p>
+
+        <p class="text-gray-500 text-sm">
+          Erstellt am
+          {{ order.created_at | date : 'd. MMMM yyyy HH:mm' : '' : 'de-DE' }}
+        </p>
+
+        <!-- Versandinfo: reservierter Raum -->
+        <div class="min-h-[18px] mt-1">
+          @if (order.shipping_carrier || order.tracking_number) {
+          <p class="text-xs text-gray-500">
+            Versand:
+            {{ carrierLabel(order.shipping_carrier) || 'Unbekannt' }}
+            @if (order.tracking_number) { · Tracking:
+            {{ order.tracking_number }}
+            }
+          </p>
+          }
+        </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <p class="text-gray-600">Gesamt: <b>{{ order.total }} €</b></p>
-          <p class="text-gray-500 text-sm">
-            Erstellt am
-            {{ order.created_at | date : 'd. MMMM yyyy HH:mm' : '' : 'de-DE' }}
-          </p>
-          @if (order.shipping_carrier || order.tracking_number) {
-            <p class="text-xs text-gray-500 mt-1">
-              Versand:
-              {{ carrierLabel(order.shipping_carrier) || 'Unbekannt' }}
-              @if (order.tracking_number) {
-                · Tracking: {{ order.tracking_number }}
-              }
-            </p>
-          }
-        </div>
-
-        <!-- Responsive Button: full width on small screens, compact on >=sm -->
-        <div class="w-full sm:w-auto flex sm:block">
-          <button
-            (click)="onButtonClick($event)"
-            class="
-              w-full sm:w-auto
-              px-4 py-2
-              sm:px-3 sm:py-1
-              text-sm sm:text-sm md:text-base
-              bg-blue-600 hover:bg-blue-700
-              text-white rounded-lg font-semibold
-              transition
-            "
-          >
-            Details anzeigen
-          </button>
-        </div>
+      <!-- Button immer unten -->
+      <div class="mt-4">
+        <button
+          (click)="onButtonClick($event)"
+          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1
+             bg-blue-600 hover:bg-blue-700 text-white rounded-lg
+             font-semibold transition"
+        >
+          Details anzeigen
+        </button>
       </div>
     </div>
   `,
