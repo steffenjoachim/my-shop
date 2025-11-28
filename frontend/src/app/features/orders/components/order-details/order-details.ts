@@ -31,6 +31,17 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
         <div>
           <b>Datum:</b> {{ order.created_at | date : 'dd.MM.yyyy HH:mm' }}
         </div>
+
+        <!-- Show shipping info when order is shipped -->
+        @if (order.status === 'shipped' && (order.shipping_carrier || order.tracking_number)) {
+        <div class="mt-2 text-sm text-gray-700">
+          <b>Versand:</b>
+          {{ carrierLabel(order.shipping_carrier) || 'Unbekannt' }}
+          @if (order.tracking_number) {
+          · Tracking: {{ order.tracking_number }}
+          }
+        </div>
+        }
       </div>
 
       <h3 class="text-xl mt-4 mb-2 font-semibold">Artikel</h3>
@@ -174,6 +185,16 @@ export class OrderDetails implements OnInit {
       'cancelled': 'Storniert'
     };
     return statusMap[status] || status;
+  }
+
+  carrierLabel(value?: string | null): string {
+    if (!value) return '';
+    switch ((value || '').toLowerCase()) {
+      case 'dhl': return 'DHL';
+      case 'ups': return 'UPS';
+      case 'dpd': return 'DPD';
+      default: return (value || '').toUpperCase();
+    }
   }
 
   /** ✅ Bestellung laden */

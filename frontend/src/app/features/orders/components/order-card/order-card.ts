@@ -47,6 +47,14 @@ import { OrderSummary } from '../../../../shared/models/order.model';
         {{ order.created_at | date : 'd. MMMM yyyy' : '' : 'de-DE' }}
       </p>
 
+      <!-- Show shipping info when shipped -->
+      @if (order.status === 'shipped' && (order.shipping_carrier || order.tracking_number)) {
+      <p class="text-xs text-gray-500 mt-2">
+        Versand: {{ carrierLabel(order.shipping_carrier) || 'Unbekannt' }}
+        @if (order.tracking_number) { · Tracking: {{ order.tracking_number }} }
+      </p>
+      }
+
       <!-- Details (immer sichtbar links) + Stornieren (rechts, nur wenn pending) -->
       <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
         <!-- Links: Details (immer sichtbar). stopPropagation damit der card-click nicht doppelt navigiert -->
@@ -127,6 +135,16 @@ export class OrderCard {
       'cancelled': 'Storniert'
     };
     return statusMap[status] || status;
+  }
+
+  carrierLabel(value?: string | null): string {
+    if (!value) return '';
+    switch ((value || '').toLowerCase()) {
+      case 'dhl': return 'DHL';
+      case 'ups': return 'UPS';
+      case 'dpd': return 'DPD';
+      default: return (value || '').toUpperCase();
+    }
   }
 
   goToDetails() {
