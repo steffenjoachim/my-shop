@@ -321,7 +321,7 @@ class ShippingOrderViewSet(ModelViewSet):
     """
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
-    visible_statuses = ("pending", "ready_to_ship")
+    visible_statuses = ("pending", "paid", "ready_to_ship")
 
     def get_queryset(self):
         user = self.request.user
