@@ -122,16 +122,15 @@ interface OrderItemWithReview extends OrderItem {
           </div>
         }
 
-        <!-- Retour beantragen (nur shipped) -->
+        <!-- Retour beantragen (nur shipped) -> opens dedicated return page -->
         @if (order()!.status === 'shipped') {
           <div class="mt-4 flex justify-center">
             <button
-              (click)="requestReturn()"
-              [disabled]="returning()"
+              (click)="openReturnRequest()"
               class="px-3 py-1 border border-blue-600 hover:bg-blue-600 hover:text-white
                      text-blue-600 rounded-lg font-semibold transition-colors"
             >
-              @if (returning()) { ⏳ Anfrage wird gesendet... } @else { Retour beantragen }
+              Retour beantragen
             </button>
           </div>
         }
@@ -258,6 +257,16 @@ export class OrderDetails implements OnInit {
     } else {
       this.showAlertMsg('Produkt-ID fehlt', 'error');
     }
+  }
+
+  // navigate to dedicated return request page
+  openReturnRequest() {
+    const id = this.order()?.id;
+    if (!id) {
+      this.showAlertMsg('Bestell-ID fehlt', 'error');
+      return;
+    }
+    this.router.navigate(['/retour-request'], { queryParams: { orderId: id } });
   }
 
   getStatusText(status: string): string {

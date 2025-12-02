@@ -95,4 +95,12 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/reviews/reviews').then((m) => m.Reviews),
   },
+  {
+    path: 'retour-request',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/retour-request/retour-request').then(
+        (m) => m.RetourRequest
+      ),
+  },
 ];
