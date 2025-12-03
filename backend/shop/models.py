@@ -264,3 +264,38 @@ def review_deleted(sender, instance: Review, **kwargs):
         _recalculate_product_rating(instance.product)
     except Exception:
         pass
+class OrderReturn(models.Model):
+    REASON_CHOICES = (
+        ("defekt", "Defekt / beschädigt"),
+        ("falscher_artikel", "Falscher Artikel"),
+        ("falsche_groesse", "Falsche Größe"),
+        ("nicht_gewuenscht", "Nicht mehr gewünscht"),
+        ("sonstiges", "Sonstiges"),
+    )
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="returns"
+    )
+
+    item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.CASCADE,
+        related_name="returns"
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    reason = models.CharField(max_length=50, choices=REASON_CHOICES)
+    other_reason = models.CharField(max_length=255, blank=True, null=True)
+    comments = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Retour #{self.id} für Order #{self.order_id}"

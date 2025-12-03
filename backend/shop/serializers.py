@@ -1,4 +1,3 @@
-# shop/serializers.py
 from rest_framework import serializers
 from urllib.parse import unquote
 
@@ -13,13 +12,14 @@ from .models import (
     Review,
     Order,
     OrderItem,
+    OrderReturn,
 )
 
 
 # -------------------------------------------------------------------
 # Hilfsfunktion: sichere request-abhängige URL-Erzeugung für lokale Pfade
 # -------------------------------------------------------------------
-def _build_media_url(request, path: str | None):
+def _build_media_url(request, path):
     if not path:
         return None
     p = str(path).lstrip("/")
@@ -221,10 +221,32 @@ class OrderItemSerializer(serializers.ModelSerializer):
     def get_has_review(self, obj):
         request = self.context.get("request")
         if request and getattr(request, "user", None) and request.user.is_authenticated:
-            from .models import Review
-
             return Review.objects.filter(product=obj.product, user=request.user).exists()
         return False
+
+
+# ----------------------------
+# OrderReturnSerializer
+# ----------------------------
+class OrderReturnSerializer(serializers.ModelSerializer):
+    order = serializers.PrimaryKeyRelatedField(read_only=True)
+    item = OrderItemSerializer(read_only=True)
+    user = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = OrderReturn
+        fields = [
+            "id",
+            "order",
+            "item",
+            "user",
+            "reason",
+            "other_reason",
+            "comments",
+            "created_at",
+            "processed",
+        ]
+        read_only_fields = ["id", "user", "created_at", "processed"]
 
 
 # ----------------------------
@@ -233,6 +255,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     user = serializers.StringRelatedField(read_only=True)
+    returns = OrderReturnSerializer(many=True, read_only=True)
 
     # Komfort-Feld: menschenlesbare Versanddienst-Bezeichnung
     shipping_carrier_label = serializers.SerializerMethodField(read_only=True)
@@ -255,8 +278,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "shipping_carrier_label",
             "tracking_number",
             "items",
+            "returns",
         ]
-        read_only_fields = ["id", "user", "created_at", "items"]
+        read_only_fields = ["id", "user", "created_at", "items", "returns"]
 
     def get_shipping_carrier_label(self, obj):
         # Rückfall: direkte Auswahl aus den CHOICES (falls vorhanden)
