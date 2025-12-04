@@ -11,9 +11,10 @@ export interface User {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = `${environment.apiBaseUrl}auth/`;
+  private apiUrl = `${environment.apiBaseUrl}auth/`; 
+  // → http://localhost:8000/api/auth/
 
-  // Zustandssignale
+  // ✅ Zustandssignale
   private _isLoggedIn = signal(false);
   public readonly isLoggedIn = this._isLoggedIn.asReadonly();
 
@@ -25,12 +26,16 @@ export class AuthService {
     this.checkSession();
   }
 
+  // ✅ CSRF korrekt (KEIN doppeltes api/)
   private initCsrfToken() {
     this.http
-      .get<{ csrfToken: string }>(`${environment.apiBaseUrl}cart/csrf/`, {
+      .get<{ csrfToken: string }>(`${environment.apiBaseUrl}csrf/`, {
         withCredentials: true,
       })
       .subscribe({
+        next: () => {
+          // optional: console.log("CSRF geladen");
+        },
         error: (err) =>
           console.error('[AuthService] Fehler beim Abruf des CSRF-Tokens', err),
       });
@@ -63,7 +68,7 @@ export class AuthService {
       });
   }
 
-  // ✅ Login: gibt Observable zurück, Komponenten entscheiden über UI
+  // ✅ Login
   login(username: string, password: string) {
     return this.http.post<{ message: string }>(
       this.apiUrl + 'login',
@@ -72,7 +77,7 @@ export class AuthService {
     );
   }
 
-  // ✅ Registrierung: gibt Observable zurück
+  // ✅ Registrierung
   register(username: string, password: string) {
     return this.http.post<{ message: string }>(
       this.apiUrl + 'register',
@@ -81,31 +86,31 @@ export class AuthService {
     );
   }
 
-  // ✅ Öffentliche Helper für UI-Status nach erfolgreichem Login/Logout
+  // ✅ Nach erfolgreichem Login im UI anwenden
   applyLogin(username: string): void {
     this._isLoggedIn.set(true);
     this._user.set({ username, groups: [] });
-    // Session neu prüfen, um Gruppen zu laden
-    this.checkSession();
+    this.checkSession(); // Gruppen nachladen
   }
 
-  // ✅ Prüft, ob User in einer bestimmten Gruppe ist
+  // ✅ Rollenprüfung
   hasRole(roleName: string): boolean {
     const user = this._user();
     return user?.groups?.includes(roleName) || false;
   }
 
-  // ✅ Prüft, ob User Shipping-Mitarbeiter ist
+  // ✅ Versand-Mitarbeiter prüfen
   isShippingStaff(): boolean {
     return this.hasRole('shipping');
   }
 
+  // ✅ UI Logout (lokal)
   applyLogout(): void {
     this._isLoggedIn.set(false);
     this._user.set(null);
   }
 
-  // ✅ Logout
+  // ✅ Backend Logout
   logout() {
     this.http
       .post(this.apiUrl + 'logout', {}, { withCredentials: true })
