@@ -10,7 +10,9 @@ from .models import (
     Review,
     Order,
     OrderItem,
+    OrderReturn,
 )
+
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -80,10 +82,12 @@ class OrderAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)
     search_fields = ("user__username",)
 
+
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ("order", "product", "variation", "quantity", "price")
     search_fields = ("product__title",)
+
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
@@ -94,4 +98,10 @@ class ReviewAdmin(admin.ModelAdmin):
 
     def approve_reviews(self, request, queryset):
         queryset.update(approved=True)
-    approve_reviews.short_description = "Ausgewählte Bewertungen freischalten"
+        
+@admin.register(OrderReturn)
+class OrderReturnAdmin(admin.ModelAdmin):
+    list_display = ("id", "order", "item", "user", "reason", "processed", "created_at")
+    list_filter = ("reason", "processed")
+    search_fields = ("order__id", "user__username", "item__product_title")
+    readonly_fields = ("created_at",)
