@@ -39,17 +39,17 @@ import { Toast } from '../../shared/toast/toast';
         </form>
 
         @if (error) {
-        <p class="text-red-600 mt-2">{{ error }}</p>
+          <p class="text-red-600 mt-2">{{ error }}</p>
         }
 
-        <!-- Inline Toasts direkt unter der Karte -->
+        <!-- ✅ Inline Toasts -->
         <app-toast [inline]="true" />
 
         <p class="text-sm mt-4 text-center">
           Don't have an account?
-          <a routerLink="/register" class="text-blue-600 hover:underline"
-            >Register here</a
-          >
+          <a routerLink="/register" class="text-blue-600 hover:underline">
+            Register here
+          </a>
         </p>
       </section>
     </div>
@@ -58,18 +58,21 @@ import { Toast } from '../../shared/toast/toast';
 export class Login {
   auth = inject(AuthService);
   toast = inject(ToastService);
+
   username = '';
   password = '';
   error: string | null = null;
 
   login() {
     this.error = null;
+
     this.auth.login(this.username, this.password).subscribe({
       next: () => {
         this.toast.success('Login erfolgreich');
+
+        // ✅ ✅ ✅ WICHTIG:
+        // applyLogin übernimmt ALLE Redirects (auch Shipping!)
         this.auth.applyLogin(this.username);
-        // Redirect auf Home mit kurzem Delay, damit der Toast sichtbar ist
-        setTimeout(() => location.assign('/'), 200);
       },
       error: (err) => {
         this.error = err?.error?.error || 'Login fehlgeschlagen';

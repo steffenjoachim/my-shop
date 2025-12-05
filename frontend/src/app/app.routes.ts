@@ -103,4 +103,10 @@ export const routes: Routes = [
         (m) => m.RetourRequest
       ),
   },
+  {
+  path: 'shipping/returns',
+  loadComponent: () =>
+    import('./features/orders/components/order-retour/order-retour')
+      .then(m => m.OrderRetour)
+},
 ];

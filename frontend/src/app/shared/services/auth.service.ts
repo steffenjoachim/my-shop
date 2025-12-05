@@ -88,21 +88,39 @@ export class AuthService {
 
   // ✅ Nach erfolgreichem Login im UI anwenden
   applyLogin(username: string): void {
-    this._isLoggedIn.set(true);
-    this._user.set({ username, groups: [] });
-    this.checkSession(); // Gruppen nachladen
-  }
+  this._isLoggedIn.set(true);
+  this._user.set({ username, groups: [] });
 
-  // ✅ Rollenprüfung
-  hasRole(roleName: string): boolean {
-    const user = this._user();
-    return user?.groups?.includes(roleName) || false;
-  }
+  // ✅ Session neu prüfen um Gruppen zu erhalten
+  this.http
+    .get<{ isAuthenticated: boolean; username?: string; groups?: string[] }>(
+      this.apiUrl + 'session',
+      { withCredentials: true }
+    )
+    .subscribe((res) => {
+      if (res.isAuthenticated) {
+        this._isLoggedIn.set(true);
+        this._user.set({
+          username: res.username!,
+          groups: res.groups || [],
+        });
 
-  // ✅ Versand-Mitarbeiter prüfen
-  isShippingStaff(): boolean {
-    return this.hasRole('shipping');
-  }
+        if (res.groups?.includes('shipping')) {
+          this.router.navigate(['/shipping/orders'], { replaceUrl: true });
+        } else {
+          this.router.navigate(['/'], { replaceUrl: true });
+        }
+      }
+    });
+}
+
+
+ // ✅ Prüfen ob User zur Shipping-Gruppe gehört
+isShippingStaff(): boolean {
+  const u = this.user() as any;
+  return Array.isArray(u?.groups) && u.groups.includes('shipping');
+}
+
 
   // ✅ UI Logout (lokal)
   applyLogout(): void {

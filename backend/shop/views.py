@@ -15,14 +15,14 @@ from .models import (
     Review,
     Order,
     OrderItem,
-    OrderReturn,   # ✅ WICHTIG: Retour-Model
+    OrderReturn,
 )
 from .serializers import (
     ProductSerializer,
     DeliveryTimeSerializer,
     ReviewSerializer,
     OrderSerializer,
-    OrderReturnSerializer,  # ✅ WICHTIG: Retour-Serializer
+    OrderReturnSerializer,
 )
 
 
@@ -109,7 +109,6 @@ class OrderViewSet(ModelViewSet):
             user=self.request.user
         ).prefetch_related("items")
 
-
     # ✅ BESTELLUNG STORNIEREN
     @action(detail=True, methods=["patch"])
     def cancel(self, request, pk=None):
@@ -126,8 +125,7 @@ class OrderViewSet(ModelViewSet):
 
         return Response(OrderSerializer(order).data)
 
-
-    # ✅ RETOUR ANLEGEN 
+    # ✅ RETOUR ANLEGEN
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     def request_return(self, request, pk=None):
         order = self.get_object()
@@ -144,7 +142,6 @@ class OrderViewSet(ModelViewSet):
                 status=400
             )
 
-        # ✅ Gehört der Artikel wirklich zu dieser Bestellung?
         item = get_object_or_404(
             OrderItem,
             pk=item_id,
@@ -162,6 +159,20 @@ class OrderViewSet(ModelViewSet):
 
         serializer = OrderReturnSerializer(retour)
         return Response(serializer.data, status=201)
+
+
+# ✅ SHIPPING: ALLE BESTELLUNGEN FÜR VERSAND
+class ShippingOrdersView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # ✅ Nur Shipping-Mitarbeiter
+        if not request.user.groups.filter(name="shipping").exists():
+            return Response({"detail": "Nicht erlaubt"}, status=403)
+
+        orders = Order.objects.exclude(status="cancelled").order_by("-created_at")
+        serializer = OrderSerializer(orders, many=True, context={"request": request})
+        return Response(serializer.data)
 
 
 # ✅ CSRF TOKEN (für Angular Login & POST Requests)
