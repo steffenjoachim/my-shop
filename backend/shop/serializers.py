@@ -85,9 +85,23 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-# ✅ RETOUR
+# ✅ RETOUR 
 class OrderReturnSerializer(serializers.ModelSerializer):
+    order_id = serializers.IntegerField(source="order.id", read_only=True)
+    product_title = serializers.CharField(source="item.product_title", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+
     class Meta:
         model = OrderReturn
-        fields = "__all__"
-        read_only_fields = ["id", "user", "order", "created_at", "processed"]
+        fields = [
+            "id",
+            "order_id",
+            "product_title",
+            "username",
+            "reason",
+            "status",
+            "other_reason",   
+            "created_at",
+            "comments",
+        ]
+
