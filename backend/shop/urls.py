@@ -8,7 +8,8 @@ from .views import (
     OrderViewSet,
     PlaceOrderView,
     get_csrf_token,
-    ShippingOrdersView,   # ✅ WICHTIG
+    ShippingOrdersView,   
+    ShippingReturnsView,
 )
 
 router = DefaultRouter()
@@ -24,4 +25,5 @@ urlpatterns = [
 
     # ✅ SHIPPING API
     path("shipping/orders/", ShippingOrdersView.as_view()),
+    path("shipping/returns/", ShippingReturnsView.as_view()),
 ]

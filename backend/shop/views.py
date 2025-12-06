@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 
 from .models import (
     Product,
@@ -174,6 +176,25 @@ class ShippingOrdersView(APIView):
         serializer = OrderSerializer(orders, many=True, context={"request": request})
         return Response(serializer.data)
 
+
+# ✅ SHIPPING: ALLE RETOUR-ANFRAGEN FÜR VERSAND
+class ShippingReturnsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # ✅ Nur Shipping-User dürfen das sehen
+        if not request.user.groups.filter(name="shipping").exists():
+            return Response(
+                {"error": "Keine Berechtigung"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        returns = OrderReturn.objects.select_related(
+            "order", "item", "user"
+        ).order_by("-created_at")
+
+        serializer = OrderReturnSerializer(returns, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 # ✅ CSRF TOKEN (für Angular Login & POST Requests)
 def get_csrf_token(request):

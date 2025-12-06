@@ -68,7 +68,7 @@ export interface OrderReturn {
                   </h2>
 
                   <p class="text-gray-700 text-sm mb-2">
-                    📦 {{ ret.product_title }}
+                    {{ ret.product_title }}
                   </p>
 
                   <p class="text-sm mb-1">
@@ -80,7 +80,7 @@ export interface OrderReturn {
 
                   @if (ret.comments) {
                     <p class="text-xs text-gray-500 mt-1">
-                      📝 {{ ret.comments }}
+                      {{ ret.comments }}
                     </p>
                   }
 
@@ -133,24 +133,27 @@ export class OrderRetour implements OnInit {
 
   // ✅ API-Abruf (Platzhalter-Endpoint – kannst du später koppeln)
   private fetchReturns() {
-    this.loading = true;
+  this.loading = true;
 
-    this.http
-      .get<OrderReturn[]>(`${environment.apiBaseUrl}shipping/returns/`, {
-        withCredentials: true,
-      })
-      .subscribe({
-        next: (res) => {
-          this.returns = Array.isArray(res) ? res : [];
-          this.loading = false;
-        },
-        error: (err) => {
-          console.error('Fehler beim Laden der Retouren', err);
-          this.returns = [];
-          this.loading = false;
-        },
-      });
-  }
+  this.http
+    .get<OrderReturn[]>(`${environment.apiBaseUrl}shipping/returns/`, {
+      withCredentials: true,
+    })
+    .subscribe({
+      next: (res) => {
+        console.log('✅ API Antwort:', res);
+
+        this.returns = Array.isArray(res) ? res : [];
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('❌ Fehler beim Laden der Retouren', err);
+        this.returns = [];
+        this.loading = false;
+      },
+    });
+}
+
 
   goBack() {
     this.router.navigate(['/shipping/orders']);

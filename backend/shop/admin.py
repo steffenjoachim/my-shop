@@ -101,7 +101,25 @@ class ReviewAdmin(admin.ModelAdmin):
         
 @admin.register(OrderReturn)
 class OrderReturnAdmin(admin.ModelAdmin):
-    list_display = ("id", "order", "item", "user", "reason", "processed", "created_at")
-    list_filter = ("reason", "processed")
-    search_fields = ("order__id", "user__username", "item__product_title")
-    readonly_fields = ("created_at",)
+    list_display = (
+        "id",
+        "order",        
+        "user",
+        "reason",
+        "status",       
+        "created_at",
+    )
+
+    list_filter = (
+        "status",      
+        "reason",
+        "created_at",
+    )
+
+    search_fields = (
+        "order__id",
+        "user__username",
+        "comments",
+    )
+
+    ordering = ("-created_at",)
