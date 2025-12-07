@@ -3,6 +3,7 @@ import { ProductsList } from './home/product-list/product-list';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: ProductsList },
+
   {
     path: 'cart',
     pathMatch: 'full',
@@ -52,6 +53,8 @@ export const routes: Routes = [
         (m) => m.TermsAndConditions
       ),
   },
+
+  // ✅ SHIPPING ORDERS
   {
     path: 'shipping/orders',
     pathMatch: 'full',
@@ -68,6 +71,23 @@ export const routes: Routes = [
         (m) => m.ShippingOrderDetails
       ),
   },
+
+  {
+    path: 'shipping/returns',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/orders/components/order-retour/order-retour')
+        .then(m => m.OrderRetour)
+  },
+  {
+    path: 'shipping/returns/:id',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/orders/components/order-retour-details/order-retour-details')
+        .then(m => m.OrderRetourDetails)
+  },
+
+  // ✅ CUSTOMER ORDERS
   {
     path: 'orders',
     pathMatch: 'full',
@@ -82,6 +102,7 @@ export const routes: Routes = [
         (m) => m.OrderDetails
       ),
   },
+
   {
     path: 'submit-review/:productId',
     pathMatch: 'full',
@@ -103,10 +124,4 @@ export const routes: Routes = [
         (m) => m.RetourRequest
       ),
   },
-  {
-  path: 'shipping/returns',
-  loadComponent: () =>
-    import('./features/orders/components/order-retour/order-retour')
-      .then(m => m.OrderRetour)
-},
 ];

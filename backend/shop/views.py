@@ -195,6 +195,50 @@ class ShippingReturnsView(APIView):
 
         serializer = OrderReturnSerializer(returns, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+# ✅ SHIPPING: EINZELNE RETOUR + STATUS UPDATE
+class ShippingReturnDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        # ✅ Nur Shipping darf zugreifen
+        if not request.user.groups.filter(name="shipping").exists():
+            return Response(
+                {"error": "Keine Berechtigung"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        retour = get_object_or_404(
+            OrderReturn.objects.select_related("order", "item", "user"),
+            pk=pk
+        )
+
+        serializer = OrderReturnSerializer(retour)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        # ✅ Nur Shipping darf ändern
+        if not request.user.groups.filter(name="shipping").exists():
+            return Response(
+                {"error": "Keine Berechtigung"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        retour = get_object_or_404(OrderReturn, pk=pk)
+
+        new_status = request.data.get("status")
+
+        if not new_status:
+            return Response(
+                {"error": "Status fehlt"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        retour.status = new_status
+        retour.save()
+
+        serializer = OrderReturnSerializer(retour)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 # ✅ CSRF TOKEN (für Angular Login & POST Requests)
 def get_csrf_token(request):

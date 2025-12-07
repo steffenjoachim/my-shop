@@ -99,9 +99,8 @@ class OrderReturnSerializer(serializers.ModelSerializer):
             "product_title",
             "username",
             "reason",
-            "status",
-            "other_reason",   
+            "status",          
+            "other_reason",
             "created_at",
             "comments",
         ]
-
