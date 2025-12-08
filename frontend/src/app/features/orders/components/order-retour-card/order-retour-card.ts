@@ -58,7 +58,7 @@ export interface OrderReturn {
 
         <button
           (click)="openDetails()"
-          class="px-3 py-1 text-sm border rounded hover:bg-gray-100"
+          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-white border border-blue-600 hover:bg-blue-600 hover:text-white text-blue-600 rounded-lg font-semibold transition"
         >
           Details
         </button>

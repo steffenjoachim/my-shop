@@ -23,7 +23,7 @@ import { filter } from 'rxjs/operators';
       <div class="flex items-center justify-between w-full sm:w-auto relative">
         <nav class="flex items-center gap-4 text-sm text-gray-600">
 
-          <!-- ✅ NICHT EINGELOGGT -->
+          <!-- ❌ NICHT EINGELOGGT -->
           @if (!isLoggedIn()) {
             <a routerLink="/login" class="hover:underline text-lg font-bold">
               Login
@@ -45,7 +45,7 @@ import { filter } from 'rxjs/operators';
 
               <!-- ✅ NORMALER USER -->
               @if (menuOpen && !isShippingUser()) {
-                <ul class="absolute left-0 mt-2 w-48 bg-white border rounded-lg shadow-lg">
+                <ul class="absolute left-0 mt-2 w-52 bg-white border rounded-lg shadow-lg">
                   <li>
                     <a routerLink="/orders" class="block px-4 py-2" (click)="closeMenu()">
                       🛍️ Meine Bestellungen
@@ -56,10 +56,15 @@ import { filter } from 'rxjs/operators';
                       ⭐ Meine Bewertungen
                     </a>
                   </li>
+                  <li>
+                    <a routerLink="/returns" class="block px-4 py-2" (click)="closeMenu()">
+                      🔁 Meine Retouren
+                    </a>
+                  </li>
                 </ul>
               }
 
-              <!-- ✅ SHIPPING USER -->
+              <!-- 🚚 SHIPPING USER -->
               @if (menuOpen && isShippingUser()) {
                 <ul class="absolute left-0 mt-2 w-56 bg-white border rounded-lg shadow-lg">
                   <li>
@@ -121,7 +126,7 @@ export class Header implements OnInit {
   user = () => this.auth.user();
 
   ngOnInit() {
-    // ✅ SOFORT-UMLEITUNG FÜR SHIPPING
+    // 🚚 SHIPPING USER → Sofort weiterleiten
     this.router.events
       .pipe(filter((e) => e instanceof NavigationEnd))
       .subscribe(() => {
@@ -131,7 +136,7 @@ export class Header implements OnInit {
       });
   }
 
-  // ✅ NUR GRUPPE "shipping"
+  // 🎯 SHIPPING USER = nur Gruppe "shipping"
   isShippingUser(): boolean {
     const u = this.user() as any;
     return Array.isArray(u?.groups) && u.groups.includes('shipping');
