@@ -2,9 +2,8 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../../environments/environment';
-
-import { OrderRetourCard, OrderReturn } from '../order-retour-card/order-retour-card';
+import { environment } from '../../../environments/environment';
+import { OrderRetourCard, OrderReturn } from './components/order-retour-card/order-retour-card';
 
 @Component({
   selector: 'app-order-retour',
@@ -12,7 +11,6 @@ import { OrderRetourCard, OrderReturn } from '../order-retour-card/order-retour-
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
       <div class="max-w-6xl mx-auto">
-
         <!-- ✅ Header -->
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-3xl font-bold flex items-center gap-2">
@@ -34,27 +32,24 @@ import { OrderRetourCard, OrderReturn } from '../order-retour-card/order-retour-
 
         <!-- ✅ Loading -->
         @if (loading) {
-          <div class="text-center py-12 text-gray-500">
-            ⏳ Lade Retouren …
-          </div>
+        <div class="text-center py-12 text-gray-500">⏳ Lade Retouren …</div>
         }
 
         <!-- ✅ Keine Einträge -->
         @if (!loading && returns.length === 0) {
-          <div class="text-center py-12 text-gray-500">
-            Keine Retouren vorhanden.
-          </div>
+        <div class="text-center py-12 text-gray-500">
+          Keine Retouren vorhanden.
+        </div>
         }
 
         <!-- ✅ Retouren Liste -->
         @if (!loading && returns.length > 0) {
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            @for (ret of returns; track trackById($index, ret)) {
-              <app-order-retour-card [ret]="ret" />
-            }
-          </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          @for (ret of returns; track trackById($index, ret)) {
+          <app-order-retour-card [ret]="ret" />
+          }
+        </div>
         }
-
       </div>
     </div>
   `,
