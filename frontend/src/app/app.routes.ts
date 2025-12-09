@@ -59,32 +59,34 @@ export const routes: Routes = [
     path: 'shipping/orders',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/orders/components/shipping-orders/shipping-orders').then(
-        (m) => m.ShippingOrders
-      ),
+      import(
+        './features/orders/components/shipping-orders/shipping-orders'
+      ).then((m) => m.ShippingOrders),
   },
   {
     path: 'shipping/orders/:id',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/orders/components/shipping-order-details/shipping-order-details').then(
-        (m) => m.ShippingOrderDetails
-      ),
+      import(
+        './features/orders/components/shipping-order-details/shipping-order-details'
+      ).then((m) => m.ShippingOrderDetails),
   },
 
   {
     path: 'shipping/returns',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/orders/components/order-retour/order-retour')
-        .then(m => m.OrderRetour)
+      import('./features/retour/order-retour').then(
+        (m) => m.OrderRetour
+      ),
   },
   {
     path: 'shipping/returns/:id',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/orders/components/order-retour-details/order-retour-details')
-        .then(m => m.OrderRetourDetails)
+      import(
+        './features/retour/components/order-retour-details/order-retour-details'
+      ).then((m) => m.OrderRetourDetails),
   },
 
   // ✅ CUSTOMER ORDERS
@@ -120,8 +122,14 @@ export const routes: Routes = [
     path: 'retour-request',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/retour-request/retour-request').then(
+      import('./features/retour/components/retour-request/retour-request').then(
         (m) => m.RetourRequest
+      ),
+  },
+  { path: 'my-returns', 
+    loadComponent: () => 
+      import('./features/retour/components/my-returns/my-returns').then(
+        (m) => m.MyReturns
       ),
   },
 ];
