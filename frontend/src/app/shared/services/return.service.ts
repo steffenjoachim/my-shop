@@ -1,18 +1,20 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ReturnService {
   private http = inject(HttpClient);
-  private baseUrl = '/api/returns/'; // ggf. anpassen
 
   /**
    * Holt alle Retouren des aktuell eingeloggten Users.
    */
-  getMyReturns(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}my/`);
+  getMyReturns() {
+    return this.http.get<any[]>(
+      `${environment.apiBaseUrl}orders/my-returns/`,
+      { withCredentials: true }
+    );
   }
 }
