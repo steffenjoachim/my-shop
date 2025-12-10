@@ -11,6 +11,7 @@ from .views import (
     ShippingOrdersView,   
     ShippingReturnsView,
     ShippingReturnDetailView,
+    UserReturnsView
 )
 
 router = DefaultRouter()
@@ -19,8 +20,7 @@ router.register("delivery-times", DeliveryTimeViewSet, basename="delivery-times"
 router.register("reviews", ReviewViewSet, basename="reviews")
 router.register("orders", OrderViewSet, basename="orders")
 
-urlpatterns = [
-    path("", include(router.urls)),                 
+urlpatterns = [                
     path("order/place/", PlaceOrderView.as_view()), 
     path("csrf/", get_csrf_token),                  
 
@@ -28,4 +28,9 @@ urlpatterns = [
     path("shipping/orders/", ShippingOrdersView.as_view()),
     path("shipping/returns/", ShippingReturnsView.as_view()),
     path("shipping/returns/<int:pk>/", ShippingReturnDetailView.as_view()),
+    
+     # USER RETURNS 
+    path("orders/my-returns/", UserReturnsView.as_view()),
+    
+    path("", include(router.urls)), 
 ]

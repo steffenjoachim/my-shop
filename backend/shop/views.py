@@ -239,6 +239,19 @@ class ShippingReturnDetailView(APIView):
 
         serializer = OrderReturnSerializer(retour)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
+class UserReturnsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (
+            OrderReturn.objects
+            .filter(user=request.user)
+            .order_by("-created_at")
+        )
+        serializer = OrderReturnSerializer(qs, many=True)
+        return Response(serializer.data)
 
 # ✅ CSRF TOKEN (für Angular Login & POST Requests)
 def get_csrf_token(request):

@@ -1,61 +1,77 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ReturnService } from '../../../../shared/services/return.service';
 import { AuthService } from '../../../../shared/services/auth.service';
 
 @Component({
   selector: 'app-my-returns',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DatePipe],
   template: `
-    <section class="p-6 max-w-3xl mx-auto">
-      <h2 class="text-3xl font-bold mb-6">Meine Retouren</h2>
+    <div class="min-h-screen flex flex-col bg-gray-50">
 
-      <!-- LOADING -->
-      @if (loading) {
-        <p>Lade Retouren...</p>
-      }
+      <!-- PAGE CONTENT -->
+      <section class="flex-1 p-6 max-w-3xl mx-auto w-full">
+        <h2 class="text-3xl font-bold mb-6">Meine Retouren</h2>
 
-      <!-- EMPTY -->
-      @if (!loading && returns.length === 0) {
-        <p class="text-gray-500">Keine Retouren gefunden.</p>
-      }
+        <!-- LOADING -->
+        @if (loading) {
+          <p class="text-gray-600">⏳ Lade Retouren...</p>
+        }
 
-      <!-- LIST -->
-      @if (!loading && returns.length > 0) {
-        <div class="flex flex-col gap-4">
-          @for (retour of returns; track retour.id) {
+        <!-- EMPTY -->
+        @if (!loading && returns.length === 0) {
+          <p class="text-gray-500">Keine Retouren gefunden.</p>
+        }
 
-            <div class="border p-4 rounded-lg shadow-sm bg-white">
-              <p class="font-bold text-lg mb-1">
-                Retouren-Nr: {{ retour.id }}
-              </p>
+        <!-- LIST -->
+        @if (!loading && returns.length > 0) {
+          <div class="flex flex-col gap-4">
 
-              <p class="text-gray-600">
-                Bestellung: {{ retour.order_number }}
-              </p>
+            @for (ret of returns; track ret.id) {
 
-              <p class="mt-1">
-                Status:
-                <span class="font-semibold">
-                  {{ retour.status }}
-                </span>
-              </p>
+              <div class="bg-white border rounded-xl shadow p-4">
 
-              <p class="mt-1 text-sm text-gray-500">
-                Erstellt am: {{ retour.created_at | date:'medium' }}
-              </p>
+                <h3 class="font-bold text-lg mb-1">
+                  Retouren-Nr: {{ ret.id }}
+                </h3>
 
-              <p class="mt-3">
-                Grund:
-                <span class="italic">{{ retour.reason }}</span>
-              </p>
-            </div>
+                <p class="text-gray-700 text-sm">
+                  Bestellung: #{{ ret.order_id }}
+                </p>
 
-          }
-        </div>
-      }
-    </section>
+                <p class="mt-1">
+                  Status:
+                  <span class="font-semibold"
+                        [ngClass]="statusClass(ret.status)">
+                    {{ statusLabel(ret.status) }}
+                  </span>
+                </p>
+
+                <p class="mt-1 text-sm text-gray-500">
+                  Erstellt: {{ ret.created_at | date:'medium':'':'de-DE' }}
+                </p>
+
+                <p class="mt-3">
+                  Grund:
+                  <span class="italic">{{ ret.reason }}</span>
+                </p>
+
+                @if (ret.comments) {
+                  <p class="text-sm text-gray-500 mt-2">
+                    {{ ret.comments }}
+                  </p>
+                }
+
+              </div>
+
+            }
+
+          </div>
+        }
+      </section>
+
+    </div>
   `,
 })
 export class MyReturns implements OnInit {
@@ -74,12 +90,38 @@ export class MyReturns implements OnInit {
 
     this.returnService.getMyReturns().subscribe({
       next: (data) => {
-        this.returns = data;
+        this.returns = Array.isArray(data) ? data : [];
         this.loading = false;
       },
-      error: () => {
+      error: (err) => {
+        console.error('Fehler beim Laden der Retouren', err);
         this.loading = false;
-      }
+      },
     });
+  }
+
+  // -------------------------------
+  // STATUS LABELS & COLORS (wie Shop Admin)
+  // -------------------------------
+  statusLabel(status?: string): string {
+    switch ((status || '').toLowerCase()) {
+      case 'pending':   return 'Offen';
+      case 'approved':  return 'Genehmigt';
+      case 'rejected':  return 'Abgelehnt';
+      case 'received':  return 'Eingetroffen';
+      case 'refunded':  return 'Erstattet';
+      default:          return 'Unbekannt';
+    }
+  }
+
+  statusClass(status?: string): string {
+    switch ((status || '').toLowerCase()) {
+      case 'pending':  return 'text-yellow-800 bg-yellow-100 px-2 py-1 rounded-full';
+      case 'approved': return 'text-blue-800 bg-blue-100 px-2 py-1 rounded-full';
+      case 'received': return 'text-purple-800 bg-purple-100 px-2 py-1 rounded-full';
+      case 'refunded': return 'text-green-800 bg-green-100 px-2 py-1 rounded-full';
+      case 'rejected': return 'text-red-800 bg-red-100 px-2 py-1 rounded-full';
+      default:         return 'text-gray-800 bg-gray-100 px-2 py-1 rounded-full';
+    }
   }
 }
