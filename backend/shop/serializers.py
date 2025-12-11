@@ -89,6 +89,7 @@ class OrderSerializer(serializers.ModelSerializer):
 class OrderReturnSerializer(serializers.ModelSerializer):
     order_id = serializers.IntegerField(source="order.id", read_only=True)
     product_title = serializers.CharField(source="item.product_title", read_only=True)
+    product_image = serializers.CharField(source="item.product_image", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
 
     class Meta:
@@ -97,6 +98,7 @@ class OrderReturnSerializer(serializers.ModelSerializer):
             "id",
             "order_id",
             "product_title",
+            "product_image",
             "username",
             "reason",
             "status",          
