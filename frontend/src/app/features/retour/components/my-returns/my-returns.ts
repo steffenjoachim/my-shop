@@ -32,13 +32,11 @@ import { AuthService } from '../../../../shared/services/auth.service';
 
               <div class="bg-white border rounded-xl shadow p-4">
 
-                <h3 class="font-bold text-lg mb-1">
-                  Retouren-Nr: {{ ret.id }}
-                </h3>
-
-                <p class="text-gray-700 text-sm">
+                <h2 class="text-gray-700 text-sm font-bold text-xl">
                   Bestellung: #{{ ret.order_id }}
-                </p>
+                </h2>
+
+                <img [src]="ret.product_image" class="w-20 h-20 rounded mt-4 mb-4" />
 
                 <p class="mt-1">
                   Status:
@@ -54,7 +52,7 @@ import { AuthService } from '../../../../shared/services/auth.service';
 
                 <p class="mt-3">
                   Grund:
-                  <span class="italic">{{ ret.reason }}</span>
+                  <span class="italic">{{ formatReason(ret.reason) }}</span>
                 </p>
 
                 @if (ret.comments) {
@@ -124,4 +122,26 @@ export class MyReturns implements OnInit {
       default:         return 'text-gray-800 bg-gray-100 px-2 py-1 rounded-full';
     }
   }
+
+  formatReason(reason: string): string {
+  if (!reason) return '';
+
+  // Unterstriche entfernen
+  let formatted = reason.replace(/_/g, ' ');
+
+  // Umlaute zurückverwandeln
+  formatted = formatted
+    .replace(/ae/g, 'ä')
+    .replace(/oe/g, 'ö')
+    .replace(/ue/g, 'ü')
+    .replace(/Ae/g, 'Ä')
+    .replace(/Oe/g, 'Ö')
+    .replace(/Ue/g, 'Ü')
+    .replace(/ss/g, 'ß');
+
+  // Erstes Wort großschreiben
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+
 }
