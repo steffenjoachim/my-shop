@@ -313,3 +313,6 @@ class OrderReturn(models.Model):
 
     def __str__(self):
         return f"Retour #{self.id} für Order #{self.order_id} – {self.status}"
+    
+# Kompatibilitäts-Alias: ReturnRequest wird an vielen Stellen erwartet
+ReturnRequest = OrderReturn
