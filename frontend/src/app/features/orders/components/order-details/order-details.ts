@@ -43,7 +43,6 @@ interface OrderItemWithReview extends OrderItem {
 
           @if (order()!.status === 'shipped' &&
                (order()!.shipping_carrier || order()!.tracking_number)) {
-
             <div class="mt-2 text-sm text-gray-700">
               <b>Versand:</b>
               {{ carrierLabel(order()!.shipping_carrier) || 'Unbekannt' }}
@@ -122,16 +121,26 @@ interface OrderItemWithReview extends OrderItem {
           </div>
         }
 
-        <!-- Retour beantragen (nur shipped) -> opens dedicated return page -->
+        <!-- Retour: wenn bereits beantragt, anderer Text + Link zu my-returns, sonst öffnet Retour-Form -->
         @if (order()!.status === 'shipped') {
           <div class="mt-4 flex justify-center">
-            <button
-              (click)="openReturnRequest()"
-              class="px-3 py-1 border border-blue-600 hover:bg-blue-600 hover:text-white
-                     text-blue-600 rounded-lg font-semibold transition-colors"
-            >
-              Retour beantragen
-            </button>
+            @if (hasReturnRequested()) {
+              <button
+                (click)="goToMyReturns()"
+                class="px-3 py-1 border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 rounded-lg font-semibold transition-colors"
+                title="Zurück zur Retour-Übersicht"
+              >
+                Retour bereits beantragt
+              </button>
+            } @else {
+              <button
+                (click)="openReturnRequest()"
+                class="px-3 py-1 border border-blue-600 hover:bg-blue-600 hover:text-white
+                       text-blue-600 rounded-lg font-semibold transition-colors"
+              >
+                Retour beantragen
+              </button>
+            }
           </div>
         }
       }
@@ -208,11 +217,18 @@ export class OrderDetails implements OnInit {
     })
     .subscribe({
       next: (res) => {
+        // normalize items and ensure properties exist
         res.items = (res.items || []).map((it: any) => ({
           ...it,
           has_review: it.has_review ?? false,
           variation_details: this._normalizeVariation(it.variation_details),
         }));
+
+        // Optional: if backend returns return_requests we'll detect it via hasReturnRequested()
+        // But keep a local flag for faster checks (not required)
+        const hasReturnArray = Array.isArray((res as any).return_requests) && (res as any).return_requests.length > 0;
+        const hasReturnFlag = Boolean((res as any).return_requested);
+        (res as any).return_requested = hasReturnArray || hasReturnFlag;
 
         this.order.set(res);
         this.loading.set(false);
@@ -233,6 +249,21 @@ export class OrderDetails implements OnInit {
 
   getHasReview(item: OrderItem): boolean {
     return (item as OrderItemWithReview).has_review ?? false;
+  }
+
+  /**
+   * Checks whether a return was already requested for this order.
+   * Uses the raw response data safely (casts to any) so TS doesn't complain.
+   */
+  hasReturnRequested(): boolean {
+    const o = this.order();
+    if (!o) return false;
+    const anyO = o as any;
+    if (Boolean(anyO.return_requested)) return true;
+    if (Array.isArray(anyO.return_requests) && anyO.return_requests.length > 0) return true;
+    // fallback: some backends may provide a return_requested boolean under other key names
+    if (anyO.return_request_count && anyO.return_request_count > 0) return true;
+    return false;
   }
 
   buyAgain(item: OrderItem) {
@@ -267,6 +298,11 @@ export class OrderDetails implements OnInit {
       return;
     }
     this.router.navigate(['/retour-request'], { queryParams: { orderId: id } });
+  }
+
+  // navigate to my-returns overview (temporary target for already requested returns)
+  goToMyReturns() {
+    this.router.navigate(['/my-returns']);
   }
 
   getStatusText(status: string): string {
@@ -327,6 +363,7 @@ export class OrderDetails implements OnInit {
         next: () => {
           const o = this.order();
           if (o) {
+            // mark locally that a return was requested so UI updates immediately
             (o as any).return_requested = true;
             this.order.set({ ...o });
           }
