@@ -3,11 +3,11 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { OrderRetourCard, OrderReturn } from './components/order-retour-card/order-retour-card';
+import { OrderReturnCard, OrderReturn } from './components/order-return-card/order-return-card';
 
 @Component({
   selector: 'app-order-retour',
-  imports: [CommonModule, OrderRetourCard],
+  imports: [CommonModule, OrderReturnCard],
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
       <div class="max-w-6xl mx-auto">

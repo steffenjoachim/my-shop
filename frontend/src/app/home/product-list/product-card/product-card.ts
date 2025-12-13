@@ -2,16 +2,13 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Product } from '../../../shared/models/products.model';
-import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-product-card',
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div
-      class="bg-white rounded-2xl shadow-md hover:shadow-lg transition overflow-hidden flex flex-col"
-    >
+    <div class="bg-white rounded-2xl shadow-md hover:shadow-lg transition overflow-hidden flex flex-col">
       <a [routerLink]="['/products', product.id]" class="block relative">
         <img
           [src]="getImageUrl()"
@@ -33,8 +30,7 @@ import { environment } from '../../../../environments/environment';
         <div class="mt-4">
           <a
             [routerLink]="['/products', product.id]"
-            class="w-full inline-block text-center px-4 py-2 bg-blue-600 text-white rounded-lg 
-                   hover:bg-blue-700 transition"
+            class="w-full inline-block text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Details
           </a>
@@ -46,46 +42,22 @@ import { environment } from '../../../../environments/environment';
 export class ProductCardComponent {
   @Input() product!: Product;
 
-  // vereinheitlichte Normalisierung für alle Komponenten
-  private normalizeImageUrl(url?: string | null): string {
-    if (!url) return 'https://via.placeholder.com/300x200?text=Kein+Bild';
-
-    let s = String(url).trim();
-
-    // 1) Entferne wiederholte führende Slashes
-    s = s.replace(/^\/+/, '');
-
-    // 2) decode percent-encoding falls vorhanden (sicher in try/catch)
-    try {
-      const decoded = decodeURIComponent(s);
-      // nur übernehmen, wenn decode sinnvoll aussieht
-      if (decoded && decoded !== s) s = decoded;
-    } catch (e) {
-      // ignore decode errors, benutze das originale s
-    }
-
-    // 3) Korrigiere falsch formatierte schema-Strings
-    if (s.startsWith('https:/') && !s.startsWith('https://')) {
-      s = s.replace('https:/', 'https://');
-    }
-    if (s.startsWith('http:/') && !s.startsWith('http://')) {
-      s = s.replace('http:/', 'http://');
-    }
-
-    // 4) Wenn es jetzt eine absolute URL ist, zurückgeben
-    if (s.startsWith('http://') || s.startsWith('https://')) return s;
-
-    // 5) Sonst base-url + s (z.B. lokale media-pfade)
-    const host = environment.apiBaseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-    return `${host}/${s}`;
-  }
-
   getImageUrl(): string {
-    // priorität: image_url, main_image, external_image, placeholder
-    if (this.product?.image_url) return this.normalizeImageUrl(this.product.image_url);
-    if (this.product?.main_image) return this.normalizeImageUrl(this.product.main_image);
-    if (this.product?.external_image) return this.normalizeImageUrl(this.product.external_image);
+    const url =
+      (this.product as any)?.image ||
+      (this.product as any)?.product_image ||
+      (this.product as any)?.image_url;
 
-    return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+    if (!url) {
+      return 'assets/img/placeholder-product.png';
+    }
+
+    // Amazon / externe URLs direkt zurückgeben
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // Falls doch mal relative Media-URLs kommen
+    return `http://127.0.0.1:8000/${url.replace(/^\/+/, '')}`;
   }
 }
