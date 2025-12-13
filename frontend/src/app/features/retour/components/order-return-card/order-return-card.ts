@@ -66,7 +66,7 @@ export interface OrderReturn {
     </div>
   `,
 })
-export class OrderRetourCard {
+export class OrderReturnCard {
   @Input({ required: true }) ret!: OrderReturn;
 
   constructor(private router: Router) {}

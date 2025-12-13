@@ -25,6 +25,7 @@ class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     # expose the model property that sums variation stock
     stock_total = serializers.IntegerField(read_only=True)
+    main_image = serializers.CharField(read_only=True)
 
     class Meta:
         model = Product
@@ -37,6 +38,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "stock_total",
             "rating_avg",
             "rating_count",
+            "main_image",
             "images",
         )
 
