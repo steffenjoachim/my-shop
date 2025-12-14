@@ -44,20 +44,21 @@ export class ProductCardComponent {
 
   getImageUrl(): string {
     const url =
-      (this.product as any)?.image ||
-      (this.product as any)?.product_image ||
-      (this.product as any)?.image_url;
+      this.product.main_image ||                
+      this.product.external_image ||
+      this.product.image_url ||
+      this.product.images?.[0]?.image;
 
     if (!url) {
       return 'assets/img/placeholder-product.png';
     }
 
-    // Amazon / externe URLs direkt zurückgeben
+    // Externe URLs (Amazon etc.)
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
 
-    // Falls doch mal relative Media-URLs kommen
+    // Lokale Media-URLs aus Django
     return `http://127.0.0.1:8000/${url.replace(/^\/+/, '')}`;
   }
 }
