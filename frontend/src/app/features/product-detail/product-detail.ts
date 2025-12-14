@@ -34,7 +34,7 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
 
         <!-- 🖼 Hauptbild -->
         <img
-          [src]="sanitizeImageUrl(product.image_url)"
+          [src]="sanitizeImageUrl(product.main_image)"
           alt="{{ product.title }}"
           class="w-full max-h-80 object-contain mb-6 rounded"
         />
