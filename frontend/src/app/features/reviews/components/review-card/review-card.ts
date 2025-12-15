@@ -6,7 +6,7 @@ export interface Review {
   id: number;
   product: number;
   product_title: string;
-  product_image: string | null;
+  main_image: string | null;
   user: string;
   rating: number;
   title: string;
@@ -26,9 +26,9 @@ export interface Review {
     >
       <!-- Produktinfo -->
       <div class="flex gap-4 mb-4">
-        @if (review.product_image) {
+        @if (review.main_image) {
         <img
-          [src]="review.product_image"
+          [src]="review.main_image"
           [alt]="review.product_title"
           class="w-20 h-20 object-cover rounded-md flex-shrink-0"
         />
