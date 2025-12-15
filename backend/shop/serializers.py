@@ -9,9 +9,8 @@ from .models import (
     DeliveryTime,
     Review,
     Order,
-    OrderItem,
-    # OrderReturn is the model class; ReturnRequest is an alias to it in your models.py
     ReturnRequest,
+    OrderItem,
 )
 
 
@@ -57,11 +56,22 @@ class ProductVariationSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+    product_title = serializers.CharField(
+        source="product.title",
+        read_only=True
+    )
+    main_image = serializers.CharField(
+        source="product.main_image",
+        read_only=True
+    )
+
     class Meta:
         model = Review
         fields = (
             "id",
             "product",
+            "product_title",
+            "main_image",
             "user",
             "rating",
             "title",
@@ -70,7 +80,13 @@ class ReviewSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "product_title",
+            "main_image",
+        )
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
