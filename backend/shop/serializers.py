@@ -22,6 +22,8 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
+    variations = serializers.SerializerMethodField()
+    recent_reviews = serializers.SerializerMethodField()
     # expose the model property that sums variation stock
     stock_total = serializers.IntegerField(read_only=True)
     main_image = serializers.CharField(read_only=True)
@@ -39,7 +41,44 @@ class ProductSerializer(serializers.ModelSerializer):
             "rating_count",
             "main_image",
             "images",
+            "variations",
+            "recent_reviews",
         )
+    
+    def get_variations(self, obj):
+        """Serialize variations with their attributes"""
+        variations = obj.variations.all()
+        data = []
+        for var in variations:
+            data.append({
+                "id": var.id,
+                "attributes": [
+                    {
+                        "id": attr.id,
+                        "attribute_type": attr.attribute_type.name,
+                        "value": attr.value
+                    }
+                    for attr in var.attributes.all()
+                ],
+                "stock": var.stock
+            })
+        return data
+    
+    def get_recent_reviews(self, obj):
+        """Get approved reviews for the product"""
+        reviews = obj.reviews.filter(approved=True).order_by("-created_at")[:5]
+        data = []
+        for review in reviews:
+            data.append({
+                "id": review.id,
+                "user": review.user.username if review.user else "Anonymous",
+                "rating": review.rating,
+                "title": review.title,
+                "body": review.body,
+                "created_at": review.created_at,
+                "updated_at": review.updated_at,
+            })
+        return data
 
 class AttributeValueSerializer(serializers.ModelSerializer):
     class Meta:
