@@ -3,10 +3,13 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { OrderReturnCard, OrderReturn } from './components/order-return-card/order-return-card';
+import {
+  OrderReturnCard,
+  OrderReturn,
+} from './components/order-return-card/order-return-card';
 
 @Component({
-  selector: 'app-order-retour',
+  selector: 'app-order-return',
   imports: [CommonModule, OrderReturnCard],
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
@@ -46,7 +49,7 @@ import { OrderReturnCard, OrderReturn } from './components/order-return-card/ord
         @if (!loading && returns.length > 0) {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           @for (ret of returns; track trackById($index, ret)) {
-          <app-order-retour-card [ret]="ret" />
+          <app-order-return-card [ret]="ret" />
           }
         </div>
         }

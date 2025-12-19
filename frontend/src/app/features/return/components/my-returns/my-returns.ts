@@ -11,25 +11,19 @@ import { MyReturnCard } from '../my-return-card/my-return-card';
   template: `
     <div class="min-h-screen flex flex-col bg-gray-50">
       <section class="flex-1 p-6 max-w-3xl mx-auto w-full">
-
         <h2 class="text-3xl font-bold mb-6">Meine Retouren</h2>
 
         @if (loading) {
-          <p class="text-gray-600">⏳ Lade Retouren...</p>
+        <p class="text-gray-600">⏳ Lade Retouren...</p>
+        } @if (!loading && returns.length === 0) {
+        <p class="text-gray-500">Keine Retouren gefunden.</p>
+        } @if (!loading && returns.length > 0) {
+        <div class="flex flex-col gap-4">
+          @for (ret of returns; track ret.id) {
+          <app-my-return-card [ret]="ret" />
+          }
+        </div>
         }
-
-        @if (!loading && returns.length === 0) {
-          <p class="text-gray-500">Keine Retouren gefunden.</p>
-        }
-
-        @if (!loading && returns.length > 0) {
-          <div class="flex flex-col gap-4">
-            @for (ret of returns; track ret.id) {
-              <app-my-return-card [ret]="ret" />
-            }
-          </div>
-        }
-
       </section>
     </div>
   `,
