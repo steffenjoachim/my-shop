@@ -71,21 +71,18 @@ export const routes: Routes = [
         './features/orders/components/shipping-order-details/shipping-order-details'
       ).then((m) => m.ShippingOrderDetails),
   },
-
   {
     path: 'shipping/returns',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/retour/order-retour').then(
-        (m) => m.OrderRetour
-      ),
+      import('./features/return/order-return').then((m) => m.OrderRetour),
   },
   {
     path: 'shipping/returns/:id',
     pathMatch: 'full',
     loadComponent: () =>
       import(
-        './features/retour/components/order-retour-details/order-retour-details'
+        './features/return/components/order-return-details/order-return-details'
       ).then((m) => m.OrderRetourDetails),
   },
 
@@ -122,13 +119,14 @@ export const routes: Routes = [
     path: 'retour-request',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/retour/components/retour-request/retour-request').then(
+      import('./features/return/components/return-request/return-request').then(
         (m) => m.RetourRequest
       ),
   },
-  { path: 'my-returns', 
-    loadComponent: () => 
-      import('./features/retour/components/my-returns/my-returns').then(
+  {
+    path: 'my-returns',
+    loadComponent: () =>
+      import('./features/return/components/my-returns/my-returns').then(
         (m) => m.MyReturns
       ),
   },

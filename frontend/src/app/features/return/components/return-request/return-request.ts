@@ -8,7 +8,7 @@ import { PopupAlert } from '../../../../shared/popup-alert/popup-alert';
 import { OrderDetail, OrderItem } from '../../../../shared/models/order.model';
 
 @Component({
-  selector: 'app-retour-request',
+  selector: 'app-return-request',
   standalone: true,
   imports: [CommonModule, FormsModule, PopupAlert],
   template: `

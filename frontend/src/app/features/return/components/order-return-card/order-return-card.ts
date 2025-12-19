@@ -13,11 +13,11 @@ export interface OrderReturn {
 }
 
 @Component({
-  selector: 'app-order-retour-card',
+  selector: 'app-order-return-card',
   imports: [CommonModule, DatePipe],
   template: `
     <div
-      class="bg-white border rounded-xl shadow hover:shadow-lg transition p-4 flex flex-col justify-between"
+      class="bg-white border rounded-xl shadow hover:shadow-lg transition p-4 h-full flex flex-col justify-between"
     >
       <div>
         <h2 class="font-semibold text-lg mb-1">
@@ -31,14 +31,14 @@ export interface OrderReturn {
         <p class="text-sm mb-1">
           Grund:
           <span class="font-semibold text-gray-700">
-            {{ ret.reason }}
+            {{ formatReason(ret.reason) }}
           </span>
         </p>
 
         @if (ret.comments) {
-          <p class="text-xs text-gray-500 mt-1">
-            {{ ret.comments }}
-          </p>
+        <p class="text-xs text-gray-500 mt-1">
+          {{ ret.comments }}
+        </p>
         }
 
         <p class="text-xs text-gray-500 mt-2">
@@ -107,5 +107,30 @@ export class OrderReturnCard {
       default:
         return 'bg-gray-200 text-gray-700';
     }
+  }
+
+  formatReason(reason: string): string {
+    if (!reason) return '';
+
+    // Unterstriche durch Leerzeichen ersetzen
+    let formatted = reason.replace(/_/g, ' ');
+
+    // Umlaute ersetzen
+    formatted = formatted
+      .replace(/ae/g, 'ä')
+      .replace(/oe/g, 'ö')
+      .replace(/ue/g, 'ü')
+      .replace(/Ae/g, 'Ä')
+      .replace(/Oe/g, 'Ö')
+      .replace(/Ue/g, 'Ü')
+      .replace(/ss/g, 'ß');
+
+    // Nur erstes Wort großschreiben
+    const words = formatted.split(' ');
+    return (
+      words[0].charAt(0).toUpperCase() +
+      words[0].slice(1) +
+      (words.length > 1 ? ' ' + words.slice(1).join(' ') : '')
+    );
   }
 }

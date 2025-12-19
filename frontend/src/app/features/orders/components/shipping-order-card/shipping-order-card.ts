@@ -65,9 +65,7 @@ import {
       <div class="mt-4">
         <button
           (click)="onButtonClick($event)"
-          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1
-             bg-blue-600 hover:bg-blue-700 text-white rounded-lg
-             font-semibold transition"
+          class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 bg-white border border-blue-600 hover:bg-blue-600 hover:text-white text-blue-600 rounded-lg font-semibold transition"
         >
           Details anzeigen
         </button>

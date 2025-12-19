@@ -263,7 +263,7 @@ export class ShippingOrderDetails implements OnInit, OnDestroy {
   loadOrder(id: number): void {
     this.loading = true;
     this.http
-      .get<OrderDetail>(`${environment.apiBaseUrl}shipping/orders/${id}/`, {
+      .get<OrderDetail>(`${environment.apiBaseUrl}orders/${id}/`, {
         withCredentials: true,
       })
       .subscribe({
@@ -317,7 +317,7 @@ export class ShippingOrderDetails implements OnInit, OnDestroy {
 
     this.http
       .patch<OrderDetail>(
-        `${environment.apiBaseUrl}shipping/orders/${this.order.id}/`,
+        `${environment.apiBaseUrl}orders/${this.order.id}/`,
         payload,
         { withCredentials: true }
       )
@@ -373,7 +373,7 @@ export class ShippingOrderDetails implements OnInit, OnDestroy {
 
     this.http
       .patch<OrderDetail>(
-        `${environment.apiBaseUrl}shipping/orders/${this.order.id}/`,
+        `${environment.apiBaseUrl}orders/${this.order.id}/`,
         payload,
         { withCredentials: true }
       )
