@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
@@ -10,7 +11,7 @@ import {
 
 @Component({
   selector: 'app-order-return',
-  imports: [CommonModule, OrderReturnCard],
+  imports: [CommonModule, FormsModule, OrderReturnCard],
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
       <div class="max-w-6xl mx-auto">
@@ -33,22 +34,37 @@ import {
           Übersicht aller eingegangenen Retourenanfragen.
         </p>
 
+        <!-- Header + Search -->
+        <div
+          class="flex flex-col sm:flex-row sm:items-center  mb-6"
+        >
+          <div class="w-full sm:w-72">
+            <input
+              type="text"
+              [(ngModel)]="query"
+              (input)="applyFilter()"
+              placeholder="Nach Auftragsnummer suchen..."
+              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+        </div>
+
         <!-- ✅ Loading -->
         @if (loading) {
         <div class="text-center py-12 text-gray-500">⏳ Lade Retouren …</div>
         }
 
         <!-- ✅ Keine Einträge -->
-        @if (!loading && returns.length === 0) {
+        @if (!loading && filtered.length === 0) {
         <div class="text-center py-12 text-gray-500">
           Keine Retouren vorhanden.
         </div>
         }
 
         <!-- ✅ Retouren Liste -->
-        @if (!loading && returns.length > 0) {
+        @if (!loading && filtered.length > 0) {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          @for (ret of returns; track trackById($index, ret)) {
+          @for (ret of filtered; track trackById($index, ret)) {
           <app-order-return-card [ret]="ret" />
           }
         </div>
@@ -63,6 +79,8 @@ export class OrderRetour implements OnInit {
 
   loading = true;
   returns: OrderReturn[] = [];
+  filtered: OrderReturn[] = [];
+  query = '';
 
   ngOnInit(): void {
     this.fetchReturns();
@@ -78,6 +96,7 @@ export class OrderRetour implements OnInit {
       .subscribe({
         next: (res) => {
           this.returns = Array.isArray(res) ? res : [];
+          this.filtered = this.returns.slice();
           this.loading = false;
         },
         error: (err) => {
@@ -86,6 +105,22 @@ export class OrderRetour implements OnInit {
           this.loading = false;
         },
       });
+  }
+
+  applyFilter() {
+    const q = (this.query || '').toString().trim().toLowerCase();
+    if (!q) {
+      this.filtered = this.returns.slice();
+      return;
+    }
+
+    this.filtered = this.returns.filter((r) => {
+      return (
+        String(r.order_id).toLowerCase().includes(q) ||
+        (r.product_title || '').toLowerCase().includes(q) ||
+        String(r.id).toLowerCase().includes(q)
+      );
+    });
   }
 
   goBack() {
