@@ -72,9 +72,9 @@ interface OrderReturnDetails {
           </p>
         </div>
 
-        <!-- ✅ SHIPPING WORKFLOW -->
+        <!-- ✅ Retour WORKFLOW -->
         <div class="mt-8 border-t pt-6">
-          <h2 class="font-semibold mb-4">📦 Versand-Workflow</h2>
+          <h2 class="font-semibold mb-4">📦 Retour-Workflow</h2>
 
           <div class="flex flex-wrap gap-3">
             <button
