@@ -94,6 +94,57 @@ class ShippingReturnDetailView(views.APIView):
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReturnRequestSerializer(obj, context={"request": request}).data)
 
+    def patch(self, request, pk=None):
+        """
+        Aktualisiert den Status einer Retour-Anfrage.
+        Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn die Retour genehmigt wird.
+        """
+        try:
+            obj = ReturnRequest.objects.select_related('user', 'order', 'item').get(pk=pk)
+        except ReturnRequest.DoesNotExist:
+            return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Status-Update validieren
+        new_status = request.data.get("status")
+        if not new_status:
+            return Response(
+                {"error": "Status ist erforderlich."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Valide Status-Werte prüfen
+        valid_statuses = [choice[0] for choice in ReturnRequest.STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            return Response(
+                {"error": f"Ungültiger Status. Erlaubt: {', '.join(valid_statuses)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        old_status = obj.status
+        obj.status = new_status
+        obj.save()
+
+        # Debug-Ausgabe
+        print(f"\n[DEBUG] Status-Update: Retour #{obj.id}")
+        print(f"[DEBUG] Alter Status: {old_status}")
+        print(f"[DEBUG] Neuer Status: {new_status}")
+        print(f"[DEBUG] Soll E-Mail gesendet werden? {new_status == 'approved' and old_status != 'approved'}\n")
+
+        # E-Mail-Benachrichtigung senden, wenn Status auf "approved" geändert wird
+        if new_status == "approved" and old_status != "approved":
+            print("[DEBUG] E-Mail-Funktion wird aufgerufen...")
+            try:
+                from .services.email_service import send_return_approval_email
+                send_return_approval_email(obj)
+                print("[DEBUG] E-Mail-Funktion erfolgreich aufgerufen.")
+            except Exception as e:
+                print(f"[DEBUG] Fehler beim Aufruf der E-Mail-Funktion: {e}")
+                import traceback
+                traceback.print_exc()
+
+        serializer = ReturnRequestSerializer(obj, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class UserReturnsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]

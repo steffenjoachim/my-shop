@@ -167,7 +167,7 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at", "status"]
+        read_only_fields = ["id", "created_at"]
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
