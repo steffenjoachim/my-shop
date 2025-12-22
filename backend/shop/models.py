@@ -309,6 +309,25 @@ class OrderReturn(models.Model):
         default="pending"
     )
 
+    # Ablehnungsgrund (wird vom Shipping-Team ausgefüllt)
+    REJECTION_REASON_CHOICES = (
+        ("zeitraum_abgelaufen", "Rückgabezeitraum abgelaufen"),
+        ("produkt_nicht_rueckgabe", "Produkt kann nicht zurückgegeben werden (z.B. Lebensmittel)"),
+        ("sonstiges", "Sonstiges"),
+    )
+    rejection_reason = models.CharField(
+        max_length=50,
+        choices=REJECTION_REASON_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Grund für die Ablehnung der Retour"
+    )
+    rejection_comment = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Zusätzliche Erläuterung zum Ablehnungsgrund"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

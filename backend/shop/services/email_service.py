@@ -5,6 +5,7 @@ In der Entwicklungsphase werden E-Mails in die Konsole geloggt.
 In der Produktion können hier echte E-Mail-Versand-Logik implementiert werden.
 """
 from django.conf import settings
+from shop.models import ReturnRequest
 
 
 def send_return_approval_email(return_request):
@@ -95,6 +96,101 @@ Diese E-Mail wurde automatisch generiert.
         # from django.core.mail import send_mail
         # from django.template.loader import render_to_string
         # 
+        # send_mail(
+        #     subject=subject,
+        #     message=email_body,
+        #     from_email=settings.DEFAULT_FROM_EMAIL,
+        #     recipient_list=[recipient_email],
+        #     fail_silently=False,
+        # )
+        print(f"E-Mail würde an {recipient_email} gesendet werden (Produktionsmodus)")
+
+
+def send_return_rejection_email(return_request):
+    """
+    Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn seine Retour-Anfrage abgelehnt wurde.
+    
+    In der Entwicklungsphase wird die E-Mail in die Konsole geloggt.
+    In der Produktion würde hier eine echte E-Mail versendet werden.
+    
+    Args:
+        return_request: ReturnRequest-Instanz mit abgelehnter Retour
+    """
+    user = return_request.user
+    order = return_request.order
+    item = return_request.item
+    
+    # E-Mail-Daten zusammenstellen
+    recipient_email = user.email if hasattr(user, 'email') and user.email else "unbekannt@example.com"
+    subject = f"Retour-Anfrage abgelehnt - Bestellung #{order.id}"
+    
+    # Ablehnungsgrund formatieren
+    rejection_reason_display = dict(ReturnRequest.REJECTION_REASON_CHOICES).get(
+        return_request.rejection_reason or "", 
+        return_request.rejection_reason or "Nicht angegeben"
+    )
+    
+    # E-Mail-Text
+    email_body = f"""
+═══════════════════════════════════════════════════════════════
+RETOUR-ABLEHNUNG
+═══════════════════════════════════════════════════════════════
+
+Sehr geehrte/r {user.username if hasattr(user, 'username') else 'Kunde/in'},
+
+leider müssen wir Ihnen mitteilen, dass Ihre Retour-Anfrage nicht genehmigt werden konnte.
+
+RETOUR-DETAILS:
+───────────────────────────────────────────────────────────────
+Retour-Nr.:        #{return_request.id}
+Bestell-Nr.:       #{order.id}
+Produkt:           {item.product_title}
+Ihr Rückgabegrund: {return_request.get_reason_display()}
+
+ABLEHNUNGSGRUND:
+───────────────────────────────────────────────────────────────
+{rejection_reason_display}
+"""
+    
+    if return_request.rejection_comment:
+        email_body += f"""
+Zusätzliche Erläuterung:
+{return_request.rejection_comment}
+"""
+    
+    email_body += f"""
+WICHTIGE HINWEISE:
+───────────────────────────────────────────────────────────────
+- Bitte beachten Sie, dass eine Rückgabe aus den oben genannten
+  Gründen nicht möglich ist.
+- Falls Sie Fragen zu dieser Entscheidung haben, kontaktieren Sie
+  bitte unseren Kundenservice.
+
+Bei weiteren Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+Ihr Shop-Team
+
+═══════════════════════════════════════════════════════════════
+Diese E-Mail wurde automatisch generiert.
+═══════════════════════════════════════════════════════════════
+"""
+    
+    # In der Entwicklungsphase: E-Mail in die Konsole ausgeben
+    if settings.DEBUG:
+        print("\n" + "=" * 80)
+        print("📧 E-MAIL-BENACHRICHTIGUNG (SIMULATION) - ABLEHNUNG")
+        print("=" * 80)
+        print(f"An: {recipient_email}")
+        print(f"Betreff: {subject}")
+        print("-" * 80)
+        print(email_body)
+        print("=" * 80)
+        print("ℹ️  In der Produktion würde hier eine echte E-Mail versendet werden.")
+        print("=" * 80 + "\n")
+    else:
+        # In der Produktion: Echte E-Mail versenden
+        # from django.core.mail import send_mail
         # send_mail(
         #     subject=subject,
         #     message=email_body,
