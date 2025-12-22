@@ -79,7 +79,8 @@ class ShippingReturnsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        qs = ReturnRequest.objects.all()
+        # Abgelehnte Retouren aus der Liste ausschließen
+        qs = ReturnRequest.objects.exclude(status="rejected")
         data = ReturnRequestSerializer(qs, many=True, context={"request": request}).data
         return Response(data)
 
@@ -120,6 +121,36 @@ class ShippingReturnDetailView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Wenn Status auf "rejected" gesetzt wird, Ablehnungsgrund validieren
+        if new_status == "rejected":
+            rejection_reason = request.data.get("rejection_reason")
+            if not rejection_reason:
+                return Response(
+                    {"error": "Ablehnungsgrund ist erforderlich."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Valide Ablehnungsgründe prüfen
+            valid_rejection_reasons = [choice[0] for choice in ReturnRequest.REJECTION_REASON_CHOICES]
+            if rejection_reason not in valid_rejection_reasons:
+                return Response(
+                    {"error": f"Ungültiger Ablehnungsgrund. Erlaubt: {', '.join(valid_rejection_reasons)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Wenn "sonstiges" gewählt wurde, muss ein Kommentar vorhanden sein
+            if rejection_reason == "sonstiges":
+                rejection_comment = request.data.get("rejection_comment", "").strip()
+                if not rejection_comment:
+                    return Response(
+                        {"error": "Bei 'Sonstiges' ist eine Erläuterung erforderlich."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Ablehnungsgrund speichern
+            obj.rejection_reason = rejection_reason
+            obj.rejection_comment = request.data.get("rejection_comment", "").strip() or None
+
         old_status = obj.status
         obj.status = new_status
         obj.save()
@@ -130,12 +161,22 @@ class ShippingReturnDetailView(views.APIView):
         print(f"[DEBUG] Neuer Status: {new_status}")
         print(f"[DEBUG] Soll E-Mail gesendet werden? {new_status == 'approved' and old_status != 'approved'}\n")
 
-        # E-Mail-Benachrichtigung senden, wenn Status auf "approved" geändert wird
+        # E-Mail-Benachrichtigung senden
         if new_status == "approved" and old_status != "approved":
-            print("[DEBUG] E-Mail-Funktion wird aufgerufen...")
+            print("[DEBUG] E-Mail-Funktion wird aufgerufen (Genehmigung)...")
             try:
                 from .services.email_service import send_return_approval_email
                 send_return_approval_email(obj)
+                print("[DEBUG] E-Mail-Funktion erfolgreich aufgerufen.")
+            except Exception as e:
+                print(f"[DEBUG] Fehler beim Aufruf der E-Mail-Funktion: {e}")
+                import traceback
+                traceback.print_exc()
+        elif new_status == "rejected" and old_status != "rejected":
+            print("[DEBUG] E-Mail-Funktion wird aufgerufen (Ablehnung)...")
+            try:
+                from .services.email_service import send_return_rejection_email
+                send_return_rejection_email(obj)
                 print("[DEBUG] E-Mail-Funktion erfolgreich aufgerufen.")
             except Exception as e:
                 print(f"[DEBUG] Fehler beim Aufruf der E-Mail-Funktion: {e}")

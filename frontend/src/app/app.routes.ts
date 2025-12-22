@@ -85,6 +85,14 @@ export const routes: Routes = [
         './features/return/components/order-return-details/order-return-details'
       ).then((m) => m.OrderRetourDetails),
   },
+  {
+    path: 'shipping/returns/:id/reject',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/return/components/return-reject/return-reject').then(
+        (m) => m.ReturnReject
+      ),
+  },
 
   // ✅ CUSTOMER ORDERS
   {

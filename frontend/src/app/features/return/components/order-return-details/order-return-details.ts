@@ -85,7 +85,7 @@ interface OrderReturnDetails {
             </button>
 
             <button
-              (click)="updateStatus('rejected')"
+              (click)="rejectReturn()"
               class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
             >
               ❌ Ablehnen
@@ -163,6 +163,11 @@ export class OrderRetourDetails implements OnInit {
           console.error('Status konnte nicht geändert werden', err);
         },
       });
+  }
+
+  rejectReturn() {
+    // Zur Ablehnungsseite weiterleiten
+    this.router.navigate(['/shipping/returns', this.retourId, 'reject']);
   }
 
   goBack() {
