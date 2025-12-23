@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-my-return-card',
@@ -36,11 +37,25 @@ import { CommonModule, DatePipe } from '@angular/common';
         {{ ret.comments }}
       </p>
       }
+
+      <!-- ✅ Details Button -->
+      <button
+        (click)="openDetails()"
+        class="inline-flex items-center mt-4 self-start px-4 py-2 bg-white border border-blue-600 hover:bg-blue-600 hover:text-white text-blue-600 rounded-lg font-semibold transition"
+      >
+        Details
+      </button>
     </div>
   `,
 })
 export class MyReturnCard {
   @Input() ret: any;
+
+  constructor(private router: Router) {}
+
+  openDetails() {
+    this.router.navigate(['/my-returns', this.ret.id]);
+  }
 
   statusLabel(status?: string): string {
     switch ((status || '').toLowerCase()) {

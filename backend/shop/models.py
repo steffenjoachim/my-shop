@@ -328,6 +328,13 @@ class OrderReturn(models.Model):
         help_text="Zusätzliche Erläuterung zum Ablehnungsgrund"
     )
 
+    # Zeitpunkt der Ablehnung (wird gesetzt, wenn das Shipping-Team die Retour ablehnt)
+    rejection_date = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Datum und Uhrzeit der Ablehnung"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,5 +1,6 @@
 from django.db.models import Prefetch
 from rest_framework import viewsets, permissions, status, generics, views
+from django.utils import timezone
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
@@ -150,6 +151,8 @@ class ShippingReturnDetailView(views.APIView):
             # Ablehnungsgrund speichern
             obj.rejection_reason = rejection_reason
             obj.rejection_comment = request.data.get("rejection_comment", "").strip() or None
+            # Zeitpunkt der Ablehnung setzen
+            obj.rejection_date = timezone.now()
 
         old_status = obj.status
         obj.status = new_status

@@ -138,4 +138,12 @@ export const routes: Routes = [
         (m) => m.MyReturns
       ),
   },
+  {
+    path: 'my-returns/:id',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import(
+        './features/return/components/my-return-details/my-return-details'
+      ).then((m) => m.MyReturnDetails),
+  },
 ];
