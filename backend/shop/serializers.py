@@ -167,6 +167,7 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
             "status",
             "rejection_reason",
             "rejection_comment",
+            "rejection_date",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
