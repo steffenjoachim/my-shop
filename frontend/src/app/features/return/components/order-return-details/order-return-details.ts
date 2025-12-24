@@ -46,7 +46,7 @@ interface OrderReturnDetails {
 
           <p>
             <b>Grund:</b>
-            <span class="font-semibold">{{ retour.reason }}</span>
+                    <span class="font-semibold">{{ formatReason(retour.reason) }}</span>
           </p>
 
           @if (retour.comments) {
@@ -206,5 +206,30 @@ export class OrderRetourDetails implements OnInit {
       default:
         return 'bg-gray-200 text-gray-700';
     }
+  }
+
+  formatReason(reason: string): string {
+    if (!reason) return '';
+
+    // Unterstriche durch Leerzeichen ersetzen
+    let formatted = reason.replace(/_/g, ' ');
+
+    // Umlaute ersetzen
+    formatted = formatted
+      .replace(/ae/g, 'ä')
+      .replace(/oe/g, 'ö')
+      .replace(/ue/g, 'ü')
+      .replace(/Ae/g, 'Ä')
+      .replace(/Oe/g, 'Ö')
+      .replace(/Ue/g, 'Ü')
+      .replace(/ss/g, 'ß');
+
+    // Nur erstes Wort großschreiben
+    const words = formatted.split(' ');
+    return (
+      words[0].charAt(0).toUpperCase() +
+      words[0].slice(1) +
+      (words.length > 1 ? ' ' + words.slice(1).join(' ') : '')
+    );
   }
 }
