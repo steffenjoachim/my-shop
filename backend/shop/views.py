@@ -80,8 +80,8 @@ class ShippingReturnsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # Abgelehnte Retouren aus der Liste ausschließen
-        qs = ReturnRequest.objects.exclude(status="rejected")
+        # Alle Retouren abrufen (inkl. abgelehnte), damit diese im Tab "Geschlossene Retouren" angezeigt werden
+        qs = ReturnRequest.objects.all()
         data = ReturnRequestSerializer(qs, many=True, context={"request": request}).data
         return Response(data)
 

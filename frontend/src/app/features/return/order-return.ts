@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -34,10 +34,32 @@ import {
           Übersicht aller eingegangenen Retourenanfragen.
         </p>
 
+        <!-- ✅ Tab Navigation -->
+        <div class="flex gap-2 mb-6 border-b">
+          <button
+            (click)="switchTab('open')"
+            [class.border-b-2]="activeTab() === 'open'"
+            [class.border-blue-600]="activeTab() === 'open'"
+            [class.text-blue-600]="activeTab() === 'open'"
+            [class.text-gray-600]="activeTab() !== 'open'"
+            class="pb-3 px-4 font-semibold transition hover:text-blue-600"
+          >
+            🔄 Offene Retouren
+          </button>
+          <button
+            (click)="switchTab('closed')"
+            [class.border-b-2]="activeTab() === 'closed'"
+            [class.border-blue-600]="activeTab() === 'closed'"
+            [class.text-blue-600]="activeTab() === 'closed'"
+            [class.text-gray-600]="activeTab() !== 'closed'"
+            class="pb-3 px-4 font-semibold transition hover:text-blue-600"
+          >
+            ✅ Geschlossene Retouren
+          </button>
+        </div>
+
         <!-- Header + Search -->
-        <div
-          class="flex flex-col sm:flex-row sm:items-center  mb-6"
-        >
+        <div class="flex flex-col sm:flex-row sm:items-center mb-6">
           <div class="w-full sm:w-72">
             <input
               type="text"
@@ -81,9 +103,15 @@ export class OrderRetour implements OnInit {
   returns: OrderReturn[] = [];
   filtered: OrderReturn[] = [];
   query = '';
+  activeTab = signal<'open' | 'closed'>('open');
 
   ngOnInit(): void {
     this.fetchReturns();
+  }
+
+  switchTab(tab: 'open' | 'closed') {
+    this.activeTab.set(tab);
+    this.applyFilter(); // Filter bei Tab-Wechsel neu anwenden
   }
 
   private fetchReturns() {
@@ -96,7 +124,7 @@ export class OrderRetour implements OnInit {
       .subscribe({
         next: (res) => {
           this.returns = Array.isArray(res) ? res : [];
-          this.filtered = this.returns.slice();
+          this.applyFilter(); // Wendet den Filter sofort an
           this.loading = false;
         },
         error: (err) => {
@@ -109,12 +137,30 @@ export class OrderRetour implements OnInit {
 
   applyFilter() {
     const q = (this.query || '').toString().trim().toLowerCase();
+    const tab = this.activeTab();
+
     if (!q) {
-      this.filtered = this.returns.slice();
+      // Wenn kein Query: filtere nur nach Tab-Status
+      this.filtered = this.returns.filter((r) => {
+        if (tab === 'open') {
+          return r.status !== 'rejected';
+        } else {
+          // 'closed' = only rejected
+          return r.status === 'rejected';
+        }
+      });
       return;
     }
 
+    // Mit Query: filtere nach Query UND Tab-Status
     this.filtered = this.returns.filter((r) => {
+      // Prüfe Tab-Filter
+      const matchesTab =
+        tab === 'open' ? r.status !== 'rejected' : r.status === 'rejected';
+
+      if (!matchesTab) return false;
+
+      // Prüfe Query
       return (
         String(r.order_id).toLowerCase().includes(q) ||
         (r.product_title || '').toLowerCase().includes(q) ||
