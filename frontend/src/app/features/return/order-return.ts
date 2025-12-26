@@ -29,35 +29,6 @@ import {
           </button>
         </div>
 
-        <!-- ✅ Beschreibung -->
-        <p class="text-gray-600 mb-8">
-          Übersicht aller eingegangenen Retourenanfragen.
-        </p>
-
-        <!-- ✅ Tab Navigation -->
-        <div class="flex gap-2 mb-6 border-b">
-          <button
-            (click)="switchTab('open')"
-            [class.border-b-2]="activeTab() === 'open'"
-            [class.border-blue-600]="activeTab() === 'open'"
-            [class.text-blue-600]="activeTab() === 'open'"
-            [class.text-gray-600]="activeTab() !== 'open'"
-            class="pb-3 px-4 font-semibold transition hover:text-blue-600"
-          >
-            🔄 Offene Retouren
-          </button>
-          <button
-            (click)="switchTab('closed')"
-            [class.border-b-2]="activeTab() === 'closed'"
-            [class.border-blue-600]="activeTab() === 'closed'"
-            [class.text-blue-600]="activeTab() === 'closed'"
-            [class.text-gray-600]="activeTab() !== 'closed'"
-            class="pb-3 px-4 font-semibold transition hover:text-blue-600"
-          >
-            ✅ Geschlossene Retouren
-          </button>
-        </div>
-
         <!-- Header + Search -->
         <div class="flex flex-col sm:flex-row sm:items-center mb-6">
           <div class="w-full sm:w-72">
@@ -70,6 +41,37 @@ import {
             />
           </div>
         </div>
+
+        <!-- ✅ Tab Navigation -->
+        <div class="flex gap-2 mb-6 border-b">
+          <button
+            (click)="switchTab('open')"
+            [class.border-b-2]="activeTab() === 'open'"
+            [class.border-blue-600]="activeTab() === 'open'"
+            [class.text-blue-600]="activeTab() === 'open'"
+            [class.text-gray-600]="activeTab() !== 'open'"
+            class="pb-3 px-4 font-semibold transition hover:text-blue-400"
+          >
+            🔄 Offene Retouren
+          </button>
+          <button
+            (click)="switchTab('closed')"
+            [class.border-b-2]="activeTab() === 'closed'"
+            [class.border-blue-600]="activeTab() === 'closed'"
+            [class.text-blue-600]="activeTab() === 'closed'"
+            [class.text-gray-600]="activeTab() !== 'closed'"
+            class="pb-3 px-4 font-semibold transition text-red-600 hover:text-red-400"
+          >
+            ❌ Geschlossene Retouren
+          </button>
+        </div>
+
+        <!-- ✅ Beschreibung (tababhängig) -->
+        <p class="text-gray-600 mb-8">
+          @if (activeTab() === 'open') { Übersicht aller eingegangenen
+          Retourenanfragen. } @else { Übersicht über alle abgelehnten Retouren
+          }
+        </p>
 
         <!-- ✅ Loading -->
         @if (loading) {
