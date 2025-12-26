@@ -114,7 +114,7 @@ import { environment } from '../../../../../environments/environment';
               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="Bitte erläutern Sie den Ablehnungsgrund..."
             ></textarea>
-            @if (rejectionReason === 'sonstiges' && !rejectionComment?.trim()) {
+            @if (rejectionReason === 'sonstiges' && !rejectionComment.trim()) {
             <p class="text-xs text-red-500 mt-1">
               Bitte geben Sie eine Erläuterung an.
             </p>
