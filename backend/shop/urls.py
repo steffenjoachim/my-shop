@@ -6,6 +6,7 @@ from .views import (
     DeliveryTimeViewSet,
     ReviewViewSet,
     OrderViewSet,
+    CategoryViewSet,
     PlaceOrderView,
     get_csrf_token,
     ShippingOrdersView,   
@@ -19,6 +20,7 @@ router.register("products", ProductViewSet, basename="products")
 router.register("delivery-times", DeliveryTimeViewSet, basename="delivery-times")
 router.register("reviews", ReviewViewSet, basename="reviews")
 router.register("orders", OrderViewSet, basename="orders")
+router.register("categories", CategoryViewSet, basename="categories")
 
 urlpatterns = [                
     path("order/place/", PlaceOrderView.as_view()), 

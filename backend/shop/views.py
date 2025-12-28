@@ -13,9 +13,11 @@ from .models import (
     OrderItem,
     OrderReturn,   # original class name in models
     ReturnRequest, # alias you added
+    Category,
 )
 from .serializers import (
     ProductSerializer,
+    CategorySerializer,
     ReviewSerializer,
     OrderSerializer,
     ReturnRequestSerializer,
@@ -47,6 +49,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+# --- Categories ---
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Category.objects.all().order_by("name")
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.AllowAny]
 
 
 # --- Simple PlaceOrderView stub (implement real logic later) ---
