@@ -49,6 +49,12 @@ export interface Product {
   description: string;
   price: number;
 
+  category?: {
+    id: number;
+    name: string;
+    display_name?: string;
+  } | null;
+
   main_image: string | null;
   external_image: string | null;
   image_url: string | null;

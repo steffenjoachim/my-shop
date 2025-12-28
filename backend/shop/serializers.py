@@ -20,6 +20,25 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ("id", "image")
 
 
+class CategorySerializer(serializers.ModelSerializer):
+    display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = ("id", "name", "display_name")
+
+    def get_display_name(self, obj):
+        # einfache Übersetzungs-Mapping für bekannte englische Keys
+        mapping = {
+            "clothing": "Kleidung",
+            "electronics": "Elektronik",
+            "home": "Wohnen",
+            "books": "Bücher",
+        }
+        key = (obj.name or "").strip().lower()
+        return mapping.get(key, obj.name)
+
+
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     variations = serializers.SerializerMethodField()
@@ -27,6 +46,7 @@ class ProductSerializer(serializers.ModelSerializer):
     # expose the model property that sums variation stock
     stock_total = serializers.IntegerField(read_only=True)
     main_image = serializers.CharField(read_only=True)
+    category = CategorySerializer(read_only=True)
 
     class Meta:
         model = Product
