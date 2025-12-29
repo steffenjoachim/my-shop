@@ -21,22 +21,12 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    display_name = serializers.SerializerMethodField()
+    # prefer stored display_name when available
+    display_name = serializers.CharField(read_only=True, source="display_name")
 
     class Meta:
         model = Category
         fields = ("id", "name", "display_name")
-
-    def get_display_name(self, obj):
-        # einfache Übersetzungs-Mapping für bekannte englische Keys
-        mapping = {
-            "clothing": "Kleidung",
-            "electronics": "Elektronik",
-            "home": "Wohnen",
-            "books": "Bücher",
-        }
-        key = (obj.name or "").strip().lower()
-        return mapping.get(key, obj.name)
 
 
 class ProductSerializer(serializers.ModelSerializer):

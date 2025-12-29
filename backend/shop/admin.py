@@ -42,8 +42,9 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name",)
-    search_fields = ("name",)
+    list_display = ("name", "display_name")
+    search_fields = ("name", "display_name")
+    fields = ("name", "display_name")
 
 
 @admin.register(AttributeType)
