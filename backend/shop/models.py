@@ -9,9 +9,12 @@ from django.utils.text import slugify
 class Category(models.Model):
     """Produktkategorie (z. B. Kleidung, Elektronik etc.)"""
     name = models.CharField(max_length=100)
+    # Optionaler, lokalisierter Anzeigename (z.B. Deutsch)
+    display_name = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
-        return self.name
+        # If display_name is available, prefer it for human-readable output
+        return self.display_name or self.name
 
 
 class DeliveryTime(models.Model):

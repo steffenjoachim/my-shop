@@ -26,42 +26,42 @@ import { ProductCardComponent } from './product-card/product-card';
 
         <select
           [ngModel]="category()"
-          (ngModelChange)="category.set($event)"
+          (ngModelChange)="category.set($event ? +$event : '')"
           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <option value="">Alle Kategorien</option>
           @for (cat of categories(); track cat.id) {
-          <option value="{{ cat.name }}">
+          <option value="{{ cat.id }}">
             {{ cat.display_name || cat.name }}
           </option>
           }
         </select>
 
-        <div class="flex flex-col">
-          <input
-            type="range"
-            [min]="minAllowed()"
-            [max]="maxAllowed()"
-            [ngModel]="minPrice()"
-            (ngModelChange)="minPrice.set($event)"
-            class="w-full"
-          />
-          <div class="text-sm text-gray-700">
-            Min: {{ minPrice() || minAllowed() }} €
+        <div class="flex gap-3 col-span-2 items-center">
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-700">Min.</label>
+            <input
+              type="number"
+              [min]="minAllowed()"
+              [max]="maxAllowed()"
+              [ngModel]="minPrice()"
+              (ngModelChange)="minPrice.set(+$event)"
+              class="w-32 px-2 py-1 border rounded"
+            />
+            <span class="text-sm">€</span>
           </div>
-        </div>
 
-        <div class="flex flex-col">
-          <input
-            type="range"
-            [min]="minAllowed()"
-            [max]="maxAllowed()"
-            [ngModel]="maxPrice()"
-            (ngModelChange)="maxPrice.set($event)"
-            class="w-full"
-          />
-          <div class="text-sm text-gray-700">
-            Max: {{ maxPrice() || maxAllowed() }} €
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-700">Max.</label>
+            <input
+              type="number"
+              [min]="minAllowed()"
+              [max]="maxAllowed()"
+              [ngModel]="maxPrice()"
+              (ngModelChange)="maxPrice.set(+$event)"
+              class="w-32 px-2 py-1 border rounded"
+            />
+            <span class="text-sm">€</span>
           </div>
         </div>
       </div>
@@ -89,7 +89,7 @@ export class ProductsList {
 
   products = signal<Product[]>([]);
   query = signal('');
-  category = signal('');
+  category = signal<number | ''>('');
   categories = signal<{ id: number; name: string; display_name?: string }[]>(
     []
   );
@@ -131,12 +131,21 @@ export class ProductsList {
       if (this.minPrice() === '') this.minPrice.set(min);
       if (this.maxPrice() === '') this.maxPrice.set(max);
     });
+
+    // ensure minPrice <= maxPrice (if user drags beyond, clamp max to min)
+    effect(() => {
+      const min = this.minPrice();
+      const max = this.maxPrice();
+      if (min !== '' && max !== '' && Number(max) < Number(min)) {
+        this.maxPrice.set(Number(min));
+      }
+    });
   }
 
   /** 🔎 Filter: Titel + Beschreibung */
   filteredProducts = computed(() => {
     const q = this.query().trim().toLowerCase();
-    const catQ = this.category().trim().toLowerCase();
+    const selectedCategoryId = this.category();
 
     const min =
       this.minPrice() === '' || this.minPrice() == null
@@ -154,36 +163,22 @@ export class ProductsList {
       // Text query (title OR description)
       const matchesQuery = !q || title.includes(q) || description.includes(q);
 
-      // Category matching - tolerant to different shapes
+      // Category matching by ID (preferred) — falls back to name checks
       let matchesCategory = true;
-      if (catQ) {
+      if (selectedCategoryId !== '') {
         const catField = (p as any).category;
         if (!catField) {
           matchesCategory = false;
+        } else if (
+          typeof catField === 'object' &&
+          typeof catField.id === 'number'
+        ) {
+          matchesCategory = catField.id === Number(selectedCategoryId);
         } else if (typeof catField === 'string') {
-          matchesCategory = catField.toLowerCase().includes(catQ);
-        } else if (typeof catField === 'object') {
-          const name = (
-            catField.display_name ||
-            catField.name ||
-            ''
-          ).toLowerCase();
-          matchesCategory = name.includes(catQ);
+          matchesCategory =
+            catField.toLowerCase() === String(selectedCategoryId).toLowerCase();
         } else {
-          // fallback: check arrays
-          const cats =
-            (p as any).categories || (p as any).category_list || null;
-          if (Array.isArray(cats)) {
-            matchesCategory = cats.some((c: any) => {
-              if (!c) return false;
-              if (typeof c === 'string') return c.toLowerCase().includes(catQ);
-              if (typeof c.name === 'string')
-                return c.name.toLowerCase().includes(catQ);
-              return false;
-            });
-          } else {
-            matchesCategory = false;
-          }
+          matchesCategory = false;
         }
       }
 
@@ -199,4 +194,16 @@ export class ProductsList {
       return matchesQuery && matchesCategory && matchesPrice;
     });
   });
+
+  // compute a CSS background for the dual-handle slider showing the selected range
+  rangeBackground(): string {
+    const min = Number(this.minAllowed() ?? 0);
+    const max = Number(this.maxAllowed() ?? 0) || 1;
+    const curMin = Number(this.minPrice() === '' ? min : this.minPrice());
+    const curMax = Number(this.maxPrice() === '' ? max : this.maxPrice());
+    const span = Math.max(1, max - min);
+    const p1 = ((curMin - min) / span) * 100;
+    const p2 = ((curMax - min) / span) * 100;
+    return `linear-gradient(90deg, #e5e7eb ${p1}%, #3b82f6 ${p1}%, #3b82f6 ${p2}%, #e5e7eb ${p2}%)`;
+  }
 }
