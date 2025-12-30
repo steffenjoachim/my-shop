@@ -22,7 +22,7 @@ def set_display_names(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('shop', '9999_add_category_display_name'),
+        ('shop', '0025_category_display_name'),
     ]
 
     operations = [

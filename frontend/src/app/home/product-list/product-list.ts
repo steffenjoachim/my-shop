@@ -111,17 +111,7 @@ export class ProductsList {
     return Math.ceil(Math.max(...list.map((p) => Number(p.price ?? 0))));
   });
 
-  ngOnInit() {
-    this.http.get<Product[]>(`${environment.apiBaseUrl}products/`).subscribe({
-      next: (data) => this.products.set(data ?? []),
-      error: (err) => console.error('Fehler beim Laden der Produkte:', err),
-    });
-    // load categories
-    this.http.get<any[]>(`${environment.apiBaseUrl}categories/`).subscribe({
-      next: (data) => this.categories.set(data ?? []),
-      error: (err) => console.error('Fehler beim Laden der Kategorien:', err),
-    });
-
+  constructor() {
     // initialize price sliders after products arrive (use `effect` for signals)
     effect(() => {
       const list = this.products();
@@ -139,6 +129,18 @@ export class ProductsList {
       if (min !== '' && max !== '' && Number(max) < Number(min)) {
         this.maxPrice.set(Number(min));
       }
+    });
+  }
+
+  ngOnInit() {
+    this.http.get<Product[]>(`${environment.apiBaseUrl}products/`).subscribe({
+      next: (data) => this.products.set(data ?? []),
+      error: (err) => console.error('Fehler beim Laden der Produkte:', err),
+    });
+    // load categories
+    this.http.get<any[]>(`${environment.apiBaseUrl}categories/`).subscribe({
+      next: (data) => this.categories.set(data ?? []),
+      error: (err) => console.error('Fehler beim Laden der Kategorien:', err),
     });
   }
 
