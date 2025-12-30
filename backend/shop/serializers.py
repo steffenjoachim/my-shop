@@ -21,9 +21,6 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    # prefer stored display_name when available
-    display_name = serializers.CharField(read_only=True, source="display_name")
-
     class Meta:
         model = Category
         fields = ("id", "name", "display_name")
