@@ -17,13 +17,7 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [
-    TitleCasePipe,
-    PopupAlert,
-    NgClass,
-    NgStyle,
-    ProductReviewCard,
-  ],
+  imports: [TitleCasePipe, PopupAlert, NgClass, NgStyle, ProductReviewCard],
   template: `
     @if (product) {
     <div class="container mx-auto px-4 sm:px-8 mt-6">
@@ -98,6 +92,13 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
           }
         </div>
 
+        <!-- Kategorie -->
+        @if (product.category) {
+        <p class="text-gray-700 mb-4">
+          Kategorie: {{ translateCategory(product.category.name) }}
+        </p>
+        }
+
         <!-- Attribute -->
         @for (attr of dynamicAttributes(); track attr.name) {
         <div class="mb-6">
@@ -112,7 +113,8 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
               (click)="selectAttribute(attr.name, val.value)"
               [disabled]="val.stock === 0"
               [ngClass]="{
-                'ring-2 ring-blue-500 scale-105': selectedAttributes()[attr.name] === val.value,
+                'ring-2 ring-blue-500 scale-105':
+                  selectedAttributes()[attr.name] === val.value,
                 'opacity-50 cursor-not-allowed': val.stock === 0
               }"
               [ngStyle]="getAttributeStyle(attr.name, val.value)"
@@ -168,12 +170,17 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
           </h2>
 
           <!-- Sort / Filter UI (responsive) -->
-          <div class="flex flex-wrap items-center justify-between mb-6 gap-3 max-w-full">
+          <div
+            class="flex flex-wrap items-center justify-between mb-6 gap-3 max-w-full"
+          >
             <div class="flex flex-wrap items-center gap-2 min-w-0">
               <button
                 type="button"
                 (click)="reviewSort.set('newest')"
-                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'newest', 'bg-gray-100 text-gray-800': reviewSort() !== 'newest' }"
+                [ngClass]="{
+                  'bg-blue-600 text-white': reviewSort() === 'newest',
+                  'bg-gray-100 text-gray-800': reviewSort() !== 'newest'
+                }"
                 class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
               >
                 Neueste
@@ -181,7 +188,10 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
               <button
                 type="button"
                 (click)="reviewSort.set('oldest')"
-                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'oldest', 'bg-gray-100 text-gray-800': reviewSort() !== 'oldest' }"
+                [ngClass]="{
+                  'bg-blue-600 text-white': reviewSort() === 'oldest',
+                  'bg-gray-100 text-gray-800': reviewSort() !== 'oldest'
+                }"
                 class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
               >
                 Älteste
@@ -189,7 +199,10 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
               <button
                 type="button"
                 (click)="reviewSort.set('best')"
-                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'best', 'bg-gray-100 text-gray-800': reviewSort() !== 'best' }"
+                [ngClass]="{
+                  'bg-blue-600 text-white': reviewSort() === 'best',
+                  'bg-gray-100 text-gray-800': reviewSort() !== 'best'
+                }"
                 class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
               >
                 Beste
@@ -197,7 +210,10 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
               <button
                 type="button"
                 (click)="reviewSort.set('worst')"
-                [ngClass]="{ 'bg-blue-600 text-white': reviewSort() === 'worst', 'bg-gray-100 text-gray-800': reviewSort() !== 'worst' }"
+                [ngClass]="{
+                  'bg-blue-600 text-white': reviewSort() === 'worst',
+                  'bg-gray-100 text-gray-800': reviewSort() !== 'worst'
+                }"
                 class="px-2 md:px-3 py-1 rounded text-xs sm:text-sm md:text-base whitespace-nowrap"
               >
                 Schlechteste
@@ -205,18 +221,28 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
             </div>
 
             <div class="flex flex-wrap items-center gap-2 min-w-0">
-              <span class="text-xs sm:text-sm md:text-base mr-1">Min. Sterne:</span>
+              <span class="text-xs sm:text-sm md:text-base mr-1"
+                >Min. Sterne:</span
+              >
               <button
                 type="button"
                 (click)="reviewFilterRating.set(null)"
-                [ngClass]="{ 'bg-blue-600 text-white': reviewFilterRating() === null, 'bg-gray-100 text-gray-800': reviewFilterRating() !== null }"
+                [ngClass]="{
+                  'bg-blue-600 text-white': reviewFilterRating() === null,
+                  'bg-gray-100 text-gray-800': reviewFilterRating() !== null
+                }"
                 class="px-2 py-1 rounded text-xs sm:text-sm whitespace-nowrap"
-              >Alle</button>
+              >
+                Alle
+              </button>
               @for (r of [5,4,3,2,1]; track r) {
               <button
                 type="button"
                 (click)="reviewFilterRating.set(r)"
-                [ngClass]="{ 'bg-blue-600 text-white': reviewFilterRating() === r, 'bg-gray-100 text-gray-800': reviewFilterRating() !== r }"
+                [ngClass]="{
+                  'bg-blue-600 text-white': reviewFilterRating() === r,
+                  'bg-gray-100 text-gray-800': reviewFilterRating() !== r
+                }"
                 class="px-2 py-1 rounded text-xs sm:text-sm whitespace-nowrap"
               >
                 {{ r }}★
@@ -244,7 +270,6 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
   `,
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
- 
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private cartService = inject(CartService);
@@ -283,6 +308,20 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     braun: 'brown',
     silber: 'silver',
     gold: 'gold',
+  };
+
+  private categoryTranslations: Record<string, string> = {
+    electronics: 'Elektronik',
+    clothing: 'Kleidung',
+    shoes: 'Schuhe',
+    books: 'Bücher',
+    home: 'Haushalt',
+    sports: 'Sport',
+    toys: 'Spielzeug',
+    beauty: 'Schönheit',
+    microwave: 'Mikrowelle',
+    computer: 'Computer',
+    smartphone: 'Smartphone',
   };
 
   ngOnInit() {
@@ -407,6 +446,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
     const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
     return `${host}/${s}`;
+  }
+
+  translateCategory(name?: string): string {
+    if (!name) return '';
+    const key = name.toLowerCase();
+    return this.categoryTranslations[key] ?? name;
   }
 
   dynamicAttributes() {
@@ -572,15 +617,17 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // Sortieren
     switch (this.reviewSort()) {
       case 'newest':
-        reviews.sort((a, b) =>
-          (new Date(b.updated_at || b.created_at)).getTime() -
-          (new Date(a.updated_at || a.created_at)).getTime()
+        reviews.sort(
+          (a, b) =>
+            new Date(b.updated_at || b.created_at).getTime() -
+            new Date(a.updated_at || a.created_at).getTime()
         );
         break;
       case 'oldest':
-        reviews.sort((a, b) =>
-          (new Date(a.updated_at || a.created_at)).getTime() -
-          (new Date(b.updated_at || b.created_at)).getTime()
+        reviews.sort(
+          (a, b) =>
+            new Date(a.updated_at || a.created_at).getTime() -
+            new Date(b.updated_at || b.created_at).getTime()
         );
         break;
       case 'best':
