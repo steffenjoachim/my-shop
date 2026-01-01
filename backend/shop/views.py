@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from decimal import Decimal
 
 from .models import (
     Product,
@@ -60,12 +61,78 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 # --- Simple PlaceOrderView stub (implement real logic later) ---
 class PlaceOrderView(views.APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        # Placeholder: implement real ordering logic later.
-        return Response({"detail": "Place order endpoint not implemented in this dev snapshot."},
-                        status=status.HTTP_501_NOT_IMPLEMENTED)
+        """Create an Order and its OrderItems from frontend payload.
+
+        Expected payload shape:
+        {
+            "cartItems": [{"product": <id>, "quantity": <int>, "product_image": "...", ...}, ...],
+            "address": {"name":"","street":"","zip":"","city":""},
+            "paymentMethod": "paypal"|"creditcard"|"invoice"
+        }
+        """
+
+        user = request.user
+        data = request.data or {}
+        cart_items = data.get("cartItems") or []
+
+        if not cart_items:
+            return Response({"error": "cartItems is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        address = data.get("address", {})
+        payment_method = data.get("paymentMethod", "paypal")
+
+        total = Decimal("0.00")
+        products_cache = {}
+
+        # Calculate total and load products
+        for it in cart_items:
+            pid = it.get("product")
+            qty = int(it.get("quantity", 1) or 1)
+            if not pid:
+                return Response({"error": "product id missing in cart item."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if pid not in products_cache:
+                try:
+                    products_cache[pid] = Product.objects.get(pk=pid)
+                except Product.DoesNotExist:
+                    return Response({"error": f"Product {pid} not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+            prod = products_cache[pid]
+            price = Decimal(str(prod.price))
+            total += price * qty
+
+        # Create order
+        order = Order.objects.create(
+            user=user,
+            name=address.get("name"),
+            street=address.get("street"),
+            zip=address.get("zip"),
+            city=address.get("city"),
+            payment_method=payment_method,
+            total=total,
+            paid=(payment_method in ("paypal", "creditcard")),
+            status=("paid" if payment_method in ("paypal", "creditcard") else "pending"),
+        )
+
+        # Create items
+        for it in cart_items:
+            pid = it.get("product")
+            qty = int(it.get("quantity", 1) or 1)
+            prod = products_cache[pid]
+            OrderItem.objects.create(
+                order=order,
+                product=prod,
+                product_title=prod.title,
+                product_image=it.get("product_image") or prod.main_image,
+                price=prod.price,
+                quantity=qty,
+            )
+
+        serializer = OrderSerializer(order, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 # --- CSRF token endpoint used by frontend ---
