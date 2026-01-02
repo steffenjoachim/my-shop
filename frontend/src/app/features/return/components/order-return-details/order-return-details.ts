@@ -13,6 +13,11 @@ interface OrderReturnDetails {
   status: string;
   created_at: string;
   comments?: string;
+
+  // ✅ Ablehnungsdaten
+  rejection_reason?: string;
+  rejection_comment?: string;
+  rejection_date?: string;
 }
 
 @Component({
@@ -35,77 +40,108 @@ interface OrderReturnDetails {
 
         <!-- ✅ Loading -->
         @if (loading) {
-        <div class="text-center py-12 text-gray-500">⏳ Lade Details …</div>
-        } @if (!loading && retour) {
+          <div class="text-center py-12 text-gray-500">
+            ⏳ Lade Details …
+          </div>
+        }
 
-        <!-- ✅ Daten -->
-        <div class="space-y-3 text-sm">
-          <p><b>Bestellung:</b> #{{ retour.order_id }}</p>
-          <p><b>Produkt:</b> {{ retour.product_title }}</p>
-          <p><b>Kunde:</b> {{ retour.username }}</p>
+        @if (!loading && retour) {
 
-          <p>
-            <b>Grund:</b>
-                    <span class="font-semibold">{{ formatReason(retour.reason) }}</span>
-          </p>
+          <!-- ✅ Basisdaten -->
+          <div class="space-y-3 text-sm">
+            <p><b>Bestellung:</b> #{{ retour.order_id }}</p>
+            <p><b>Produkt:</b> {{ retour.product_title }}</p>
+            <p><b>Kunde:</b> {{ retour.username }}</p>
 
-          @if (retour.comments) {
-          <p>
-            <b>Kommentar:</b>
-            <span class="text-gray-600">{{ retour.comments }}</span>
-          </p>
+            <p>
+              <b>Grund:</b>
+              <span class="font-semibold">
+                {{ formatReason(retour.reason) }}
+              </span>
+            </p>
+
+            @if (retour.comments) {
+              <p>
+                <b>Kommentar:</b>
+                <span class="text-gray-600">{{ retour.comments }}</span>
+              </p>
+            }
+
+            <p>
+              <b>Erstellt:</b>
+              {{ retour.created_at | date:'dd.MM.yyyy HH:mm':'':'de-DE' }}
+            </p>
+
+            <p class="flex items-center gap-2">
+              <b>Status:</b>
+              <span
+                class="px-3 py-1 rounded-full text-xs font-semibold"
+                [ngClass]="statusClass(retour.status)"
+              >
+                {{ statusLabel(retour.status) }}
+              </span>
+            </p>
+          </div>
+
+          <!-- ❌ ABGELEHNT -->
+          @if (retour.status === 'rejected') {
+            <div class="mt-8 border-t pt-6 bg-red-50 rounded-lg p-4">
+              <h2 class="font-semibold text-red-700 mb-2">❌ Abgelehnt</h2>
+
+              <p class="text-sm">
+                <b>Grund:</b>
+                {{ formatReason(retour.rejection_reason || '') }}
+              </p>
+
+              @if (retour.rejection_comment) {
+                <p class="text-sm text-gray-700 mt-1">
+                  <b>Kommentar:</b> {{ retour.rejection_comment }}
+                </p>
+              }
+
+              <p class="text-sm text-gray-600 mt-2">
+                <b>Am:</b>
+                {{ retour.rejection_date | date:'dd.MM.yyyy HH:mm':'':'de-DE' }}
+              </p>
+            </div>
           }
 
-          <p>
-            <b>Erstellt:</b>
-            {{ retour.created_at | date : 'dd.MM.yyyy HH:mm' : '' : 'de-DE' }}
-          </p>
+          <!-- ✅ WORKFLOW (nur wenn NICHT abgelehnt) -->
+          @if (retour.status !== 'rejected') {
+            <div class="mt-8 border-t pt-6">
+              <h2 class="font-semibold mb-4">📦 Retour-Workflow</h2>
 
-          <p class="flex items-center gap-2">
-            <b>Status:</b>
-            <span
-              class="px-3 py-1 rounded-full text-xs font-semibold"
-              [ngClass]="statusClass(retour.status)"
-            >
-              {{ statusLabel(retour.status) }}
-            </span>
-          </p>
-        </div>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  (click)="updateStatus('approved')"
+                  class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
+                >
+                  ✅ Genehmigen
+                </button>
 
-        <!-- ✅ Retour WORKFLOW -->
-        <div class="mt-8 border-t pt-6">
-          <h2 class="font-semibold mb-4">📦 Retour-Workflow</h2>
+                <button
+                  (click)="rejectReturn()"
+                  class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
+                >
+                  ❌ Ablehnen
+                </button>
 
-          <div class="flex flex-wrap gap-3">
-            <button
-              (click)="updateStatus('approved')"
-              class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
-            >
-              ✅ Genehmigen
-            </button>
+                <button
+                  (click)="updateStatus('received')"
+                  class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-500"
+                >
+                  📥 Eingetroffen
+                </button>
 
-            <button
-              (click)="rejectReturn()"
-              class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
-            >
-              ❌ Ablehnen
-            </button>
-
-            <button
-              (click)="updateStatus('received')"
-              class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-500"
-            >
-              📥 Eingetroffen
-            </button>
-
-            <button
-              (click)="updateStatus('refunded')"
-              class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
-            >
-              💶 Erstattet
-            </button>
-          </div>
-        </div>
+                <button
+                  (click)="updateStatus('refunded')"
+                  class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
+                >
+                  💶 Erstattet
+                </button>
+              </div>
+            </div>
+          }
 
         }
       </div>
