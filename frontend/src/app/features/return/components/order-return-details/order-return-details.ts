@@ -14,7 +14,7 @@ interface OrderReturnDetails {
   created_at: string;
   comments?: string;
 
-  // ✅ Ablehnungsdaten
+  // ❌ Ablehnung
   rejection_reason?: string;
   rejection_comment?: string;
   rejection_date?: string;
@@ -22,11 +22,13 @@ interface OrderReturnDetails {
 
 @Component({
   selector: 'app-order-return-details',
+  standalone: true,
   imports: [CommonModule, DatePipe],
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
       <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow">
-        <!-- ✅ Header -->
+
+        <!-- Header -->
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-2xl font-bold">🔍 Retour-Details</h1>
 
@@ -38,7 +40,7 @@ interface OrderReturnDetails {
           </button>
         </div>
 
-        <!-- ✅ Loading -->
+        <!-- Loading -->
         @if (loading) {
           <div class="text-center py-12 text-gray-500">
             ⏳ Lade Details …
@@ -47,7 +49,7 @@ interface OrderReturnDetails {
 
         @if (!loading && retour) {
 
-          <!-- ✅ Basisdaten -->
+          <!-- Basisdaten -->
           <div class="space-y-3 text-sm">
             <p><b>Bestellung:</b> #{{ retour.order_id }}</p>
             <p><b>Produkt:</b> {{ retour.product_title }}</p>
@@ -83,7 +85,7 @@ interface OrderReturnDetails {
             </p>
           </div>
 
-          <!-- ❌ ABGELEHNT -->
+          <!-- ❌ Abgelehnt -->
           @if (retour.status === 'rejected') {
             <div class="mt-8 border-t pt-6 bg-red-50 rounded-lg p-4">
               <h2 class="font-semibold text-red-700 mb-2">❌ Abgelehnt</h2>
@@ -106,43 +108,52 @@ interface OrderReturnDetails {
             </div>
           }
 
-          <!-- ✅ WORKFLOW (nur wenn NICHT abgelehnt) -->
+          <!-- Workflow -->
           @if (retour.status !== 'rejected') {
             <div class="mt-8 border-t pt-6">
               <h2 class="font-semibold mb-4">📦 Retour-Workflow</h2>
 
               <div class="flex flex-wrap gap-3">
-                <button
-                  (click)="updateStatus('approved')"
-                  class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
-                >
-                  ✅ Genehmigen
-                </button>
 
-                <button
-                  (click)="rejectReturn()"
-                  class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
-                >
-                  ❌ Ablehnen
-                </button>
+                @if (retour.status !== 'approved') {
+                  <button
+                    (click)="updateStatus('approved')"
+                    class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
+                  >
+                    ✅ Genehmigen
+                  </button>
+                }
 
-                <button
-                  (click)="updateStatus('received')"
-                  class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-500"
-                >
-                  📥 Eingetroffen
-                </button>
+                @if (retour.status !== 'approved') {
+                  <button
+                    (click)="rejectReturn()"
+                    class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
+                  >
+                    ❌ Ablehnen
+                  </button>
+                }
 
-                <button
-                  (click)="updateStatus('refunded')"
-                  class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
-                >
-                  💶 Erstattet
-                </button>
+                @if (retour.status === 'approved') {
+                  <button
+                    (click)="updateStatus('received')"
+                    class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-500"
+                  >
+                    📥 Eingetroffen
+                  </button>
+                }
+
+                @if (retour.status === 'received') {
+                  <button
+                    (click)="updateStatus('refunded')"
+                    class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
+                  >
+                    💶 Erstattet
+                  </button>
+                }
+
               </div>
             </div>
           }
-
         }
       </div>
     </div>
@@ -159,10 +170,10 @@ export class OrderRetourDetails implements OnInit {
 
   ngOnInit(): void {
     this.retourId = Number(this.route.snapshot.paramMap.get('id'));
-    this.fetchDetails();
+    this.loadDetails();
   }
 
-  private fetchDetails() {
+  loadDetails() {
     this.loading = true;
 
     this.http
@@ -171,12 +182,12 @@ export class OrderRetourDetails implements OnInit {
         { withCredentials: true }
       )
       .subscribe({
-        next: (res) => {
-          this.retour = res;
+        next: (data) => {
+          this.retour = data;
           this.loading = false;
         },
         error: (err) => {
-          console.error('Fehler beim Laden der Details', err);
+          console.error('Fehler beim Laden der Retour-Details', err);
           this.loading = false;
         },
       });
