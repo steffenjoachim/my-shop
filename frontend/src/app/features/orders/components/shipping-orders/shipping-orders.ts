@@ -16,15 +16,17 @@ import { OrderSummary } from '../../../../shared/models/order.model';
     <div class="min-h-screen flex flex-col bg-gray-50">
       <div class="flex-grow">
         <div class="max-w-6xl mx-auto p-4 sm:p-6">
-          <!-- Header + Search -->
+          <!-- Header -->
           <div
             class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
           >
             <h1 class="text-3xl font-bold flex items-center gap-3">
               <span class="text-2xl">🚚</span> Versandverwaltung
             </h1>
+          </div>
 
-            <div class="w-full sm:w-72">
+          <!-- Search & Info -->
+          <div class="w-full mb-4 sm:w-72">
               <input
                 type="text"
                 [(ngModel)]="query"
@@ -33,7 +35,6 @@ import { OrderSummary } from '../../../../shared/models/order.model';
                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
-          </div>
 
           <p class="text-gray-600 mb-6">
             Verwaltung aller offenen Bestellungen mit Status "Ausstehend",
