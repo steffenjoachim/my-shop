@@ -176,6 +176,7 @@ class ShippingReturnDetailView(views.APIView):
         """
         Aktualisiert den Status einer Retour-Anfrage.
         Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn die Retour genehmigt wird.
+        Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn die Retour eingetroffen ist.
         """
         try:
             obj = ReturnRequest.objects.select_related('user', 'order', 'item').get(pk=pk)
@@ -256,6 +257,16 @@ class ShippingReturnDetailView(views.APIView):
             try:
                 from .services.email_service import send_return_rejection_email
                 send_return_rejection_email(obj)
+                print("[DEBUG] E-Mail-Funktion erfolgreich aufgerufen.")
+            except Exception as e:
+                print(f"[DEBUG] Fehler beim Aufruf der E-Mail-Funktion: {e}")
+                import traceback
+                traceback.print_exc()
+        elif new_status == "received" and old_status != "received":
+            print("[DEBUG] E-Mail-Funktion wird aufgerufen (Retour eingetroffen)...")
+            try:
+                from .services.email_service import send_return_received_email
+                send_return_received_email(obj)
                 print("[DEBUG] E-Mail-Funktion erfolgreich aufgerufen.")
             except Exception as e:
                 print(f"[DEBUG] Fehler beim Aufruf der E-Mail-Funktion: {e}")
