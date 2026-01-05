@@ -106,6 +106,106 @@ Diese E-Mail wurde automatisch generiert.
         print(f"E-Mail würde an {recipient_email} gesendet werden (Produktionsmodus)")
 
 
+def send_return_received_email(return_request):
+    """
+    Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn seine Retour eingetroffen ist.
+    
+    In der Entwicklungsphase wird die E-Mail in die Konsole geloggt.
+    In der Produktion würde hier eine echte E-Mail versendet werden.
+    
+    Args:
+        return_request: ReturnRequest-Instanz mit eingegangener Retour
+    """
+    user = return_request.user
+    order = return_request.order
+    item = return_request.item
+    
+    # E-Mail-Daten zusammenstellen
+    recipient_email = user.email if hasattr(user, 'email') and user.email else "unbekannt@example.com"
+    subject = f"Retour eingetroffen und wird geprüft - Bestellung #{order.id}"
+    
+    # E-Mail-Text
+    email_body = f"""
+═══════════════════════════════════════════════════════════════
+RETOUR EINGETROFFEN - PRÜFUNG LÄUFT
+═══════════════════════════════════════════════════════════════
+
+Liebe/r {user.username if hasattr(user, 'username') else 'Kunde/in'},
+
+wir freuen uns mitteilen, dass Ihre Retour bei uns eingetroffen ist!
+
+RETOUR-DETAILS:
+───────────────────────────────────────────────────────────────
+Retour-Nr.:        #{return_request.id}
+Bestell-Nr.:       #{order.id}
+Produkt:           {item.product_title}
+Erhalt bestätigt:  {return_request.created_at.strftime('%d.%m.%Y %H:%M') if hasattr(return_request.created_at, 'strftime') else return_request.created_at}
+
+WAS PASSIERT JETZT?
+───────────────────────────────────────────────────────────────
+Deine Retour ist eingetroffen und wird von unserem Team sorgfältig geprüft.
+Wir überprüfen dabei:
+
+✓ Die Vollständigkeit des Produkts
+✓ Den Zustand des Produkts
+✓ Die Voraussetzungen für die Rückgabe
+
+RÜCKERSTATTUNG
+───────────────────────────────────────────────────────────────
+Sobald unsere Prüfung abgeschlossen ist, wird der Bestellbetrag in Höhe von 
+EUR {order.total:.2f} auf dein ursprüngliches Zahlungsmittel 
+zurückerstattet.
+
+Die Bearbeitung dauert in der Regel 5-7 Werktage nach Abschluss 
+der Prüfung.
+
+DEIN VORTEIL BEI UNS
+───────────────────────────────────────────────────────────────
+- Kostenlose Retouren
+- Schnelle Prüfung und Erstattung
+- Volle Transparenz über den Status deiner Retour
+
+FRAGEN?
+───────────────────────────────────────────────────────────────
+Du kannst jederzeit in deinem Kundenkonto den Status deiner Retour 
+einsehen oder unser Kundenservice-Team kontaktieren, wenn du Fragen 
+hast.
+
+Vielen Dank für dein Vertrauen!
+
+Mit freundlichen Grüßen
+Dein Shop-Team
+
+═══════════════════════════════════════════════════════════════
+Diese E-Mail wurde automatisch generiert.
+═══════════════════════════════════════════════════════════════
+"""
+    
+    # In der Entwicklungsphase: E-Mail in die Konsole ausgeben
+    if settings.DEBUG:
+        print("\n" + "=" * 80)
+        print("📧 E-MAIL-BENACHRICHTIGUNG (SIMULATION) - RETOUR EINGETROFFEN")
+        print("=" * 80)
+        print(f"An: {recipient_email}")
+        print(f"Betreff: {subject}")
+        print("-" * 80)
+        print(email_body)
+        print("=" * 80)
+        print("ℹ️  In der Produktion würde hier eine echte E-Mail versendet werden.")
+        print("=" * 80 + "\n")
+    else:
+        # In der Produktion: Echte E-Mail versenden
+        # from django.core.mail import send_mail
+        # send_mail(
+        #     subject=subject,
+        #     message=email_body,
+        #     from_email=settings.DEFAULT_FROM_EMAIL,
+        #     recipient_list=[recipient_email],
+        #     fail_silently=False,
+        # )
+        print(f"E-Mail würde an {recipient_email} gesendet werden (Produktionsmodus)")
+
+
 def send_return_rejection_email(return_request):
     """
     Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn seine Retour-Anfrage abgelehnt wurde.

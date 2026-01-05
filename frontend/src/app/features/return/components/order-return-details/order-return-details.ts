@@ -27,7 +27,6 @@ interface OrderReturnDetails {
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
       <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow">
-
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-2xl font-bold">🔍 Retour-Details</h1>
@@ -42,119 +41,128 @@ interface OrderReturnDetails {
 
         <!-- Loading -->
         @if (loading) {
-          <div class="text-center py-12 text-gray-500">
-            ⏳ Lade Details …
-          </div>
+        <div class="text-center py-12 text-gray-500">⏳ Lade Details …</div>
+        } @if (!loading && retour) {
+
+        <!-- Basisdaten -->
+        <div class="space-y-3 text-sm">
+          <p><b>Bestellung:</b> #{{ retour.order_id }}</p>
+          <p><b>Produkt:</b> {{ retour.product_title }}</p>
+          <p><b>Kunde:</b> {{ retour.username }}</p>
+
+          <p>
+            <b>Grund:</b>
+            <span class="font-semibold">
+              {{ formatReason(retour.reason) }}
+            </span>
+          </p>
+
+          @if (retour.comments) {
+          <p>
+            <b>Kommentar:</b>
+            <span class="text-gray-600">{{ retour.comments }}</span>
+          </p>
+          }
+
+          <p>
+            <b>Erstellt:</b>
+            {{ retour.created_at | date : 'dd.MM.yyyy HH:mm' : '' : 'de-DE' }}
+          </p>
+
+          <p class="flex items-center gap-2">
+            <b>Status:</b>
+            <span
+              class="px-3 py-1 rounded-full text-xs font-semibold"
+              [ngClass]="statusClass(retour.status)"
+            >
+              {{ statusLabel(retour.status) }}
+            </span>
+          </p>
+        </div>
+
+        <!-- ❌ Abgelehnt -->
+        @if (retour.status === 'rejected') {
+        <div class="mt-8 border-t pt-6 bg-red-50 rounded-lg p-4">
+          <h2 class="font-semibold text-red-700 mb-2">❌ Abgelehnt</h2>
+
+          <p class="text-sm">
+            <b>Grund:</b>
+            {{ formatReason(retour.rejection_reason || '') }}
+          </p>
+
+          @if (retour.rejection_comment) {
+          <p class="text-sm text-gray-700 mt-1">
+            <b>Kommentar:</b> {{ retour.rejection_comment }}
+          </p>
+          }
+
+          <p class="text-sm text-gray-600 mt-2">
+            <b>Am:</b>
+            {{
+              retour.rejection_date | date : 'dd.MM.yyyy HH:mm' : '' : 'de-DE'
+            }}
+          </p>
+        </div>
         }
 
-        @if (!loading && retour) {
+        <!-- Workflow -->
+        @if (retour.status !== 'rejected') {
+        <div class="mt-8 border-t pt-6">
+          <h2 class="font-semibold mb-4">📦 Retour-Workflow</h2>
 
-          <!-- Basisdaten -->
-          <div class="space-y-3 text-sm">
-            <p><b>Bestellung:</b> #{{ retour.order_id }}</p>
-            <p><b>Produkt:</b> {{ retour.product_title }}</p>
-            <p><b>Kunde:</b> {{ retour.username }}</p>
-
-            <p>
-              <b>Grund:</b>
-              <span class="font-semibold">
-                {{ formatReason(retour.reason) }}
-              </span>
-            </p>
-
-            @if (retour.comments) {
-              <p>
-                <b>Kommentar:</b>
-                <span class="text-gray-600">{{ retour.comments }}</span>
-              </p>
+          <div class="flex flex-wrap gap-3">
+            @if (retour.status !== 'approved') {
+            <button
+              (click)="updateStatus('approved')"
+              class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
+            >
+              ✅ Genehmigen
+            </button>
+            } @if (retour.status !== 'approved') {
+            <button
+              (click)="rejectReturn()"
+              class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
+            >
+              ❌ Ablehnen
+            </button>
+            } @if (retour.status === 'approved') {
+            <button
+              (click)="updateStatus('received')"
+              [disabled]="submitting"
+              class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              @if (!submitting) { 📥 Eingetroffen } @else { ⏳ Wird
+              verarbeitet... }
+            </button>
+            } @if (retour.status === 'received') {
+            <button
+              (click)="updateStatus('refunded')"
+              class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
+            >
+              💶 Erstattet
+            </button>
             }
-
-            <p>
-              <b>Erstellt:</b>
-              {{ retour.created_at | date:'dd.MM.yyyy HH:mm':'':'de-DE' }}
-            </p>
-
-            <p class="flex items-center gap-2">
-              <b>Status:</b>
-              <span
-                class="px-3 py-1 rounded-full text-xs font-semibold"
-                [ngClass]="statusClass(retour.status)"
-              >
-                {{ statusLabel(retour.status) }}
-              </span>
-            </p>
           </div>
-
-          <!-- ❌ Abgelehnt -->
-          @if (retour.status === 'rejected') {
-            <div class="mt-8 border-t pt-6 bg-red-50 rounded-lg p-4">
-              <h2 class="font-semibold text-red-700 mb-2">❌ Abgelehnt</h2>
-
-              <p class="text-sm">
-                <b>Grund:</b>
-                {{ formatReason(retour.rejection_reason || '') }}
-              </p>
-
-              @if (retour.rejection_comment) {
-                <p class="text-sm text-gray-700 mt-1">
-                  <b>Kommentar:</b> {{ retour.rejection_comment }}
-                </p>
-              }
-
-              <p class="text-sm text-gray-600 mt-2">
-                <b>Am:</b>
-                {{ retour.rejection_date | date:'dd.MM.yyyy HH:mm':'':'de-DE' }}
-              </p>
-            </div>
-          }
-
-          <!-- Workflow -->
-          @if (retour.status !== 'rejected') {
-            <div class="mt-8 border-t pt-6">
-              <h2 class="font-semibold mb-4">📦 Retour-Workflow</h2>
-
-              <div class="flex flex-wrap gap-3">
-
-                @if (retour.status !== 'approved') {
-                  <button
-                    (click)="updateStatus('approved')"
-                    class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
-                  >
-                    ✅ Genehmigen
-                  </button>
-                }
-
-                @if (retour.status !== 'approved') {
-                  <button
-                    (click)="rejectReturn()"
-                    class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
-                  >
-                    ❌ Ablehnen
-                  </button>
-                }
-
-                @if (retour.status === 'approved') {
-                  <button
-                    (click)="updateStatus('received')"
-                    class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-500"
-                  >
-                    📥 Eingetroffen
-                  </button>
-                }
-
-                @if (retour.status === 'received') {
-                  <button
-                    (click)="updateStatus('refunded')"
-                    class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
-                  >
-                    💶 Erstattet
-                  </button>
-                }
-
-              </div>
-            </div>
-          }
+        </div>
         }
+
+        <!-- Success Message -->
+        @if (successMessage) {
+        <div
+          class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm"
+        >
+          ✅ {{ successMessage }}
+        </div>
+        }
+
+        <!-- Error Message -->
+        @if (errorMessage) {
+        <div
+          class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+        >
+          ❌ {{ errorMessage }}
+        </div>
+        } }
       </div>
     </div>
   `,
@@ -167,6 +175,9 @@ export class OrderRetourDetails implements OnInit {
   loading = true;
   retour: OrderReturnDetails | null = null;
   retourId!: number;
+  submitting = false;
+  successMessage: string = '';
+  errorMessage: string = '';
 
   ngOnInit(): void {
     this.retourId = Number(this.route.snapshot.paramMap.get('id'));
@@ -196,6 +207,10 @@ export class OrderRetourDetails implements OnInit {
   updateStatus(status: string) {
     if (!this.retour) return;
 
+    this.submitting = true;
+    this.successMessage = '';
+    this.errorMessage = '';
+
     this.http
       .patch(
         `${environment.apiBaseUrl}shipping/returns/${this.retourId}/`,
@@ -205,19 +220,35 @@ export class OrderRetourDetails implements OnInit {
       .subscribe({
         next: () => {
           this.retour!.status = status;
+          this.submitting = false;
+
+          // Erfolgsmeldung anzeigen
+          if (status === 'received') {
+            this.successMessage =
+              'Retour als eingetroffen markiert. E-Mail an Kunde versendet.';
+          } else if (status === 'refunded') {
+            this.successMessage = 'Retour als erstattet markiert.';
+          }
+
+          // Nachricht nach 3 Sekunden ausblenden
+          setTimeout(() => {
+            this.successMessage = '';
+          }, 3000);
         },
         error: (err) => {
           console.error('Status konnte nicht geändert werden', err);
+          this.errorMessage =
+            err.error?.error || 'Fehler beim Aktualisieren des Status.';
+          this.submitting = false;
         },
       });
   }
 
-  rejectReturn() {
-    // Zur Ablehnungsseite weiterleiten
+  rejectReturn(): void {
     this.router.navigate(['/shipping/returns', this.retourId, 'reject']);
   }
 
-  goBack() {
+  goBack(): void {
     this.router.navigate(['/shipping/returns']);
   }
 
