@@ -106,35 +106,49 @@ interface OrderReturnDetails {
         }
 
         <!-- Workflow -->
-        @if (retour.status !== 'rejected') {
+        @if (retour.status !== 'rejected' && retour.status !== 'refunded') {
         <div class="mt-8 border-t pt-6">
           <h2 class="font-semibold mb-4">📦 Retour-Workflow</h2>
 
           <div class="flex flex-wrap gap-3">
-            @if (retour.status !== 'approved') {
+            <!-- 🟡 PENDING -->
+            @if (retour.status === 'pending') {
             <button
               (click)="updateStatus('approved')"
               class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500"
             >
               ✅ Genehmigen
             </button>
-            } @if (retour.status !== 'approved') {
+
             <button
               (click)="rejectReturn()"
               class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
             >
               ❌ Ablehnen
             </button>
-            } @if (retour.status === 'approved') {
+            }
+
+            <!-- 🔵 APPROVED -->
+            @if (retour.status === 'approved') {
             <button
               (click)="updateStatus('received')"
               [disabled]="submitting"
               class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              @if (!submitting) { 📥 Eingetroffen } @else { ⏳ Wird
-              verarbeitet... }
+              @if (!submitting) { 📥 Eingetroffen } @else { ⏳ Wird verarbeitet…
+              }
             </button>
-            } @if (retour.status === 'received') {
+            }
+
+            <!-- 🟣 RECEIVED -->
+            @if (retour.status === 'received') {
+            <button
+              (click)="rejectReturn()"
+              class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500"
+            >
+              ❌ Ablehnen
+            </button>
+
             <button
               (click)="updateStatus('refunded')"
               class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
