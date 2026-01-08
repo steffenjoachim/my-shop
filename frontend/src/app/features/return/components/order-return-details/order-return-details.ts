@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
+import { ReturnRefund } from '../return-refund/return-refund';
 
 interface OrderReturnDetails {
   id: number;
@@ -18,12 +19,17 @@ interface OrderReturnDetails {
   rejection_reason?: string;
   rejection_comment?: string;
   rejection_date?: string;
+
+  // 💶 Erstattung
+  refund_name?: string;
+  refund_amount?: number;
+  refund_iban?: string;
 }
 
 @Component({
   selector: 'app-order-return-details',
   standalone: true,
-  imports: [CommonModule, DatePipe],
+  imports: [CommonModule, DatePipe, ReturnRefund],
   template: `
     <div class="min-h-screen bg-gray-50 p-6">
       <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow">
@@ -105,6 +111,21 @@ interface OrderReturnDetails {
         </div>
         }
 
+        <!-- 💶 Erstattet -->
+        @if (retour.status === 'refunded') {
+        <div class="mt-8 border-t pt-6 bg-green-50 rounded-lg p-4">
+          <h2 class="font-semibold text-green-700 mb-2">💶 Erstattet</h2>
+
+          @if (retour.refund_name) {
+          <p class="text-sm"><b>Empfänger:</b> {{ retour.refund_name }}</p>
+          } @if (retour.refund_amount) {
+          <p class="text-sm"><b>Betrag:</b> {{ retour.refund_amount }} €</p>
+          } @if (retour.refund_iban) {
+          <p class="text-sm"><b>IBAN:</b> {{ retour.refund_iban }}</p>
+          }
+        </div>
+        }
+
         <!-- Workflow -->
         @if (retour.status !== 'rejected' && retour.status !== 'refunded') {
         <div class="mt-8 border-t pt-6">
@@ -150,7 +171,7 @@ interface OrderReturnDetails {
             </button>
 
             <button
-              (click)="updateStatus('refunded')"
+              (click)="openRefundModal()"
               class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-500"
             >
               💶 Erstattet
@@ -179,6 +200,13 @@ interface OrderReturnDetails {
         } }
       </div>
     </div>
+
+    <!-- Erstattungs-Modal -->
+    <app-return-refund
+      [visible]="showRefundModal"
+      (confirmed)="confirmRefund($event)"
+      (cancelled)="cancelRefund()"
+    />
   `,
 })
 export class OrderRetourDetails implements OnInit {
@@ -192,6 +220,7 @@ export class OrderRetourDetails implements OnInit {
   submitting = false;
   successMessage: string = '';
   errorMessage: string = '';
+  showRefundModal = false;
 
   ngOnInit(): void {
     this.retourId = Number(this.route.snapshot.paramMap.get('id'));
@@ -260,6 +289,71 @@ export class OrderRetourDetails implements OnInit {
 
   rejectReturn(): void {
     this.router.navigate(['/shipping/returns', this.retourId, 'reject']);
+  }
+
+  /**
+   * Öffnet das Erstattungs-Modal.
+   */
+  openRefundModal(): void {
+    this.showRefundModal = true;
+    this.errorMessage = '';
+  }
+
+  /**
+   * Behandelt die Bestätigung der Erstattung.
+   */
+  confirmRefund(refundData: {
+    refund_name: string;
+    refund_amount: number;
+    refund_iban: string;
+  }): void {
+    if (!this.retour) return;
+
+    this.submitting = true;
+    this.successMessage = '';
+    this.errorMessage = '';
+    this.showRefundModal = false;
+
+    const payload = {
+      status: 'refunded',
+      refund_name: refundData.refund_name,
+      refund_amount: refundData.refund_amount,
+      refund_iban: refundData.refund_iban,
+    };
+
+    this.http
+      .patch(
+        `${environment.apiBaseUrl}shipping/returns/${this.retourId}/`,
+        payload,
+        { withCredentials: true }
+      )
+      .subscribe({
+        next: () => {
+          this.retour!.status = 'refunded';
+          this.submitting = false;
+          this.successMessage = 'Retour als erstattet markiert.';
+          this.loadDetails(); // Details neu laden, um Erstattungsinformationen anzuzeigen
+
+          // Nachricht nach 3 Sekunden ausblenden
+          setTimeout(() => {
+            this.successMessage = '';
+          }, 3000);
+        },
+        error: (err) => {
+          console.error('Fehler beim Setzen des Erstattungsstatus', err);
+          this.errorMessage =
+            err.error?.error ||
+            'Fehler beim Aktualisieren des Status. Bitte versuchen Sie es erneut.';
+          this.submitting = false;
+        },
+      });
+  }
+
+  /**
+   * Behandelt das Abbrechen des Erstattungs-Modals.
+   */
+  cancelRefund(): void {
+    this.showRefundModal = false;
   }
 
   goBack(): void {

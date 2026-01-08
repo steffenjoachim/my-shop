@@ -175,6 +175,9 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
             "rejection_reason",
             "rejection_comment",
             "rejection_date",
+            "refund_name",
+            "refund_amount",
+            "refund_iban",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]

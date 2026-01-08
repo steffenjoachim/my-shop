@@ -338,6 +338,27 @@ class OrderReturn(models.Model):
         help_text="Datum und Uhrzeit der Ablehnung"
     )
 
+    # Erstattungsinformationen (wird vom Shipping-Team ausgefüllt)
+    refund_name = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Name des Empfängers der Erstattung"
+    )
+    refund_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text="Erstattungsbetrag"
+    )
+    refund_iban = models.CharField(
+        max_length=34,
+        blank=True,
+        null=True,
+        help_text="IBAN für die Erstattung"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
