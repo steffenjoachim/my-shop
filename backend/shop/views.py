@@ -231,6 +231,55 @@ class ShippingReturnDetailView(views.APIView):
             # Zeitpunkt der Ablehnung setzen
             obj.rejection_date = timezone.now()
 
+        # Wenn Status auf "refunded" gesetzt wird, Erstattungsinformationen validieren
+        if new_status == "refunded":
+            refund_name = request.data.get("refund_name", "").strip()
+            refund_amount = request.data.get("refund_amount")
+            refund_iban = request.data.get("refund_iban", "").strip()
+
+            if not refund_name:
+                return Response(
+                    {"error": "Name des Erstattungsempfängers ist erforderlich."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if not refund_amount:
+                return Response(
+                    {"error": "Erstattungsbetrag ist erforderlich."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                refund_amount_decimal = Decimal(str(refund_amount))
+                if refund_amount_decimal <= 0:
+                    return Response(
+                        {"error": "Erstattungsbetrag muss größer als 0 sein."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "Ungültiger Erstattungsbetrag."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if not refund_iban:
+                return Response(
+                    {"error": "IBAN ist erforderlich."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # IBAN-Format validieren (einfache Prüfung: 15-34 Zeichen, alphanumerisch)
+            if len(refund_iban) < 15 or len(refund_iban) > 34:
+                return Response(
+                    {"error": "IBAN muss zwischen 15 und 34 Zeichen lang sein."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Erstattungsinformationen speichern
+            obj.refund_name = refund_name
+            obj.refund_amount = refund_amount_decimal
+            obj.refund_iban = refund_iban
+
         old_status = obj.status
         obj.status = new_status
         obj.save()
