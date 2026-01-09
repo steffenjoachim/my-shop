@@ -69,8 +69,8 @@ import {
         <!-- ✅ Beschreibung (tababhängig) -->
         <p class="text-gray-600 mb-8">
           @if (activeTab() === 'open') { Übersicht aller eingegangenen
-          Retourenanfragen. } @else { Übersicht über alle abgelehnten Retouren
-          }
+          Retourenanfragen. } @else { Übersicht über alle abgelehnten und
+          erstatteten Retouren }
         </p>
 
         <!-- ✅ Loading -->
@@ -145,10 +145,10 @@ export class OrderRetour implements OnInit {
       // Wenn kein Query: filtere nur nach Tab-Status
       this.filtered = this.returns.filter((r) => {
         if (tab === 'open') {
-          return r.status !== 'rejected';
+          return r.status !== 'rejected' && r.status !== 'refunded';
         } else {
-          // 'closed' = only rejected
-          return r.status === 'rejected';
+          // 'closed' = rejected oder refunded
+          return r.status === 'rejected' || r.status === 'refunded';
         }
       });
       return;
@@ -158,7 +158,9 @@ export class OrderRetour implements OnInit {
     this.filtered = this.returns.filter((r) => {
       // Prüfe Tab-Filter
       const matchesTab =
-        tab === 'open' ? r.status !== 'rejected' : r.status === 'rejected';
+        tab === 'open'
+          ? r.status !== 'rejected' && r.status !== 'refunded'
+          : r.status === 'rejected' || r.status === 'refunded';
 
       if (!matchesTab) return false;
 
