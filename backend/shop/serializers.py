@@ -159,6 +159,7 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
     item_id = serializers.IntegerField(source="item.id", read_only=True)
     product_title = serializers.CharField(source="item.product_title", read_only=True)
     product_image = serializers.CharField(source="item.product_image", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
 
     class Meta:
         model = ReturnRequest
@@ -168,6 +169,7 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
             "item_id",
             "product_title",
             "product_image",
+            "username",
             "reason",
             "other_reason",
             "comments",
