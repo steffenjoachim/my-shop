@@ -2,10 +2,6 @@ import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-/**
- * Komponente für die Eingabe von Erstattungsinformationen.
- * Wird als Modal/Dialog angezeigt, wenn eine Retour als erstattet markiert werden soll.
- */
 @Component({
   selector: 'app-return-refund',
   standalone: true,
@@ -130,9 +126,6 @@ export class ReturnRefund {
   submitting = false;
   errorMessage = '';
 
-  /**
-   * Prüft, ob das Formular abgesendet werden kann.
-   */
   canSubmit(): boolean {
     return (
       !!this.refundName.trim() &&
@@ -144,9 +137,6 @@ export class ReturnRefund {
     );
   }
 
-  /**
-   * Behandelt das Absenden des Formulars.
-   */
   onSubmit(): void {
     if (!this.canSubmit() || this.submitting) {
       return;
@@ -155,10 +145,10 @@ export class ReturnRefund {
     this.errorMessage = '';
     this.submitting = true;
 
-    // IBAN von Leerzeichen bereinigen
+    // Clean IBAN from spaces
     const cleanedIban = this.refundIban.replace(/\s+/g, '');
 
-    // Zusätzliche Validierung
+    // Additional validation
     if (cleanedIban.length < 15 || cleanedIban.length > 34) {
       this.errorMessage = 'IBAN muss zwischen 15 und 34 Zeichen lang sein.';
       this.submitting = false;
@@ -171,7 +161,7 @@ export class ReturnRefund {
       return;
     }
 
-    // Daten an Parent-Komponente senden
+    // Send data to parent component
     this.confirmed.emit({
       refund_name: this.refundName.trim(),
       refund_amount: this.refundAmount,
@@ -182,7 +172,7 @@ export class ReturnRefund {
   }
 
   /**
-   * Behandelt das Abbrechen des Dialogs.
+   * Handles canceling the dialog.
    */
   onCancel(): void {
     this.resetForm();
@@ -190,7 +180,7 @@ export class ReturnRefund {
   }
 
   /**
-   * Behandelt Klicks auf den Hintergrund (Backdrop).
+   * Handles clicks on the background (backdrop).
    */
   onBackdropClick(event: MouseEvent): void {
     if (event.target === event.currentTarget) {
@@ -199,7 +189,7 @@ export class ReturnRefund {
   }
 
   /**
-   * Setzt das Formular zurück.
+   * Resets the form.
    */
   private resetForm(): void {
     this.refundName = '';
