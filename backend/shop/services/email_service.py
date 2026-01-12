@@ -1,8 +1,8 @@
 """
-E-Mail-Service für Retour-Benachrichtigungen.
+Email service for return notifications.
 
-In der Entwicklungsphase werden E-Mails in die Konsole geloggt.
-In der Produktion können hier echte E-Mail-Versand-Logik implementiert werden.
+In development, emails are logged to the console.
+In production, real email sending logic can be implemented here.
 """
 from django.conf import settings
 from shop.models import ReturnRequest
@@ -10,23 +10,23 @@ from shop.models import ReturnRequest
 
 def send_return_approval_email(return_request):
     """
-    Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn seine Retour-Anfrage genehmigt wurde.
+    Sends an email notification to the customer when their return request has been approved.
     
-    In der Entwicklungsphase wird die E-Mail in die Konsole geloggt.
-    In der Produktion würde hier eine echte E-Mail versendet werden (z.B. mit Django's send_mail).
+    In development, the email is logged to the console.
+    In production, a real email would be sent here (e.g., with Django's send_mail).
     
     Args:
-        return_request: ReturnRequest-Instanz mit genehmigter Retour
+        return_request: ReturnRequest instance with approved return
     """
     user = return_request.user
     order = return_request.order
     item = return_request.item
     
-    # E-Mail-Daten zusammenstellen
-    recipient_email = user.email if hasattr(user, 'email') and user.email else "unbekannt@example.com"
+    # Compose email data
+    recipient_email = user.email if hasattr(user, 'email') and user.email else "unknown@example.com"
     subject = f"Retour-Anfrage genehmigt - Bestellung #{order.id}"
     
-    # E-Mail-Text (simuliert einen Retour-Schein)
+    # Email body (simulates a return label)
     email_body = f"""
 ═══════════════════════════════════════════════════════════════
 RETOUR-GENEHMIGUNG
@@ -78,21 +78,21 @@ Diese E-Mail wurde automatisch generiert.
 ═══════════════════════════════════════════════════════════════
 """
     
-    # In der Entwicklungsphase: E-Mail in die Konsole ausgeben
+    # In development: Output email to console
     if settings.DEBUG:
         print("\n" + "=" * 80)
-        print("📧 E-MAIL-BENACHRICHTIGUNG (SIMULATION)")
+        print("📧 EMAIL NOTIFICATION (SIMULATION)")
         print("=" * 80)
-        print(f"An: {recipient_email}")
-        print(f"Betreff: {subject}")
+        print(f"To: {recipient_email}")
+        print(f"Subject: {subject}")
         print("-" * 80)
         print(email_body)
         print("=" * 80)
-        print("ℹ️  In der Produktion würde hier eine echte E-Mail versendet werden.")
+        print("ℹ️  In production, a real email would be sent here.")
         print("=" * 80 + "\n")
     else:
-        # In der Produktion: Echte E-Mail versenden
-        # Beispiel-Implementierung (erfordert Django E-Mail-Konfiguration):
+        # In production: Send real email
+        # Example implementation (requires Django email configuration):
         # from django.core.mail import send_mail
         # from django.template.loader import render_to_string
         # 
@@ -103,28 +103,28 @@ Diese E-Mail wurde automatisch generiert.
         #     recipient_list=[recipient_email],
         #     fail_silently=False,
         # )
-        print(f"E-Mail würde an {recipient_email} gesendet werden (Produktionsmodus)")
+        print(f"Email would be sent to {recipient_email} (production mode)")
 
 
 def send_return_received_email(return_request):
     """
-    Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn seine Retour eingetroffen ist.
+    Sends an email notification to the customer when their return has been received.
     
-    In der Entwicklungsphase wird die E-Mail in die Konsole geloggt.
-    In der Produktion würde hier eine echte E-Mail versendet werden.
+    In development, the email is logged to the console.
+    In production, a real email would be sent here.
     
     Args:
-        return_request: ReturnRequest-Instanz mit eingegangener Retour
+        return_request: ReturnRequest instance with received return
     """
     user = return_request.user
     order = return_request.order
     item = return_request.item
     
-    # E-Mail-Daten zusammenstellen
-    recipient_email = user.email if hasattr(user, 'email') and user.email else "unbekannt@example.com"
+    # Compose email data
+    recipient_email = user.email if hasattr(user, 'email') and user.email else "unknown@example.com"
     subject = f"Retour eingetroffen und wird geprüft - Bestellung #{order.id}"
     
-    # E-Mail-Text
+    # Email body
     email_body = f"""
 ═══════════════════════════════════════════════════════════════
 RETOUR EINGETROFFEN - PRÜFUNG LÄUFT
@@ -181,20 +181,20 @@ Diese E-Mail wurde automatisch generiert.
 ═══════════════════════════════════════════════════════════════
 """
     
-    # In der Entwicklungsphase: E-Mail in die Konsole ausgeben
+    # In development: Output email to console
     if settings.DEBUG:
         print("\n" + "=" * 80)
-        print("📧 E-MAIL-BENACHRICHTIGUNG (SIMULATION) - RETOUR EINGETROFFEN")
+        print("📧 EMAIL NOTIFICATION (SIMULATION) - RETURN RECEIVED")
         print("=" * 80)
-        print(f"An: {recipient_email}")
-        print(f"Betreff: {subject}")
+        print(f"To: {recipient_email}")
+        print(f"Subject: {subject}")
         print("-" * 80)
         print(email_body)
         print("=" * 80)
-        print("ℹ️  In der Produktion würde hier eine echte E-Mail versendet werden.")
+        print("ℹ️  In production, a real email would be sent here.")
         print("=" * 80 + "\n")
     else:
-        # In der Produktion: Echte E-Mail versenden
+        # In production: Send real email
         # from django.core.mail import send_mail
         # send_mail(
         #     subject=subject,
@@ -203,34 +203,34 @@ Diese E-Mail wurde automatisch generiert.
         #     recipient_list=[recipient_email],
         #     fail_silently=False,
         # )
-        print(f"E-Mail würde an {recipient_email} gesendet werden (Produktionsmodus)")
+        print(f"Email would be sent to {recipient_email} (production mode)")
 
 
 def send_return_rejection_email(return_request):
     """
-    Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn seine Retour-Anfrage abgelehnt wurde.
+    Sends an email notification to the customer when their return request has been rejected.
     
-    In der Entwicklungsphase wird die E-Mail in die Konsole geloggt.
-    In der Produktion würde hier eine echte E-Mail versendet werden.
+    In development, the email is logged to the console.
+    In production, a real email would be sent here.
     
     Args:
-        return_request: ReturnRequest-Instanz mit abgelehnter Retour
+        return_request: ReturnRequest instance with rejected return
     """
     user = return_request.user
     order = return_request.order
     item = return_request.item
     
-    # E-Mail-Daten zusammenstellen
-    recipient_email = user.email if hasattr(user, 'email') and user.email else "unbekannt@example.com"
+    # Compose email data
+    recipient_email = user.email if hasattr(user, 'email') and user.email else "unknown@example.com"
     subject = f"Retour-Anfrage abgelehnt - Bestellung #{order.id}"
     
-    # Ablehnungsgrund formatieren
+    # Format rejection reason
     rejection_reason_display = dict(ReturnRequest.REJECTION_REASON_CHOICES).get(
         return_request.rejection_reason or "", 
         return_request.rejection_reason or "Nicht angegeben"
     )
     
-    # E-Mail-Text
+    # Email body
     email_body = f"""
 ═══════════════════════════════════════════════════════════════
 RETOUR-ABLEHNUNG
@@ -276,20 +276,20 @@ Diese E-Mail wurde automatisch generiert.
 ═══════════════════════════════════════════════════════════════
 """
     
-    # In der Entwicklungsphase: E-Mail in die Konsole ausgeben
+    # In development: Output email to console
     if settings.DEBUG:
         print("\n" + "=" * 80)
-        print("📧 E-MAIL-BENACHRICHTIGUNG (SIMULATION) - ABLEHNUNG")
+        print("📧 EMAIL NOTIFICATION (SIMULATION) - REJECTION")
         print("=" * 80)
-        print(f"An: {recipient_email}")
-        print(f"Betreff: {subject}")
+        print(f"To: {recipient_email}")
+        print(f"Subject: {subject}")
         print("-" * 80)
         print(email_body)
         print("=" * 80)
-        print("ℹ️  In der Produktion würde hier eine echte E-Mail versendet werden.")
+        print("ℹ️  In production, a real email would be sent here.")
         print("=" * 80 + "\n")
     else:
-        # In der Produktion: Echte E-Mail versenden
+        # In production: Send real email
         # from django.core.mail import send_mail
         # send_mail(
         #     subject=subject,
@@ -298,5 +298,89 @@ Diese E-Mail wurde automatisch generiert.
         #     recipient_list=[recipient_email],
         #     fail_silently=False,
         # )
-        print(f"E-Mail würde an {recipient_email} gesendet werden (Produktionsmodus)")
+        print(f"Email would be sent to {recipient_email} (production mode)")
+
+
+def send_return_refunded_email(return_request):
+    """
+    Sends an email notification to the customer when their return has been refunded.
+    
+    In development, the email is logged to the console.
+    In production, a real email would be sent here.
+    
+    Args:
+        return_request: ReturnRequest instance with refunded return
+    """
+    user = return_request.user
+    order = return_request.order
+    item = return_request.item
+    
+    # Compose email data
+    recipient_email = user.email if hasattr(user, 'email') and user.email else "unknown@example.com"
+    subject = f"Erstattung erfolgt - Bestellung #{order.id}"
+    
+    # Format IBAN for display (add spaces every 4 characters)
+    iban = return_request.refund_iban or ""
+    formatted_iban = " ".join([iban[i:i+4] for i in range(0, len(iban), 4)]) if iban else ""
+    
+    # Email body
+    email_body = f"""
+═══════════════════════════════════════════════════════════════
+ERSTATTUNG ERFOLGT
+═══════════════════════════════════════════════════════════════
+
+Sehr geehrte/r {user.username if hasattr(user, 'username') else 'Kunde/in'},
+
+wir freuen uns, Ihnen mitteilen zu können, dass Ihre Erstattung verarbeitet wurde.
+
+ERSTATTUNGS-DETAILS:
+───────────────────────────────────────────────────────────────
+Retour-Nr.:        #{return_request.id}
+Bestell-Nr.:       #{order.id}
+Produkt:           {item.product_title}
+Erstattungsbetrag: {return_request.refund_amount:.2f} €
+IBAN:              {formatted_iban}
+
+WICHTIGE INFORMATIONEN:
+───────────────────────────────────────────────────────────────
+Der Betrag in Höhe von {return_request.refund_amount:.2f} € wurde an das
+Konto mit der IBAN {formatted_iban} überwiesen.
+
+Die Erstattung wird in den nächsten 1-2 Werktagen auf Ihrem Konto
+eingehen. Bitte beachten Sie, dass die Bearbeitungszeit je nach
+Ihrer Bank variieren kann.
+
+Bei Fragen zu Ihrer Erstattung stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+Ihr Shop-Team
+
+═══════════════════════════════════════════════════════════════
+Diese E-Mail wurde automatisch generiert.
+═══════════════════════════════════════════════════════════════
+"""
+    
+    # In development: Output email to console
+    if settings.DEBUG:
+        print("\n" + "=" * 80)
+        print("📧 EMAIL NOTIFICATION (SIMULATION) - REFUND COMPLETED")
+        print("=" * 80)
+        print(f"To: {recipient_email}")
+        print(f"Subject: {subject}")
+        print("-" * 80)
+        print(email_body)
+        print("=" * 80)
+        print("ℹ️  In production, a real email would be sent here.")
+        print("=" * 80 + "\n")
+    else:
+        # In production: Send real email
+        # from django.core.mail import send_mail
+        # send_mail(
+        #     subject=subject,
+        #     message=email_body,
+        #     from_email=settings.DEFAULT_FROM_EMAIL,
+        #     recipient_list=[recipient_email],
+        #     fail_silently=False,
+        # )
+        print(f"Email would be sent to {recipient_email} (production mode)")
 

@@ -15,12 +15,12 @@ interface OrderReturnDetails {
   created_at: string;
   comments?: string;
 
-  // ❌ Ablehnung
+  // ❌ Rejection
   rejection_reason?: string;
   rejection_comment?: string;
   rejection_date?: string;
 
-  // 💶 Erstattung
+  // 💶 Refund
   refund_name?: string;
   refund_amount?: number;
   refund_iban?: string;
@@ -265,7 +265,7 @@ export class OrderRetourDetails implements OnInit {
           this.retour!.status = status;
           this.submitting = false;
 
-          // Erfolgsmeldung anzeigen
+          // Show success message
           if (status === 'received') {
             this.successMessage =
               'Retour als eingetroffen markiert. E-Mail an Kunde versendet.';
@@ -273,7 +273,7 @@ export class OrderRetourDetails implements OnInit {
             this.successMessage = 'Retour als erstattet markiert.';
           }
 
-          // Nachricht nach 3 Sekunden ausblenden
+          // Hide message after 3 seconds
           setTimeout(() => {
             this.successMessage = '';
           }, 3000);
@@ -292,7 +292,7 @@ export class OrderRetourDetails implements OnInit {
   }
 
   /**
-   * Öffnet das Erstattungs-Modal.
+   * Opens the refund modal.
    */
   openRefundModal(): void {
     this.showRefundModal = true;
@@ -300,7 +300,7 @@ export class OrderRetourDetails implements OnInit {
   }
 
   /**
-   * Behandelt die Bestätigung der Erstattung.
+   * Handles the confirmation of the refund.
    */
   confirmRefund(refundData: {
     refund_name: string;
@@ -332,9 +332,9 @@ export class OrderRetourDetails implements OnInit {
           this.retour!.status = 'refunded';
           this.submitting = false;
           this.successMessage = 'Retour als erstattet markiert.';
-          this.loadDetails(); // Details neu laden, um Erstattungsinformationen anzuzeigen
+          this.loadDetails(); // Reload details to show refund information
 
-          // Nachricht nach 3 Sekunden ausblenden
+          // Hide message after 3 seconds
           setTimeout(() => {
             this.successMessage = '';
           }, 3000);
@@ -350,7 +350,7 @@ export class OrderRetourDetails implements OnInit {
   }
 
   /**
-   * Behandelt das Abbrechen des Erstattungs-Modals.
+   * Handles canceling the refund modal.
    */
   cancelRefund(): void {
     this.showRefundModal = false;
@@ -397,10 +397,10 @@ export class OrderRetourDetails implements OnInit {
   formatReason(reason: string): string {
     if (!reason) return '';
 
-    // Unterstriche durch Leerzeichen ersetzen
+    // Replace underscores with spaces
     let formatted = reason.replace(/_/g, ' ');
 
-    // Umlaute ersetzen
+    // Replace umlauts
     formatted = formatted
       .replace(/ae/g, 'ä')
       .replace(/oe/g, 'ö')
@@ -410,7 +410,7 @@ export class OrderRetourDetails implements OnInit {
       .replace(/Ue/g, 'Ü')
       .replace(/ss/g, 'ß');
 
-    // Nur erstes Wort großschreiben
+    // Capitalize only first word
     const words = formatted.split(' ');
     return (
       words[0].charAt(0).toUpperCase() +

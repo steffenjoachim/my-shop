@@ -174,16 +174,17 @@ class ShippingReturnDetailView(views.APIView):
 
     def patch(self, request, pk=None):
         """
-        Aktualisiert den Status einer Retour-Anfrage.
-        Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn die Retour genehmigt wird.
-        Sendet eine E-Mail-Benachrichtigung an den Kunden, wenn die Retour eingetroffen ist.
+        Updates the status of a return request.
+        Sends an email notification to the customer when the return is approved.
+        Sends an email notification to the customer when the return is received.
+        Sends an email notification to the customer when the return is refunded.
         """
         try:
             obj = ReturnRequest.objects.select_related('user', 'order', 'item').get(pk=pk)
         except ReturnRequest.DoesNotExist:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Status-Update validieren
+        # Validate status update
         new_status = request.data.get("status")
         if not new_status:
             return Response(
@@ -191,7 +192,7 @@ class ShippingReturnDetailView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Valide Status-Werte prüfen
+        # Check valid status values
         valid_statuses = [choice[0] for choice in ReturnRequest.STATUS_CHOICES]
         if new_status not in valid_statuses:
             return Response(
@@ -199,7 +200,7 @@ class ShippingReturnDetailView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Wenn Status auf "rejected" gesetzt wird, Ablehnungsgrund validieren
+        # If status is set to "rejected", validate rejection reason
         if new_status == "rejected":
             rejection_reason = request.data.get("rejection_reason")
             if not rejection_reason:
@@ -208,7 +209,7 @@ class ShippingReturnDetailView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Valide Ablehnungsgründe prüfen
+            # Check valid rejection reasons
             valid_rejection_reasons = [choice[0] for choice in ReturnRequest.REJECTION_REASON_CHOICES]
             if rejection_reason not in valid_rejection_reasons:
                 return Response(
@@ -216,7 +217,7 @@ class ShippingReturnDetailView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Wenn "sonstiges" gewählt wurde, muss ein Kommentar vorhanden sein
+            # If "sonstiges" is selected, a comment must be present
             if rejection_reason == "sonstiges":
                 rejection_comment = request.data.get("rejection_comment", "").strip()
                 if not rejection_comment:
@@ -225,13 +226,13 @@ class ShippingReturnDetailView(views.APIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
             
-            # Ablehnungsgrund speichern
+            # Save rejection reason
             obj.rejection_reason = rejection_reason
             obj.rejection_comment = request.data.get("rejection_comment", "").strip() or None
-            # Zeitpunkt der Ablehnung setzen
+            # Set rejection date
             obj.rejection_date = timezone.now()
 
-        # Wenn Status auf "refunded" gesetzt wird, Erstattungsinformationen validieren
+        # If status is set to "refunded", validate refund information
         if new_status == "refunded":
             refund_name = request.data.get("refund_name", "").strip()
             refund_amount = request.data.get("refund_amount")
@@ -268,14 +269,14 @@ class ShippingReturnDetailView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # IBAN-Format validieren (einfache Prüfung: 15-34 Zeichen, alphanumerisch)
+            # Validate IBAN format (simple check: 15-34 characters, alphanumeric)
             if len(refund_iban) < 15 or len(refund_iban) > 34:
                 return Response(
                     {"error": "IBAN muss zwischen 15 und 34 Zeichen lang sein."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Erstattungsinformationen speichern
+            # Save refund information
             obj.refund_name = refund_name
             obj.refund_amount = refund_amount_decimal
             obj.refund_iban = refund_iban
@@ -284,13 +285,13 @@ class ShippingReturnDetailView(views.APIView):
         obj.status = new_status
         obj.save()
 
-        # Debug-Ausgabe
+        # Debug output
         print(f"\n[DEBUG] Status-Update: Retour #{obj.id}")
         print(f"[DEBUG] Alter Status: {old_status}")
         print(f"[DEBUG] Neuer Status: {new_status}")
         print(f"[DEBUG] Soll E-Mail gesendet werden? {new_status == 'approved' and old_status != 'approved'}\n")
 
-        # E-Mail-Benachrichtigung senden
+        # Send email notification
         if new_status == "approved" and old_status != "approved":
             print("[DEBUG] E-Mail-Funktion wird aufgerufen (Genehmigung)...")
             try:
@@ -316,6 +317,16 @@ class ShippingReturnDetailView(views.APIView):
             try:
                 from .services.email_service import send_return_received_email
                 send_return_received_email(obj)
+                print("[DEBUG] E-Mail-Funktion erfolgreich aufgerufen.")
+            except Exception as e:
+                print(f"[DEBUG] Fehler beim Aufruf der E-Mail-Funktion: {e}")
+                import traceback
+                traceback.print_exc()
+        elif new_status == "refunded" and old_status != "refunded":
+            print("[DEBUG] E-Mail-Funktion wird aufgerufen (Erstattung)...")
+            try:
+                from .services.email_service import send_return_refunded_email
+                send_return_refunded_email(obj)
                 print("[DEBUG] E-Mail-Funktion erfolgreich aufgerufen.")
             except Exception as e:
                 print(f"[DEBUG] Fehler beim Aufruf der E-Mail-Funktion: {e}")
