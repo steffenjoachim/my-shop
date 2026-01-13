@@ -55,22 +55,33 @@ import {
             🔄 Offene Retouren
           </button>
           <button
-            (click)="switchTab('closed')"
-            [class.border-b-2]="activeTab() === 'closed'"
-            [class.border-blue-600]="activeTab() === 'closed'"
-            [class.text-blue-600]="activeTab() === 'closed'"
-            [class.text-gray-600]="activeTab() !== 'closed'"
-            class="pb-3 px-4 font-semibold transition text-red-600 hover:text-red-400"
+            (click)="switchTab('rejected')"
+            [class.border-b-2]="activeTab() === 'rejected'"
+            [class.border-blue-600]="activeTab() === 'rejected'"
+            [class.text-blue-600]="activeTab() === 'rejected'"
+            [class.text-gray-600]="activeTab() !== 'rejected'"
+            class="pb-3 px-4 font-semibold transition hover:text-blue-400"
           >
-            ❌ Geschlossene Retouren
+            ❌ Abgelehnte Retouren
+          </button>
+          <button
+            (click)="switchTab('refunded')"
+            [class.border-b-2]="activeTab() === 'refunded'"
+            [class.border-blue-600]="activeTab() === 'refunded'"
+            [class.text-blue-600]="activeTab() === 'refunded'"
+            [class.text-gray-600]="activeTab() !== 'refunded'"
+            class="pb-3 px-4 font-semibold transition hover:text-blue-400"
+          >
+            ✅ Erstattete Retouren
           </button>
         </div>
 
         <!-- ✅ Beschreibung (tababhängig) -->
         <p class="text-gray-600 mb-8">
           @if (activeTab() === 'open') { Übersicht aller eingegangenen
-          Retourenanfragen. } @else { Übersicht über alle abgelehnten und
-          erstatteten Retouren }
+          Retourenanfragen. } @else if (activeTab() === 'rejected') { Übersicht
+          über alle abgelehnten Retouren. } @else { Übersicht über alle
+          erstatteten Retouren. }
         </p>
 
         <!-- ✅ Loading -->
@@ -105,13 +116,13 @@ export class OrderRetour implements OnInit {
   returns: OrderReturn[] = [];
   filtered: OrderReturn[] = [];
   query = '';
-  activeTab = signal<'open' | 'closed'>('open');
+  activeTab = signal<'open' | 'rejected' | 'refunded'>('open');
 
   ngOnInit(): void {
     this.fetchReturns();
   }
 
-  switchTab(tab: 'open' | 'closed') {
+  switchTab(tab: 'open' | 'rejected' | 'refunded') {
     this.activeTab.set(tab);
     this.applyFilter(); // Filter bei Tab-Wechsel neu anwenden
   }
@@ -146,9 +157,11 @@ export class OrderRetour implements OnInit {
       this.filtered = this.returns.filter((r) => {
         if (tab === 'open') {
           return r.status !== 'rejected' && r.status !== 'refunded';
+        } else if (tab === 'rejected') {
+          return r.status === 'rejected';
         } else {
-          // 'closed' = rejected oder refunded
-          return r.status === 'rejected' || r.status === 'refunded';
+          // 'refunded'
+          return r.status === 'refunded';
         }
       });
       return;
@@ -157,10 +170,15 @@ export class OrderRetour implements OnInit {
     // Mit Query: filtere nach Query UND Tab-Status
     this.filtered = this.returns.filter((r) => {
       // Prüfe Tab-Filter
-      const matchesTab =
-        tab === 'open'
-          ? r.status !== 'rejected' && r.status !== 'refunded'
-          : r.status === 'rejected' || r.status === 'refunded';
+      let matchesTab = false;
+      if (tab === 'open') {
+        matchesTab = r.status !== 'rejected' && r.status !== 'refunded';
+      } else if (tab === 'rejected') {
+        matchesTab = r.status === 'rejected';
+      } else {
+        // 'refunded'
+        matchesTab = r.status === 'refunded';
+      }
 
       if (!matchesTab) return false;
 
