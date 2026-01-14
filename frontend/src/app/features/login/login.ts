@@ -38,7 +38,11 @@ import { Toast } from '../../shared/toast/toast';
               class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800 focus:outline-none"
               aria-label="Passwort anzeigen/verbergen"
             >
-              {{ showPassword ? '🙈' : '👁️' }}
+              <img
+                [src]="showPassword ? 'img/show.svg' : 'img/hide.svg'"
+                alt="Toggle password visibility"
+                class="w-5 h-5"
+              />
             </button>
           </div>
           <button
