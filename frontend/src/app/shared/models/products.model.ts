@@ -1,7 +1,9 @@
 // ✅ Produktbilder
 export interface ProductImage {
   id: number;
-  image: string;
+  image: string | null;
+  external_image: string | null;
+  image_url: string | null;
 }
 
 // ✅ Attribut-Werte

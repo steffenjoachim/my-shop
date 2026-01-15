@@ -33,8 +33,10 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
-    # SPEICHERUNG als CharField → KEIN .url !!!
-    main_image = models.CharField(max_length=500, blank=True, null=True)
+    # Main image: Unterstützt sowohl File-Uploads als auch URLs
+    # Wenn ein File hochgeladen wird, wird es hier gespeichert
+    main_image = models.ImageField(upload_to="products/", blank=True, null=True)
+    # External image: Für externe URLs (https://...)
     external_image = models.URLField(blank=True, null=True)
 
     category = models.ForeignKey(
@@ -68,24 +70,14 @@ class Product(models.Model):
     @property
     def image_url(self):
         """
-        Gibt eine korrekte Bild-URL zurück,
-        egal ob main_image ein relativer Pfad oder eine vollständige URL ist.
+        Gibt eine korrekte Bild-URL zurück.
+        Priorität: main_image (hochgeladenes Bild) > external_image (URL)
         """
-
-        # Vollständige URL?
-        if self.main_image and (
-            self.main_image.startswith("http://")
-            or self.main_image.startswith("https://")
-        ):
-            return self.main_image
-
-        # Lokaler Pfad wie "products/img1.jpg" oder "/media/img1.jpg"
+        # Hochgeladenes Bild hat Priorität
         if self.main_image:
-            if self.main_image.startswith("/"):
-                return self.main_image  # schon ein vollständiger Pfad
-            return f"{settings.MEDIA_URL}{self.main_image}"
+            return self.main_image.url
 
-        # Externes Bild
+        # Externes Bild (URL)
         if self.external_image:
             return self.external_image
 
@@ -101,23 +93,31 @@ class ProductImage(models.Model):
     """Zusätzliche Bilder zu einem Produkt"""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
 
-    # Wieder CharField → KEIN .url !!!
-    image = models.CharField(max_length=500)
+    # Image: Unterstützt sowohl File-Uploads als auch URLs
+    # Wenn ein File hochgeladen wird, wird es hier gespeichert
+    image = models.ImageField(upload_to="products/", blank=True, null=True)
+    # External image: Für externe URLs (https://...)
+    external_image = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return f"Image for {self.product.title}"
 
     @property
     def image_url(self):
-        """Wie beim Produkt — volle oder relative URL korrekt zurückgeben"""
+        """
+        Gibt eine korrekte Bild-URL zurück.
+        Priorität: image (hochgeladenes Bild) > external_image (URL)
+        """
+        # Hochgeladenes Bild hat Priorität
+        if self.image:
+            return self.image.url
 
-        if self.image.startswith("http://") or self.image.startswith("https://"):
-            return self.image
+        # Externes Bild (URL)
+        if self.external_image:
+            return self.external_image
 
-        if self.image.startswith("/"):
-            return self.image
-
-        return f"{settings.MEDIA_URL}{self.image}"
+        # Fallback
+        return "/media/default.png"
 
 
 class AttributeType(models.Model):

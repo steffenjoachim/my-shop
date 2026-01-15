@@ -28,7 +28,7 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
 
         <!-- 🖼 Hauptbild -->
         <img
-          [src]="sanitizeImageUrl(product.main_image)"
+          [src]="getMainImageUrl()"
           alt="{{ product.title }}"
           class="w-full max-h-80 object-contain mb-6 rounded"
         />
@@ -38,7 +38,7 @@ import { ProductReviewCard } from '../product-detail/components/review-card/prod
         <div class="flex gap-3 overflow-x-auto mb-6">
           @for (img of productImages; track img.id) {
           <img
-            [src]="img.image"
+            [src]="getProductImageUrl(img)"
             alt="Zusatzbild"
             class="h-24 w-auto object-contain rounded border"
           />
@@ -411,12 +411,53 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   get productImages() {
-    return (
-      this.product?.images?.map((img) => ({
-        id: img.id,
-        image: this.sanitizeImageUrl(img.image),
-      })) ?? []
-    );
+    return this.product?.images ?? [];
+  }
+
+  /**
+   * Gibt die URL für das Hauptbild zurück.
+   * Priorität: image_url > main_image > external_image
+   */
+  getMainImageUrl(): string {
+    if (!this.product) {
+      return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+    }
+
+    // Verwende image_url, wenn verfügbar (berechnet vom Backend)
+    if (this.product.image_url) {
+      return this.sanitizeImageUrl(this.product.image_url);
+    }
+
+    // Fallback auf main_image oder external_image
+    const url =
+      this.product.main_image ||
+      this.product.external_image;
+
+    if (!url) {
+      return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+    }
+
+    return this.sanitizeImageUrl(url);
+  }
+
+  /**
+   * Gibt die URL für ein Zusatzbild zurück.
+   * Priorität: image_url > image > external_image
+   */
+  getProductImageUrl(img: any): string {
+    // Verwende image_url, wenn verfügbar (berechnet vom Backend)
+    if (img.image_url) {
+      return this.sanitizeImageUrl(img.image_url);
+    }
+
+    // Fallback auf image oder external_image
+    const url = img.image || img.external_image;
+
+    if (!url) {
+      return 'https://via.placeholder.com/300x200?text=Kein+Bild';
+    }
+
+    return this.sanitizeImageUrl(url);
   }
 
   sanitizeImageUrl(url?: string | null): string {
@@ -442,8 +483,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       s = s.replace('/http:/', 'http://');
     }
 
+    // Externe URLs direkt zurückgeben
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
 
+    // Lokale Media-URLs aus Django
     const host = environment.apiBaseUrl.replace('/api/', '').replace(/\/$/, '');
     return `${host}/${s}`;
   }

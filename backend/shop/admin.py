@@ -17,7 +17,7 @@ from .models import (
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
-    fields = ["image"]
+    fields = ["image", "external_image"]
 
 
 class ProductVariationInline(admin.TabularInline):
@@ -31,7 +31,8 @@ class ProductVariationInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     list_display = ("title", "category", "price", "delivery_time", "rating_avg", "rating_count")
     fields = (
-        "title", "description", "price", "main_image", "external_image",
+        "title", "description", "price", 
+        ("main_image", "external_image"),  # Beide Felder nebeneinander
         "category", "delivery_time", "rating_avg", "rating_count"
     )
     readonly_fields = ("rating_avg", "rating_count")
