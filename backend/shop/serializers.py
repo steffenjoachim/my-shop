@@ -15,9 +15,15 @@ from .models import (
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    
     class Meta:
         model = ProductImage
-        fields = ("id", "image")
+        fields = ("id", "image", "external_image", "image_url")
+    
+    def get_image_url(self, obj):
+        """Gibt die Bild-URL zurück (hochgeladenes Bild oder externe URL)"""
+        return obj.image_url
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -32,7 +38,10 @@ class ProductSerializer(serializers.ModelSerializer):
     recent_reviews = serializers.SerializerMethodField()
     # expose the model property that sums variation stock
     stock_total = serializers.IntegerField(read_only=True)
-    main_image = serializers.CharField(read_only=True)
+    # main_image kann jetzt sowohl File-Uploads als auch URLs sein
+    main_image = serializers.ImageField(required=False, allow_null=True)
+    external_image = serializers.URLField(required=False, allow_null=True)
+    image_url = serializers.SerializerMethodField()
     category = CategorySerializer(read_only=True)
 
     class Meta:
@@ -47,10 +56,16 @@ class ProductSerializer(serializers.ModelSerializer):
             "rating_avg",
             "rating_count",
             "main_image",
+            "external_image",
+            "image_url",
             "images",
             "variations",
             "recent_reviews",
         )
+    
+    def get_image_url(self, obj):
+        """Gibt die Bild-URL zurück (hochgeladenes Bild oder externe URL)"""
+        return obj.image_url
     
     def get_variations(self, obj):
         """Serialize variations with their attributes"""

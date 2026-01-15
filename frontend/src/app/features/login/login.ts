@@ -60,9 +60,9 @@ import { Toast } from '../../shared/toast/toast';
         <app-toast [inline]="true" />
 
         <p class="text-sm mt-4 text-center">
-          Don't have an account?
+          Hast du noch keinen Account?
           <a routerLink="/register" class="text-blue-600 hover:underline">
-            Register here
+            Hier registrieren
           </a>
         </p>
       </section>
