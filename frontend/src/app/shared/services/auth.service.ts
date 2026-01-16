@@ -11,7 +11,7 @@ export interface User {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = `${environment.apiBaseUrl}auth/`; 
+  private apiUrl = `${environment.apiBaseUrl}auth/`;
   // → http://localhost:8000/api/auth/
 
   // ✅ Zustandssignale
@@ -22,7 +22,7 @@ export class AuthService {
   public readonly user = this._user.asReadonly();
 
   constructor(private http: HttpClient, private router: Router) {
-    this.initCsrfToken(); 
+    this.initCsrfToken();
     this.checkSession();
   }
 
@@ -52,9 +52,9 @@ export class AuthService {
         next: (res) => {
           if (res.isAuthenticated) {
             this._isLoggedIn.set(true);
-            this._user.set({ 
+            this._user.set({
               username: res.username!,
-              groups: res.groups || []
+              groups: res.groups || [],
             });
           } else {
             this._isLoggedIn.set(false);
@@ -88,39 +88,39 @@ export class AuthService {
 
   // ✅ Nach erfolgreichem Login im UI anwenden
   applyLogin(username: string): void {
-  this._isLoggedIn.set(true);
-  this._user.set({ username, groups: [] });
+    this._isLoggedIn.set(true);
+    this._user.set({ username, groups: [] });
 
-  // ✅ Session neu prüfen um Gruppen zu erhalten
-  this.http
-    .get<{ isAuthenticated: boolean; username?: string; groups?: string[] }>(
-      this.apiUrl + 'session',
-      { withCredentials: true }
-    )
-    .subscribe((res) => {
-      if (res.isAuthenticated) {
-        this._isLoggedIn.set(true);
-        this._user.set({
-          username: res.username!,
-          groups: res.groups || [],
-        });
+    // ✅ Session neu prüfen um Gruppen zu erhalten
+    this.http
+      .get<{ isAuthenticated: boolean; username?: string; groups?: string[] }>(
+        this.apiUrl + 'session',
+        { withCredentials: true }
+      )
+      .subscribe((res) => {
+        if (res.isAuthenticated) {
+          this._isLoggedIn.set(true);
+          this._user.set({
+            username: res.username!,
+            groups: res.groups || [],
+          });
 
-        if (res.groups?.includes('shipping')) {
-          this.router.navigate(['/shipping/orders'], { replaceUrl: true });
-        } else {
-          this.router.navigate(['/'], { replaceUrl: true });
+          if (res.groups?.includes('shipping')) {
+            this.router.navigate(['/shipping/orders'], { replaceUrl: true });
+          } else if (res.groups?.includes('productmanager')) {
+            this.router.navigate(['/product-management'], { replaceUrl: true });
+          } else {
+            this.router.navigate(['/'], { replaceUrl: true });
+          }
         }
-      }
-    });
-}
+      });
+  }
 
-
- // ✅ Prüfen ob User zur Shipping-Gruppe gehört
-isShippingStaff(): boolean {
-  const u = this.user() as any;
-  return Array.isArray(u?.groups) && u.groups.includes('shipping');
-}
-
+  // ✅ Prüfen ob User zur Shipping-Gruppe gehört
+  isShippingStaff(): boolean {
+    const u = this.user() as any;
+    return Array.isArray(u?.groups) && u.groups.includes('shipping');
+  }
 
   // ✅ UI Logout (lokal)
   applyLogout(): void {

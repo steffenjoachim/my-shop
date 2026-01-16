@@ -146,4 +146,30 @@ export const routes: Routes = [
         './features/return/components/my-return-details/my-return-details'
       ).then((m) => m.MyReturnDetails),
   },
+
+  // ✅ PRODUCT MANAGEMENT
+  {
+    path: 'product-management',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/product-management/product-management').then(
+        (m) => m.ProductManagement
+      ),
+  },
+  {
+    path: 'product-management/add',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/product-management/product-form').then(
+        (m) => m.ProductForm
+      ),
+  },
+  {
+    path: 'product-management/edit/:id',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/product-management/product-form').then(
+        (m) => m.ProductForm
+      ),
+  },
 ];
