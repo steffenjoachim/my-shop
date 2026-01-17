@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 
 interface Product {
   id: number;
@@ -17,10 +18,16 @@ interface Product {
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="container mx-auto p-4">
+    <div class="container mx-auto p-4" style="min-height: 100vh;">
       <h1 class="text-2xl font-bold mb-4">Productverwaltung</h1>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        placeholder="Produkte suchen..."
+        class="border p-2 rounded mb-4 w-full"
+      />
       <button
         (click)="addProduct()"
         class="bg-blue-500 text-white px-4 py-2 rounded mb-4"
@@ -28,7 +35,10 @@ interface Product {
         Produkt hinzufügen
       </button>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div *ngFor="let product of products" class="border p-4 rounded shadow">
+        <div
+          *ngFor="let product of filteredProducts"
+          class="border p-4 rounded shadow"
+        >
           <img
             [src]="product.main_image"
             alt="Product image"
@@ -59,12 +69,26 @@ interface Product {
 export class ProductManagement implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
-  private apiUrl = `${environment.apiBaseUrl}shop/products/`;
+  private apiUrl = `${environment.apiBaseUrl}products/`;
 
   products: Product[] = [];
+  searchTerm: string = '';
 
   ngOnInit() {
     this.loadProducts();
+  }
+
+  get filteredProducts(): Product[] {
+    if (!this.searchTerm) {
+      return this.products;
+    }
+    return this.products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        product.description
+          .toLowerCase()
+          .includes(this.searchTerm.toLowerCase()),
+    );
   }
 
   loadProducts() {
