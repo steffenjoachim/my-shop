@@ -107,8 +107,8 @@ export class ProductForm implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private apiUrl = `${environment.apiBaseUrl}shop/products/`;
-  private categoriesUrl = `${environment.apiBaseUrl}shop/categories/`;
+  private apiUrl = `${environment.apiBaseUrl}products/`;
+  private categoriesUrl = `${environment.apiBaseUrl}categories/`;
 
   product: Product = {
     name: '',
