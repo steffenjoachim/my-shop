@@ -16,13 +16,10 @@ import { filter } from 'rxjs/operators';
       class="bg-slate-50 px-8 py-3 shadow-md sticky top-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
     >
       <!-- LOGO -->
-      <h1 class="font-bold text-4xl cursor-pointer" routerLink="/">
-        MyShop
-      </h1>
+      <h1 class="font-bold text-4xl cursor-pointer" routerLink="/">MyShop</h1>
 
       <div class="flex items-center justify-between w-full sm:w-auto relative">
         <nav class="flex items-center gap-4 text-sm text-gray-600">
-
           <!-- ❌ NICHT EINGELOGGT -->
           @if (!isLoggedIn()) {
             <a routerLink="/login" class="hover:underline text-lg font-bold">
@@ -45,19 +42,33 @@ import { filter } from 'rxjs/operators';
 
               <!-- ✅ NORMALER USER -->
               @if (menuOpen && !isShippingUser()) {
-                <ul class="absolute left-0 mt-2 w-52 bg-white border rounded-lg shadow-lg">
+                <ul
+                  class="absolute left-0 mt-2 w-52 bg-white border rounded-lg shadow-lg"
+                >
                   <li>
-                    <a routerLink="/orders" class="block px-4 py-2" (click)="closeMenu()">
+                    <a
+                      routerLink="/orders"
+                      class="block px-4 py-2"
+                      (click)="closeMenu()"
+                    >
                       🛍️ Meine Bestellungen
                     </a>
                   </li>
                   <li>
-                    <a routerLink="/reviews" class="block px-4 py-2" (click)="closeMenu()">
+                    <a
+                      routerLink="/reviews"
+                      class="block px-4 py-2"
+                      (click)="closeMenu()"
+                    >
                       ⭐ Meine Bewertungen
                     </a>
                   </li>
                   <li>
-                    <a routerLink="/my-returns" class="block px-4 py-2" (click)="closeMenu()">
+                    <a
+                      routerLink="/my-returns"
+                      class="block px-4 py-2"
+                      (click)="closeMenu()"
+                    >
                       🔁 Meine Retouren
                     </a>
                   </li>
@@ -66,7 +77,9 @@ import { filter } from 'rxjs/operators';
 
               <!-- 🚚 SHIPPING USER -->
               @if (menuOpen && isShippingUser()) {
-                <ul class="absolute left-0 mt-2 w-56 bg-white border rounded-lg shadow-lg">
+                <ul
+                  class="absolute left-0 mt-2 w-56 bg-white border rounded-lg shadow-lg"
+                >
                   <li>
                     <a
                       routerLink="/shipping/orders"
@@ -119,7 +132,7 @@ export class Header implements OnInit {
   cartCount = computed(() =>
     this.cartService
       .getCartItems()
-      .reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
+      .reduce((sum: number, item: CartItem) => sum + item.quantity, 0),
   );
 
   isLoggedIn = () => !!this.auth.isLoggedIn();
@@ -133,6 +146,10 @@ export class Header implements OnInit {
         if (this.isShippingUser() && this.router.url === '/') {
           this.router.navigate(['/shipping/orders'], { replaceUrl: true });
         }
+     // 🛍️ PRODUCT MANAGER → Sofort weiterleiten
+        if (this.isProductManager() && this.router.url === '/') {
+          this.router.navigate(['/product-management'], { replaceUrl: true });
+        }
       });
   }
 
@@ -140,6 +157,12 @@ export class Header implements OnInit {
   isShippingUser(): boolean {
     const u = this.user() as any;
     return Array.isArray(u?.groups) && u.groups.includes('shipping');
+  }
+
+  // 🛍️ PRODUCT MANAGER = Gruppe "productmanager"
+  isProductManager(): boolean {
+    const u = this.user() as any;
+    return Array.isArray(u?.groups) && u.groups.includes('productmanager');
   }
 
   toggleMenu() {
