@@ -1,8 +1,14 @@
 import { Routes } from '@angular/router';
 import { ProductsList } from './home/product-list/product-list';
+import { AuthGuard } from './shared/guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', component: ProductsList },
+  {
+    path: '',
+    pathMatch: 'full',
+    component: ProductsList,
+    canActivate: [AuthGuard],
+  },
 
   {
     path: 'cart',
@@ -31,7 +37,7 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/product-detail/product-detail').then(
-        (m) => m.ProductDetailComponent
+        (m) => m.ProductDetailComponent,
       ),
   },
   {
@@ -43,14 +49,14 @@ export const routes: Routes = [
     path: 'data-protection',
     loadComponent: () =>
       import('./features/data-protection/data-protection').then(
-        (m) => m.DataProtection
+        (m) => m.DataProtection,
       ),
   },
   {
     path: 'terms-and-conditions',
     loadComponent: () =>
       import('./features/terms-and-conditions/terms-and-conditions').then(
-        (m) => m.TermsAndConditions
+        (m) => m.TermsAndConditions,
       ),
   },
 
@@ -59,17 +65,17 @@ export const routes: Routes = [
     path: 'shipping/orders',
     pathMatch: 'full',
     loadComponent: () =>
-      import(
-        './features/orders/components/shipping-orders/shipping-orders'
-      ).then((m) => m.ShippingOrders),
+      import('./features/orders/components/shipping-orders/shipping-orders').then(
+        (m) => m.ShippingOrders,
+      ),
   },
   {
     path: 'shipping/orders/:id',
     pathMatch: 'full',
     loadComponent: () =>
-      import(
-        './features/orders/components/shipping-order-details/shipping-order-details'
-      ).then((m) => m.ShippingOrderDetails),
+      import('./features/orders/components/shipping-order-details/shipping-order-details').then(
+        (m) => m.ShippingOrderDetails,
+      ),
   },
   {
     path: 'shipping/returns',
@@ -81,16 +87,16 @@ export const routes: Routes = [
     path: 'shipping/returns/:id',
     pathMatch: 'full',
     loadComponent: () =>
-      import(
-        './features/return/components/order-return-details/order-return-details'
-      ).then((m) => m.OrderRetourDetails),
+      import('./features/return/components/order-return-details/order-return-details').then(
+        (m) => m.OrderRetourDetails,
+      ),
   },
   {
     path: 'shipping/returns/:id/reject',
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/return/components/return-reject/return-reject').then(
-        (m) => m.ReturnReject
+        (m) => m.ReturnReject,
       ),
   },
 
@@ -106,7 +112,7 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/orders/components/order-details/order-details').then(
-        (m) => m.OrderDetails
+        (m) => m.OrderDetails,
       ),
   },
 
@@ -115,7 +121,7 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/submit-review/submit-review').then(
-        (m) => m.SubmitReview
+        (m) => m.SubmitReview,
       ),
   },
   {
@@ -128,23 +134,23 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/return/components/return-request/return-request').then(
-        (m) => m.RetourRequest
+        (m) => m.RetourRequest,
       ),
   },
   {
     path: 'my-returns',
     loadComponent: () =>
       import('./features/return/components/my-returns/my-returns').then(
-        (m) => m.MyReturns
+        (m) => m.MyReturns,
       ),
   },
   {
     path: 'my-returns/:id',
     pathMatch: 'full',
     loadComponent: () =>
-      import(
-        './features/return/components/my-return-details/my-return-details'
-      ).then((m) => m.MyReturnDetails),
+      import('./features/return/components/my-return-details/my-return-details').then(
+        (m) => m.MyReturnDetails,
+      ),
   },
 
   // ✅ PRODUCT MANAGEMENT
@@ -153,7 +159,7 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/product-management/product-management').then(
-        (m) => m.ProductManagement
+        (m) => m.ProductManagement,
       ),
   },
   {
@@ -161,7 +167,7 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/product-management/product-form').then(
-        (m) => m.ProductForm
+        (m) => m.ProductForm,
       ),
   },
   {
@@ -169,7 +175,7 @@ export const routes: Routes = [
     pathMatch: 'full',
     loadComponent: () =>
       import('./features/product-management/product-form').then(
-        (m) => m.ProductForm
+        (m) => m.ProductForm,
       ),
   },
 ];
