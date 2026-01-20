@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { ProductManagementCard } from './components/product-management-card';
 
 interface Product {
   id: number;
@@ -18,7 +19,7 @@ interface Product {
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ProductManagementCard],
   template: `
     <div class="container mx-auto p-4" style="min-height: 100vh;">
       <h1 class="text-2xl font-bold mb-4">Productverwaltung</h1>
@@ -35,33 +36,13 @@ interface Product {
         Produkt hinzufügen
       </button>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          *ngFor="let product of filteredProducts"
-          class="border p-4 rounded shadow"
-        >
-          <img
-            [src]="product.main_image"
-            alt="Product image"
-            class="w-full h-48 object-cover mb-2"
+        @for (product of filteredProducts; track product.id) {
+          <app-product-management-card
+            [product]="product"
+            (edit)="editProduct($event)"
+            (delete)="deleteProduct($event)"
           />
-          <h2 class="text-lg font-semibold">{{ product.name }}</h2>
-          <p class="text-gray-600">{{ product.description }}</p>
-          <p class="text-green-600 font-bold">{{ product.price }} €</p>
-          <div class="mt-2">
-            <button
-              (click)="editProduct(product.id)"
-              class="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
-            >
-              Bearbeiten
-            </button>
-            <button
-              (click)="deleteProduct(product.id)"
-              class="bg-red-500 text-white px-2 py-1 rounded"
-            >
-              Löschen
-            </button>
-          </div>
-        </div>
+        }
       </div>
     </div>
   `,
