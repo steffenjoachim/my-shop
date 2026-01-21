@@ -166,7 +166,7 @@ export const routes: Routes = [
     path: 'product-management/add',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/product-management/product-form').then(
+      import('./features/product-management/components/product-form').then(
         (m) => m.ProductForm,
       ),
   },
@@ -174,7 +174,7 @@ export const routes: Routes = [
     path: 'product-management/edit/:id',
     pathMatch: 'full',
     loadComponent: () =>
-      import('./features/product-management/product-form').then(
+      import('./features/product-management/components/product-form').then(
         (m) => m.ProductForm,
       ),
   },
