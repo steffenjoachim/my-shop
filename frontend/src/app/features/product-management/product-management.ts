@@ -5,16 +5,7 @@ import { environment } from '../../../environments/environment';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProductManagementCard } from './components/product-management-card';
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  category: { id: number; name: string };
-  main_image: string;
-  // Add other fields as needed
-}
+import { Product } from '../../shared/models/products.model';
 
 @Component({
   selector: 'app-product-management',
@@ -65,7 +56,7 @@ export class ProductManagement implements OnInit {
     }
     return this.products.filter(
       (product) =>
-        product.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        product.title.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         product.description
           .toLowerCase()
           .includes(this.searchTerm.toLowerCase()),
