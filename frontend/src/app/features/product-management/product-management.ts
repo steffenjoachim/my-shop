@@ -6,19 +6,20 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProductManagementCard } from './components/product-management-card';
 import { Product } from '../../shared/models/products.model';
+import { ConfirmPopup } from '../../shared/confirm-popup/confirm-popup';
 
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, ProductManagementCard],
+  imports: [CommonModule, FormsModule, ProductManagementCard, ConfirmPopup],
   template: `
     <div class="container mx-auto p-4" style="min-height: 100vh;">
-      <h1 class="text-2xl font-bold mb-4">Productverwaltung</h1>
+      <h1 class="text-2xl font-bold mb-8">Productverwaltung</h1>
       <input
         type="text"
         [(ngModel)]="searchTerm"
         placeholder="Produkte suchen..."
-        class="border p-2 rounded mb-4 w-full"
+        class="border p-2 rounded mb-8 w-full"
       />
       <button
         (click)="addProduct()"
@@ -26,6 +27,9 @@ import { Product } from '../../shared/models/products.model';
       >
         Produkt hinzufügen
       </button>
+
+      <div class="mb-8"></div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         @for (product of filteredProducts; track product.id) {
           <app-product-management-card
@@ -35,6 +39,13 @@ import { Product } from '../../shared/models/products.model';
           />
         }
       </div>
+
+      <app-confirm-popup
+        [message]="confirmMessage"
+        [visible]="showConfirmPopup"
+        (confirmed)="confirmDelete()"
+        (cancelled)="cancelDelete()"
+      />
     </div>
   `,
 })
@@ -45,6 +56,9 @@ export class ProductManagement implements OnInit {
 
   products: Product[] = [];
   searchTerm: string = '';
+  showConfirmPopup = false;
+  confirmMessage = '';
+  productToDelete: number | null = null;
 
   ngOnInit() {
     this.loadProducts();
@@ -79,11 +93,27 @@ export class ProductManagement implements OnInit {
   }
 
   deleteProduct(id: number) {
-    if (confirm('Produkt wirklich löschen?')) {
-      this.http.delete(`${this.apiUrl}${id}/`).subscribe({
-        next: () => this.loadProducts(),
+    const product = this.products.find((p) => p.id === id);
+    this.confirmMessage = `Möchten Sie das Produkt "${product?.title}" wirklich löschen?`;
+    this.productToDelete = id;
+    this.showConfirmPopup = true;
+  }
+
+  confirmDelete() {
+    if (this.productToDelete) {
+      this.http.delete(`${this.apiUrl}${this.productToDelete}/`).subscribe({
+        next: () => {
+          this.loadProducts();
+          this.productToDelete = null;
+        },
         error: (err) => console.error('Error deleting product', err),
       });
     }
+    this.showConfirmPopup = false;
+  }
+
+  cancelDelete() {
+    this.productToDelete = null;
+    this.showConfirmPopup = false;
   }
 }

@@ -7,7 +7,7 @@ import { Product } from '../../../shared/models/products.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="border p-4 rounded shadow flex flex-col h-full">
+    <div class="border p-4 rounded-lg shadow flex flex-col h-full">
       <h2 class="text-xl font-semibold mb-4">{{ product.title }}</h2>
       <img
         [src]="getImageUrl()"
