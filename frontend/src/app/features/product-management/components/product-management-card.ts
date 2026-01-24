@@ -14,7 +14,7 @@ import { Product } from '../../../shared/models/products.model';
         alt="Product image"
         class="w-full h-64 object-cover mb-2"
       />
-      <p class="text-gray-600 flex-grow">{{ truncatedDescription }}</p>
+      <p class="text-gray-600 flex-grow" [innerHTML]="truncatedDescription"></p>
       <p class="text-green-600 font-bold mb-2">{{ product.price }} €</p>
       <div class="mt-auto">
         <button
@@ -41,9 +41,9 @@ export class ProductManagementCard {
   get truncatedDescription(): string {
     const words = this.product.description.split(' ');
     if (words.length <= 50) {
-      return this.product.description;
+      return this.product.description.replace(/\n/g, '<br>');
     }
-    return words.slice(0, 50).join(' ') + '...';
+    return (words.slice(0, 50).join(' ') + '...').replace(/\n/g, '<br>');
   }
 
   getImageUrl(): string {
