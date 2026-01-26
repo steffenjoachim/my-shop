@@ -16,7 +16,12 @@ import { filter } from 'rxjs/operators';
       class="bg-slate-50 px-8 py-3 shadow-md sticky top-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
     >
       <!-- LOGO -->
-      <h1 class="font-bold text-4xl cursor-pointer" routerLink="/">MyShop</h1>
+      <h1 
+        class="font-bold text-4xl cursor-pointer" 
+        [routerLink]="isProductManager() ? '/product-management' : '/'"
+      >
+        MyShop
+      </h1>
 
       <div class="flex items-center justify-between w-full sm:w-auto relative">
         <nav class="flex items-center gap-4 text-sm text-gray-600">
@@ -40,8 +45,61 @@ import { filter } from 'rxjs/operators';
                 {{ user()?.username }}
               </span>
 
+              <!-- 🛍️ PRODUCT MANAGER -->
+              @if (menuOpen && isProductManager()) {
+                <ul
+                  class="absolute left-0 mt-2 w-56 bg-white border rounded-lg shadow-lg"
+                >
+                  <li>
+                    <a
+                      routerLink="/product-management"
+                      class="block px-4 py-2"
+                      (click)="closeMenu()"
+                    >
+                      📦 Produktverwaltung
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      routerLink="/product-management/add"
+                      class="block px-4 py-2"
+                      (click)="closeMenu()"
+                    >
+                      ➕ Produkt anlegen
+                    </a>
+                  </li>
+                </ul>
+              }
+
+              <!-- 🚚 SHIPPING USER -->
+              @if (menuOpen && isShippingUser() && !isProductManager()) {
+                <ul
+                  class="absolute left-0 mt-2 w-56 bg-white border rounded-lg shadow-lg"
+                >
+                  <li>
+                    <a
+                      routerLink="/shipping/orders"
+                      class="block px-4 py-2"
+                      (click)="closeMenu()"
+                    >
+                      🚚 Versandverwaltung
+                    </a>
+                  </li>
+
+                  <li>
+                    <a
+                      routerLink="/shipping/returns"
+                      class="block px-4 py-2"
+                      (click)="closeMenu()"
+                    >
+                      🔁 Retourenverwaltung
+                    </a>
+                  </li>
+                </ul>
+              }
+
               <!-- ✅ NORMALER USER -->
-              @if (menuOpen && !isShippingUser()) {
+              @if (menuOpen && !isShippingUser() && !isProductManager()) {
                 <ul
                   class="absolute left-0 mt-2 w-52 bg-white border rounded-lg shadow-lg"
                 >
@@ -74,33 +132,6 @@ import { filter } from 'rxjs/operators';
                   </li>
                 </ul>
               }
-
-              <!-- 🚚 SHIPPING USER -->
-              @if (menuOpen && isShippingUser()) {
-                <ul
-                  class="absolute left-0 mt-2 w-56 bg-white border rounded-lg shadow-lg"
-                >
-                  <li>
-                    <a
-                      routerLink="/shipping/orders"
-                      class="block px-4 py-2"
-                      (click)="closeMenu()"
-                    >
-                      🚚 Versandverwaltung
-                    </a>
-                  </li>
-
-                  <li>
-                    <a
-                      routerLink="/shipping/returns"
-                      class="block px-4 py-2"
-                      (click)="closeMenu()"
-                    >
-                      🔁 Retourenverwaltung
-                    </a>
-                  </li>
-                </ul>
-              }
             </div>
 
             <button
@@ -112,12 +143,14 @@ import { filter } from 'rxjs/operators';
           }
         </nav>
 
-        <!-- CART -->
-        <app-primary-button
-          [label]="'Cart (' + cartCount() + ')'"
-          routerLink="/cart"
-          class="ml-4"
-        />
+        <!-- CART (nur für normale User, nicht für Product Manager) -->
+        @if (!isProductManager()) {
+          <app-primary-button
+            [label]="'Cart (' + cartCount() + ')'"
+            routerLink="/cart"
+            class="ml-4"
+          />
+        }
       </div>
     </header>
   `,
@@ -139,18 +172,30 @@ export class Header implements OnInit {
   user = () => this.auth.user();
 
   ngOnInit() {
-    // 🚚 SHIPPING USER → Sofort weiterleiten
+    // Session beim Laden prüfen, um Gruppen zu aktualisieren
+    this.auth.checkSession();
+
+    // Sofortige Prüfung nach kurzer Verzögerung (damit Session-Daten geladen sind)
+    setTimeout(() => {
+      this.checkAndRedirect();
+    }, 200);
+
+    // 🚚 Navigation bei Route-Änderungen prüfen
     this.router.events
       .pipe(filter((e) => e instanceof NavigationEnd))
       .subscribe(() => {
-        if (this.isShippingUser() && this.router.url === '/') {
-          this.router.navigate(['/shipping/orders'], { replaceUrl: true });
-        }
-     // 🛍️ PRODUCT MANAGER → Sofort weiterleiten
-        if (this.isProductManager() && this.router.url === '/') {
-          this.router.navigate(['/product-management'], { replaceUrl: true });
-        }
+        this.checkAndRedirect();
       });
+  }
+
+  private checkAndRedirect() {
+    if (this.router.url === '/') {
+      if (this.isProductManager()) {
+        this.router.navigate(['/product-management'], { replaceUrl: true });
+      } else if (this.isShippingUser()) {
+        this.router.navigate(['/shipping/orders'], { replaceUrl: true });
+      }
+    }
   }
 
   // 🎯 SHIPPING USER = nur Gruppe "shipping"
@@ -159,10 +204,22 @@ export class Header implements OnInit {
     return Array.isArray(u?.groups) && u.groups.includes('shipping');
   }
 
-  // 🛍️ PRODUCT MANAGER = Gruppe "productmanager"
+  // 🛍️ PRODUCT MANAGER = Gruppe "productmanager" ODER Username "productmanager"
   isProductManager(): boolean {
     const u = this.user() as any;
-    return Array.isArray(u?.groups) && u.groups.includes('productmanager');
+    if (!u) return false;
+    
+    // Prüfe Gruppe
+    if (Array.isArray(u?.groups) && u.groups.includes('productmanager')) {
+      return true;
+    }
+    
+    // Fallback: Prüfe Username (falls Gruppe nicht gesetzt ist)
+    if (u?.username && u.username.toLowerCase() === 'productmanager') {
+      return true;
+    }
+    
+    return false;
   }
 
   toggleMenu() {
