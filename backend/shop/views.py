@@ -15,6 +15,8 @@ from .models import (
     OrderReturn,   # original class name in models
     ReturnRequest, # alias you added
     Category,
+    ProductVariation,
+    AttributeValue,
 )
 from .serializers import (
     ProductSerializer,
@@ -22,6 +24,8 @@ from .serializers import (
     ReviewSerializer,
     OrderSerializer,
     ReturnRequestSerializer,
+    ProductVariationSerializer,
+    AttributeValueSerializer,
 )
 
 
@@ -29,6 +33,20 @@ from .serializers import (
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+# --- ProductVariation ---
+class ProductVariationViewSet(viewsets.ModelViewSet):
+    queryset = ProductVariation.objects.all()
+    serializer_class = ProductVariationSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+# --- AttributeValue ---
+class AttributeValueViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = AttributeValue.objects.all()
+    serializer_class = AttributeValueSerializer
     permission_classes = [permissions.AllowAny]
 
 
