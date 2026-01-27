@@ -26,7 +26,7 @@ interface ProductImage {
 
 interface AttributeValue {
   id: number;
-  attribute_type: { id: number; name: string };
+  attribute_type: string;
   value: string;
 }
 
@@ -164,6 +164,30 @@ interface Product {
             *ngFor="let variation of product.variations; let i = index"
             class="border p-2 mb-2"
           >
+            <div class="mb-2">
+              <strong>Variation {{ i + 1 }}:</strong>
+              <span *ngIf="variation.attributes.length > 0; else noAttrs">
+                {{ getVariationDisplay(variation) }}
+              </span>
+              <ng-template #noAttrs>Keine Attribute</ng-template>
+            </div>
+            <div class="mb-2">
+              <label>Attribute:</label>
+              <select
+                multiple
+                [name]="'attributes_' + i"
+                class="border rounded px-3 py-2 w-full"
+                (change)="updateVariationAttributes(i, $event)"
+              >
+                <option
+                  *ngFor="let attr of availableAttributes"
+                  [value]="attr.id"
+                  [selected]="isAttributeSelected(variation, attr.id)"
+                >
+                  {{ attr.attribute_type.name }}: {{ attr.value }}
+                </option>
+              </select>
+            </div>
             <div class="flex space-x-2">
               <input
                 [(ngModel)]="variation.stock"
@@ -180,7 +204,6 @@ interface Product {
                 Entfernen
               </button>
             </div>
-            <!-- Hier könnten Attribute hinzugefügt werden, aber für Einfachheit überspringen -->
           </div>
           <button
             type="button"
@@ -216,6 +239,7 @@ export class ProductForm implements OnInit {
   private apiUrl = `${environment.apiBaseUrl}products/`;
   private categoriesUrl = `${environment.apiBaseUrl}categories/`;
   private deliveryTimesUrl = `${environment.apiBaseUrl}delivery-times/`;
+  private attributeValuesUrl = `${environment.apiBaseUrl}attribute-values/`;
 
   product: Product = {
     title: '',
@@ -230,11 +254,13 @@ export class ProductForm implements OnInit {
   };
   categories: Category[] = [];
   deliveryTimes: DeliveryTime[] = [];
+  availableAttributes: AttributeValue[] = [];
   isEdit = false;
 
   ngOnInit() {
     this.loadCategories();
     this.loadDeliveryTimes();
+    this.loadAttributeValues();
     const id = this.route.snapshot.params['id'];
     if (id) {
       this.isEdit = true;
@@ -253,6 +279,13 @@ export class ProductForm implements OnInit {
     this.http.get<DeliveryTime[]>(this.deliveryTimesUrl).subscribe({
       next: (data) => (this.deliveryTimes = data),
       error: (err) => console.error('Error loading delivery times', err),
+    });
+  }
+
+  loadAttributeValues() {
+    this.http.get<AttributeValue[]>(this.attributeValuesUrl).subscribe({
+      next: (data) => (this.availableAttributes = data),
+      error: (err) => console.error('Error loading attribute values', err),
     });
   }
 
@@ -292,5 +325,28 @@ export class ProductForm implements OnInit {
 
   cancel() {
     this.router.navigate(['/product-management']);
+  }
+
+  getVariationDisplay(variation: ProductVariation): string {
+    if (!variation.attributes || variation.attributes.length === 0) {
+      return 'Keine Attribute';
+    }
+    return variation.attributes
+      .map((attr) => `${attr.attribute_type}: ${attr.value}`)
+      .join(', ');
+  }
+
+  updateVariationAttributes(index: number, event: any) {
+    const selectedOptions = Array.from(event.target.selectedOptions).map(
+      (option: any) => +option.value,
+    );
+    this.product.variations![index].attributes =
+      this.availableAttributes.filter((attr) =>
+        selectedOptions.includes(attr.id),
+      );
+  }
+
+  isAttributeSelected(variation: ProductVariation, attrId: number): boolean {
+    return variation.attributes.some((attr) => attr.id === attrId);
   }
 }

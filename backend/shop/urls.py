@@ -3,6 +3,8 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ProductViewSet,
+    ProductVariationViewSet,
+    AttributeValueViewSet,
     DeliveryTimeViewSet,
     ReviewViewSet,
     OrderViewSet,
@@ -17,6 +19,8 @@ from .views import (
 
 router = DefaultRouter()
 router.register("products", ProductViewSet, basename="products")
+router.register("product-variations", ProductVariationViewSet, basename="product-variations")
+router.register("attribute-values", AttributeValueViewSet, basename="attribute-values")
 router.register("delivery-times", DeliveryTimeViewSet, basename="delivery-times")
 router.register("reviews", ReviewViewSet, basename="reviews")
 router.register("orders", OrderViewSet, basename="orders")

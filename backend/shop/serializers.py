@@ -32,9 +32,40 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ("id", "name", "display_name")
 
 
+class AttributeValueSerializer(serializers.ModelSerializer):
+    attribute_type = serializers.CharField(source='attribute_type.name', read_only=True)
+
+    class Meta:
+        model = AttributeValue
+        fields = ("id", "attribute_type", "value")
+
+
+class ProductVariationSerializer(serializers.ModelSerializer):
+    attributes = AttributeValueSerializer(many=True)
+
+    class Meta:
+        model = ProductVariation
+        fields = ("id", "attributes", "stock")
+
+    def create(self, validated_data):
+        attributes_data = validated_data.pop('attributes')
+        variation = ProductVariation.objects.create(**validated_data)
+        variation.attributes.set([attr['id'] for attr in attributes_data])
+        return variation
+
+    def update(self, instance, validated_data):
+        attributes_data = validated_data.pop('attributes', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if attributes_data is not None:
+            instance.attributes.set([attr['id'] for attr in attributes_data])
+        return instance
+
+
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
-    variations = serializers.SerializerMethodField()
+    variations = ProductVariationSerializer(many=True, read_only=False)
     recent_reviews = serializers.SerializerMethodField()
     # expose the model property that sums variation stock
     stock_total = serializers.IntegerField(read_only=True)
@@ -62,29 +93,38 @@ class ProductSerializer(serializers.ModelSerializer):
             "variations",
             "recent_reviews",
         )
-    
-    def get_image_url(self, obj):
-        """Gibt die Bild-URL zurück (hochgeladenes Bild oder externe URL)"""
-        return obj.image_url
-    
-    def get_variations(self, obj):
-        """Serialize variations with their attributes"""
-        variations = obj.variations.all()
-        data = []
-        for var in variations:
-            data.append({
-                "id": var.id,
-                "attributes": [
-                    {
-                        "id": attr.id,
-                        "attribute_type": attr.attribute_type.name,
-                        "value": attr.value
-                    }
-                    for attr in var.attributes.all()
-                ],
-                "stock": var.stock
-            })
-        return data
+
+    def update(self, instance, validated_data):
+        variations_data = validated_data.pop('variations', [])
+        instance = super().update(instance, validated_data)
+        
+        # Handle variations
+        existing_variations = {v.id: v for v in instance.variations.all()}
+        for variation_data in variations_data:
+            variation_id = variation_data.get('id')
+            if variation_id and variation_id in existing_variations:
+                # Update existing
+                variation = existing_variations[variation_id]
+                for key, value in variation_data.items():
+                    if key == 'attributes':
+                        variation.attributes.set([attr['id'] for attr in value])
+                    else:
+                        setattr(variation, key, value)
+                variation.save()
+            else:
+                # Create new
+                variation_data['product'] = instance
+                attributes = variation_data.pop('attributes', [])
+                variation = ProductVariation.objects.create(**variation_data)
+                variation.attributes.set([attr['id'] for attr in attributes])
+        
+        # Delete variations not in data
+        new_ids = {v.get('id') for v in variations_data if v.get('id')}
+        for existing_id, variation in existing_variations.items():
+            if existing_id not in new_ids:
+                variation.delete()
+        
+        return instance
     
     def get_recent_reviews(self, obj):
         """Get approved reviews for the product"""
@@ -101,19 +141,6 @@ class ProductSerializer(serializers.ModelSerializer):
                 "updated_at": review.updated_at,
             })
         return data
-
-class AttributeValueSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AttributeValue
-        fields = ("id", "attribute_type", "value")
-
-
-class ProductVariationSerializer(serializers.ModelSerializer):
-    attributes = AttributeValueSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = ProductVariation
-        fields = ("id", "product", "attributes", "stock")
 
 
 class ReviewSerializer(serializers.ModelSerializer):
