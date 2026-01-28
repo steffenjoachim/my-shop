@@ -142,6 +142,10 @@ class ProductSerializer(serializers.ModelSerializer):
             })
         return data
 
+    def get_image_url(self, obj):
+        """Gibt die Bild-URL zurück (hochgeladenes Bild oder externe URL)"""
+        return obj.image_url
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     product_title = serializers.CharField(
