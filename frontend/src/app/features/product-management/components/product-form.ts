@@ -184,7 +184,7 @@ interface Product {
                   [value]="attr.id"
                   [selected]="isAttributeSelected(variation, attr.id)"
                 >
-                  {{ attr.attribute_type.name }}: {{ attr.value }}
+                  {{ attr.attribute_type }}: {{ attr.value }}
                 </option>
               </select>
             </div>
