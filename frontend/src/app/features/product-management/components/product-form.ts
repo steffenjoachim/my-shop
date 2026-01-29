@@ -290,8 +290,31 @@ export class ProductForm implements OnInit {
   }
 
   loadProduct(id: number) {
-    this.http.get<Product>(`${this.apiUrl}${id}/`).subscribe({
-      next: (data) => (this.product = data),
+    this.http.get<any>(`${this.apiUrl}${id}/`).subscribe({
+      next: (data) => {
+        const mapped: Product = {
+          id: data.id,
+          title: data.title || '',
+          description: data.description || '',
+          price: data.price || 0,
+          // category may be an object (with id) or already an id/null
+          category: data.category
+            ? (data.category.id ?? data.category)
+            : undefined,
+          main_image: data.main_image || '',
+          external_image: data.external_image || '',
+          // delivery_time may be an object or id/null
+          delivery_time: data.delivery_time
+            ? typeof data.delivery_time === 'string'
+              ? data.delivery_time
+              : (data.delivery_time.id ?? undefined)
+            : undefined,
+          images: data.images || [],
+          variations: data.variations || [],
+        };
+
+        this.product = mapped;
+      },
       error: (err) => console.error('Error loading product', err),
     });
   }
