@@ -115,6 +115,9 @@ interface Product {
               {{ dt.name }} ({{ dt.min_days }}-{{ dt.max_days }} Tage)
             </option>
           </select>
+          <p *ngIf="productDeliveryTimeRaw" class="text-sm text-gray-600 mt-1">
+            Original Lieferzeit: {{ productDeliveryTimeRaw }}
+          </p>
         </div>
         <div>
           <label class="block text-sm font-medium">Hauptbild URL</label>
@@ -256,6 +259,9 @@ export class ProductForm implements OnInit {
   deliveryTimes: DeliveryTime[] = [];
   availableAttributes: AttributeValue[] = [];
   isEdit = false;
+  // If backend returns a delivery time as a string (e.g. "1-2 Werktagen")
+  // we temporarily store it here and try to resolve to an id once deliveryTimes are loaded
+  productDeliveryTimeRaw?: string = undefined; 
 
   ngOnInit() {
     this.loadCategories();
@@ -277,7 +283,24 @@ export class ProductForm implements OnInit {
 
   loadDeliveryTimes() {
     this.http.get<DeliveryTime[]>(this.deliveryTimesUrl).subscribe({
-      next: (data) => (this.deliveryTimes = data),
+      next: (data) => {
+        this.deliveryTimes = data;
+        // If we received a delivery time as a string earlier, try to resolve it now
+        if (this.productDeliveryTimeRaw) {
+          const matched = this.deliveryTimes.find(
+            (d) =>
+              d.name === this.productDeliveryTimeRaw ||
+              this.productDeliveryTimeRaw!.includes(d.name) ||
+              this.productDeliveryTimeRaw === `${d.min_days}-${d.max_days} Tage` ||
+              this.productDeliveryTimeRaw === `${d.min_days}-${d.max_days} Werktagen` ||
+              this.productDeliveryTimeRaw!.includes(`${d.min_days}-${d.max_days}`)
+          );
+          if (matched) {
+            this.product.delivery_time = matched.id;
+            this.productDeliveryTimeRaw = undefined;
+          }
+        }
+      },
       error: (err) => console.error('Error loading delivery times', err),
     });
   }
@@ -303,12 +326,34 @@ export class ProductForm implements OnInit {
             : undefined,
           main_image: data.main_image || '',
           external_image: data.external_image || '',
-          // delivery_time may be an object or id/null
-          delivery_time: data.delivery_time
-            ? typeof data.delivery_time === 'string'
-              ? data.delivery_time
-              : (data.delivery_time.id ?? undefined)
-            : undefined,
+          // Resolve delivery_time: can be id (number), object with id, or a string name
+        let deliveryId: number | undefined;
+        if (data.delivery_time == null) {
+          deliveryId = undefined;
+        } else if (typeof data.delivery_time === 'number') {
+          deliveryId = data.delivery_time;
+        } else if (typeof data.delivery_time === 'object') {
+          deliveryId = data.delivery_time.id ?? undefined;
+        } else if (typeof data.delivery_time === 'string') {
+          // Try to match by name to an already-loaded deliveryTimes entry
+          const matched = this.deliveryTimes.find(
+            (d) =>
+              d.name === data.delivery_time ||
+              data.delivery_time!.includes(d.name) ||
+              data.delivery_time === `${d.min_days}-${d.max_days} Tage` ||
+              data.delivery_time === `${d.min_days}-${d.max_days} Werktagen` ||
+              data.delivery_time!.includes(`${d.min_days}-${d.max_days}`)
+          );
+          if (matched) {
+            deliveryId = matched.id;
+          } else {
+            // keep the original string to show in the UI and try to resolve later
+            deliveryId = undefined;
+            this.productDeliveryTimeRaw = data.delivery_time;
+          }
+        }
+
+        delivery_time: deliveryId,
           images: data.images || [],
           variations: data.variations || [],
         };
