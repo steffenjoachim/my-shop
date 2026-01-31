@@ -83,6 +83,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "description",
             "price",
             "category",
+            "delivery_time",
             "stock_total",
             "rating_avg",
             "rating_count",
