@@ -261,7 +261,7 @@ export class ProductForm implements OnInit {
   isEdit = false;
   // If backend returns a delivery time as a string (e.g. "1-2 Werktagen")
   // we temporarily store it here and try to resolve to an id once deliveryTimes are loaded
-  productDeliveryTimeRaw?: string = undefined; 
+  productDeliveryTimeRaw: string | undefined = undefined; 
 
   ngOnInit() {
     this.loadCategories();
@@ -277,7 +277,7 @@ export class ProductForm implements OnInit {
   loadCategories() {
     this.http.get<Category[]>(this.categoriesUrl).subscribe({
       next: (data) => (this.categories = data),
-      error: (err) => console.error('Error loading categories', err),
+      error: (err: unknown) => console.error('Error loading categories', err),
     });
   }
 
@@ -301,32 +301,21 @@ export class ProductForm implements OnInit {
           }
         }
       },
-      error: (err) => console.error('Error loading delivery times', err),
+      error: (err: unknown) => console.error('Error loading delivery times', err),
     });
   }
 
   loadAttributeValues() {
     this.http.get<AttributeValue[]>(this.attributeValuesUrl).subscribe({
       next: (data) => (this.availableAttributes = data),
-      error: (err) => console.error('Error loading attribute values', err),
+      error: (err: unknown) => console.error('Error loading attribute values', err),
     });
   }
 
   loadProduct(id: number) {
     this.http.get<any>(`${this.apiUrl}${id}/`).subscribe({
       next: (data) => {
-        const mapped: Product = {
-          id: data.id,
-          title: data.title || '',
-          description: data.description || '',
-          price: data.price || 0,
-          // category may be an object (with id) or already an id/null
-          category: data.category
-            ? (data.category.id ?? data.category)
-            : undefined,
-          main_image: data.main_image || '',
-          external_image: data.external_image || '',
-          // Resolve delivery_time: can be id (number), object with id, or a string name
+        // Resolve delivery_time: can be id (number), object with id, or a string name
         let deliveryId: number | undefined;
         if (data.delivery_time == null) {
           deliveryId = undefined;
@@ -335,43 +324,51 @@ export class ProductForm implements OnInit {
         } else if (typeof data.delivery_time === 'object') {
           deliveryId = data.delivery_time.id ?? undefined;
         } else if (typeof data.delivery_time === 'string') {
-          // Try to match by name to an already-loaded deliveryTimes entry
           const matched = this.deliveryTimes.find(
             (d) =>
               d.name === data.delivery_time ||
-              data.delivery_time!.includes(d.name) ||
+              (typeof data.delivery_time === 'string' && data.delivery_time.includes(d.name)) ||
               data.delivery_time === `${d.min_days}-${d.max_days} Tage` ||
               data.delivery_time === `${d.min_days}-${d.max_days} Werktagen` ||
-              data.delivery_time!.includes(`${d.min_days}-${d.max_days}`)
+              (typeof data.delivery_time === 'string' && data.delivery_time.includes(`${d.min_days}-${d.max_days}`))
           );
           if (matched) {
             deliveryId = matched.id;
           } else {
-            // keep the original string to show in the UI and try to resolve later
             deliveryId = undefined;
             this.productDeliveryTimeRaw = data.delivery_time;
           }
         }
 
-        delivery_time: deliveryId,
+        const mapped: Product = {
+          id: data.id,
+          title: data.title || '',
+          description: data.description || '',
+          price: data.price || 0,
+          category: data.category
+            ? (data.category.id ?? data.category)
+            : undefined,
+          main_image: data.main_image || '',
+          external_image: data.external_image || '',
+          delivery_time: deliveryId,
           images: data.images || [],
           variations: data.variations || [],
         };
 
         this.product = mapped;
       },
-      error: (err) => console.error('Error loading product', err),
+      error: (err: unknown) => console.error('Error loading product', err),
     });
   }
 
   saveProduct() {
-    const request = this.isEdit
+    const request = this.isEdit && this.product.id != null
       ? this.http.put(`${this.apiUrl}${this.product.id}/`, this.product)
       : this.http.post(this.apiUrl, this.product);
 
     request.subscribe({
       next: () => this.router.navigate(['/product-management']),
-      error: (err) => console.error('Error saving product', err),
+      error: (err: unknown) => console.error('Error saving product', err),
     });
   }
 
