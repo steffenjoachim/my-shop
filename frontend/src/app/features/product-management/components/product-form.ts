@@ -176,20 +176,27 @@ interface Product {
             </div>
             <div class="mb-2">
               <label>Attribute:</label>
-              <select
-                multiple
-                [name]="'attributes_' + i"
-                class="border rounded px-3 py-2 w-full"
-                (change)="updateVariationAttributes(i, $event)"
-              >
-                <option
-                  *ngFor="let attr of availableAttributes"
-                  [value]="attr.id"
-                  [selected]="isAttributeSelected(variation, attr.id)"
+              <div *ngFor="let g of relevantAttributeGroups()">
+                <label class="block text-sm font-medium mt-1"
+                  >{{ g.displayName }}:</label
                 >
-                  {{ attr.attribute_type }}: {{ attr.value }}
-                </option>
-              </select>
+                <select
+                  [name]="'attr_' + i + '_' + g.key"
+                  class="border rounded px-3 py-2 w-full"
+                  (change)="updateVariationAttributeByType(i, g.key, $event)"
+                >
+                  <option value="">Keine</option>
+                  <option
+                    *ngFor="let attr of g.values"
+                    [value]="attr.id"
+                    [selected]="
+                      isAttributeSelectedByType(variation, g.key, attr.id)
+                    "
+                  >
+                    {{ attr.value }}
+                  </option>
+                </select>
+              </div>
             </div>
             <div class="flex space-x-2">
               <input
@@ -261,7 +268,7 @@ export class ProductForm implements OnInit {
   isEdit = false;
   // If backend returns a delivery time as a string (e.g. "1-2 Werktagen")
   // we temporarily store it here and try to resolve to an id once deliveryTimes are loaded
-  productDeliveryTimeRaw: string | undefined = undefined; 
+  productDeliveryTimeRaw: string | undefined = undefined;
 
   ngOnInit() {
     this.loadCategories();
@@ -291,9 +298,13 @@ export class ProductForm implements OnInit {
             (d) =>
               d.name === this.productDeliveryTimeRaw ||
               this.productDeliveryTimeRaw!.includes(d.name) ||
-              this.productDeliveryTimeRaw === `${d.min_days}-${d.max_days} Tage` ||
-              this.productDeliveryTimeRaw === `${d.min_days}-${d.max_days} Werktagen` ||
-              this.productDeliveryTimeRaw!.includes(`${d.min_days}-${d.max_days}`)
+              this.productDeliveryTimeRaw ===
+                `${d.min_days}-${d.max_days} Tage` ||
+              this.productDeliveryTimeRaw ===
+                `${d.min_days}-${d.max_days} Werktagen` ||
+              this.productDeliveryTimeRaw!.includes(
+                `${d.min_days}-${d.max_days}`,
+              ),
           );
           if (matched) {
             this.product.delivery_time = matched.id;
@@ -301,14 +312,16 @@ export class ProductForm implements OnInit {
           }
         }
       },
-      error: (err: unknown) => console.error('Error loading delivery times', err),
+      error: (err: unknown) =>
+        console.error('Error loading delivery times', err),
     });
   }
 
   loadAttributeValues() {
     this.http.get<AttributeValue[]>(this.attributeValuesUrl).subscribe({
       next: (data) => (this.availableAttributes = data),
-      error: (err: unknown) => console.error('Error loading attribute values', err),
+      error: (err: unknown) =>
+        console.error('Error loading attribute values', err),
     });
   }
 
@@ -327,10 +340,12 @@ export class ProductForm implements OnInit {
           const matched = this.deliveryTimes.find(
             (d) =>
               d.name === data.delivery_time ||
-              (typeof data.delivery_time === 'string' && data.delivery_time.includes(d.name)) ||
+              (typeof data.delivery_time === 'string' &&
+                data.delivery_time.includes(d.name)) ||
               data.delivery_time === `${d.min_days}-${d.max_days} Tage` ||
               data.delivery_time === `${d.min_days}-${d.max_days} Werktagen` ||
-              (typeof data.delivery_time === 'string' && data.delivery_time.includes(`${d.min_days}-${d.max_days}`))
+              (typeof data.delivery_time === 'string' &&
+                data.delivery_time.includes(`${d.min_days}-${d.max_days}`)),
           );
           if (matched) {
             deliveryId = matched.id;
@@ -362,9 +377,10 @@ export class ProductForm implements OnInit {
   }
 
   saveProduct() {
-    const request = this.isEdit && this.product.id != null
-      ? this.http.put(`${this.apiUrl}${this.product.id}/`, this.product)
-      : this.http.post(this.apiUrl, this.product);
+    const request =
+      this.isEdit && this.product.id != null
+        ? this.http.put(`${this.apiUrl}${this.product.id}/`, this.product)
+        : this.http.post(this.apiUrl, this.product);
 
     request.subscribe({
       next: () => this.router.navigate(['/product-management']),
@@ -413,5 +429,94 @@ export class ProductForm implements OnInit {
 
   isAttributeSelected(variation: ProductVariation, attrId: number): boolean {
     return variation.attributes.some((attr) => attr.id === attrId);
+  }
+
+  // Hilfsfunktion: Normalisierter Schlüssel (kleingeschrieben) für Attributtyp
+  private normalizeType(t: string) {
+    return (t || '').trim().toLowerCase();
+  }
+
+  // Übersetzt Attributtyp-Schlüssel ins Deutsche (Fallback: kapitalisierte Originalform)
+  private translateAttributeType(t: string) {
+    const map: Record<string, string> = {
+      color: 'Farbe',
+      colour: 'Farbe',
+      size: 'Größe',
+      'screen size': 'Bildschirmgröße',
+      screen_size: 'Bildschirmgröße',
+      ram: 'RAM',
+      'hard drive': 'Festplatte',
+      hard_drive: 'Festplatte',
+      watt: 'Watt',
+      volume: 'Volumen',
+      weight: 'Gewicht',
+    };
+    const key = this.normalizeType(t);
+    return map[key] || (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+  }
+
+  // Gruppiert die verfügbaren Attributwerte nach normalisiertem Typ (key)
+  attributeGroups() {
+    const map = new Map<string, AttributeValue[]>();
+    const originalName = new Map<string, string>();
+    for (const a of this.availableAttributes) {
+      const key = this.normalizeType(a.attribute_type || 'Unknown');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
+      // remember last original name (for fallback)
+      originalName.set(key, a.attribute_type || key);
+    }
+    return Array.from(map.entries()).map(([key, values]) => ({
+      key,
+      displayName: this.translateAttributeType(originalName.get(key) || key),
+      values,
+    }));
+  }
+
+  // Liefert nur die Gruppen zurück, deren Typen im Produkt bereits verwendet werden
+  relevantAttributeGroups() {
+    const used = new Set<string>();
+    for (const v of this.product.variations || []) {
+      for (const a of v.attributes || []) {
+        used.add(this.normalizeType(a.attribute_type));
+      }
+    }
+    // Wenn keine Typen benutzt werden (z.B. neues Produkt), zeige nichts
+    if (used.size === 0) return [];
+    return this.attributeGroups().filter((g) => used.has(g.key));
+  }
+
+  // Setzt für eine Variation genau einen Wert pro Attributtyp (oder entfernt ihn)
+  updateVariationAttributeByType(
+    index: number,
+    attributeTypeKey: string,
+    event: any,
+  ) {
+    const val = event.target.value;
+    let attrs = this.product.variations![index].attributes || [];
+    // Entferne vorhandene Werte desselben, normalisierten Typs
+    attrs = attrs.filter(
+      (a) => this.normalizeType(a.attribute_type) !== attributeTypeKey,
+    );
+    if (val !== '') {
+      const id = +val;
+      const found = this.availableAttributes.find((a) => a.id === id);
+      if (found) {
+        attrs.push(found);
+      }
+    }
+    this.product.variations![index].attributes = attrs;
+  }
+
+  isAttributeSelectedByType(
+    variation: ProductVariation,
+    attributeTypeKey: string,
+    attrId: number,
+  ): boolean {
+    return variation.attributes.some(
+      (attr) =>
+        attr.id === attrId &&
+        this.normalizeType(attr.attribute_type) === attributeTypeKey,
+    );
   }
 }
