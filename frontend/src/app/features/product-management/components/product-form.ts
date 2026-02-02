@@ -169,7 +169,7 @@ interface Product {
           >
             <div class="mb-2">
               <strong>Variation {{ i + 1 }}:</strong>
-              <span *ngIf="variation.attributes.length > 0; else noAttrs">
+              <span *ngIf="(variation.attributes || []).length > 0; else noAttrs">
                 {{ getVariationDisplay(variation) }}
               </span>
               <ng-template #noAttrs>Keine Attribute</ng-template>
@@ -183,15 +183,13 @@ interface Product {
                 <select
                   [name]="'attr_' + i + '_' + g.key"
                   class="border rounded px-3 py-2 w-full"
-                  (change)="updateVariationAttributeByType(i, g.key, $event)"
+                  [ngModel]="getSelectedAttributeIdForType(variation, g.key)"
+                  (ngModelChange)="setVariationAttributeByType(i, g.key, $event)"
                 >
                   <option value="">Keine</option>
                   <option
                     *ngFor="let attr of g.values"
                     [value]="attr.id"
-                    [selected]="
-                      isAttributeSelectedByType(variation, g.key, attr.id)
-                    "
                   >
                     {{ attr.value }}
                   </option>
@@ -237,6 +235,10 @@ interface Product {
           >
             Abbrechen
           </button>
+        </div>
+        <div *ngIf="lastSaveError" class="text-red-700 mt-2">
+          <strong>Fehler beim Speichern:</strong>
+          <pre class="whitespace-pre-wrap">{{ lastSaveError | json }}</pre>
         </div>
       </form>
     </div>
@@ -318,10 +320,16 @@ export class ProductForm implements OnInit {
   }
 
   loadAttributeValues() {
-    this.http.get<AttributeValue[]>(this.attributeValuesUrl).subscribe({
-      next: (data) => (this.availableAttributes = data),
-      error: (err: unknown) =>
-        console.error('Error loading attribute values', err),
+    this.http.get<AttributeValue[] | { results: AttributeValue[] }>(this.attributeValuesUrl).subscribe({
+      next: (data) => {
+        this.availableAttributes = Array.isArray(data) ? data : (data?.results ?? []);
+      },
+      error: (err: unknown) => {
+        const msg = err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : err;
+        const status = err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : '';
+        console.error('Error loading attribute values', status, msg);
+        this.availableAttributes = [];
+      },
     });
   }
 
@@ -376,15 +384,51 @@ export class ProductForm implements OnInit {
     });
   }
 
+  lastSaveError: any = null;
+
   saveProduct() {
+    // Build a sanitized payload: don't send main_image when it's a string path (backend rejects non-file values)
+    const mappedVariations = (this.product.variations || []).map((v) => ({
+      ...(v.id ? { id: v.id } : {}),
+      stock: v.stock ?? 0,
+      attributes: (v.attributes || [])
+        .filter((a) => a && a.id != null)
+        .map((a) => ({
+          id: a.id,
+          attribute_type: a.attribute_type ?? '',
+          value: a.value ?? '',
+        })),
+    }));
+
+    const payload: any = {
+      title: this.product.title,
+      description: this.product.description,
+      price: this.product.price,
+      ...(this.product.category != null
+        ? { category: this.product.category }
+        : {}),
+      ...(this.product.delivery_time != null
+        ? { delivery_time: this.product.delivery_time }
+        : {}),
+      ...(this.product.external_image
+        ? { external_image: this.product.external_image }
+        : {}),
+      variations: mappedVariations,
+    };
+
+    console.debug('Saving product payload (no main_image):', payload);
+
     const request =
       this.isEdit && this.product.id != null
-        ? this.http.put(`${this.apiUrl}${this.product.id}/`, this.product)
-        : this.http.post(this.apiUrl, this.product);
+        ? this.http.put(`${this.apiUrl}${this.product.id}/`, payload)
+        : this.http.post(this.apiUrl, payload);
 
     request.subscribe({
       next: () => this.router.navigate(['/product-management']),
-      error: (err: unknown) => console.error('Error saving product', err),
+      error: (err: any) => {
+        console.error('Error saving product', err, err.error);
+        this.lastSaveError = err.error || err;
+      },
     });
   }
 
@@ -436,6 +480,22 @@ export class ProductForm implements OnInit {
     return (t || '').trim().toLowerCase();
   }
 
+  /** Kategorie (Name/display_name normalisiert) → Attributtypen (normalisierte Keys), die für diese Kategorie angezeigt werden */
+  private readonly categoryAttributeTypes: Record<string, string[]> = {
+    kleidung: ['color', 'colour', 'size', 'farbe', 'größe'],
+    clothing: ['color', 'colour', 'size', 'farbe', 'größe'],
+    bekleidung: ['color', 'colour', 'size', 'farbe', 'größe'],
+    elektronik: ['ram', 'screen size', 'screen_size', 'hard drive', 'hard_drive', 'watt'],
+    electronics: ['ram', 'screen size', 'screen_size', 'hard drive', 'hard_drive', 'watt'],
+  };
+
+  private getCurrentCategoryName(): string | undefined {
+    const id = this.product.category;
+    if (id == null) return undefined;
+    const cat = this.categories.find((c) => c.id === id);
+    return cat ? (cat.display_name || cat.name) : undefined;
+  }
+
   // Übersetzt Attributtyp-Schlüssel ins Deutsche (Fallback: kapitalisierte Originalform)
   private translateAttributeType(t: string) {
     const map: Record<string, string> = {
@@ -473,37 +533,49 @@ export class ProductForm implements OnInit {
     }));
   }
 
-  // Liefert nur die Gruppen zurück, deren Typen im Produkt bereits verwendet werden
+  // Zeigt nur für die Produktkategorie relevante Attributgruppen (z. B. Kleidung → Farbe, Größe)
   relevantAttributeGroups() {
-    const used = new Set<string>();
-    for (const v of this.product.variations || []) {
-      for (const a of v.attributes || []) {
-        used.add(this.normalizeType(a.attribute_type));
-      }
+    if (!this.product.variations?.length) return [];
+    const allGroups = this.attributeGroups();
+    const categoryName = this.getCurrentCategoryName();
+    const normalizedCategory = categoryName
+      ? this.normalizeType(categoryName)
+      : undefined;
+    const allowedKeys = normalizedCategory
+      ? this.categoryAttributeTypes[normalizedCategory]
+      : undefined;
+    if (allowedKeys?.length) {
+      const allowedSet = new Set(allowedKeys);
+      return allGroups.filter((g) => allowedSet.has(g.key));
     }
-    // Wenn keine Typen benutzt werden (z.B. neues Produkt), zeige nichts
-    if (used.size === 0) return [];
-    return this.attributeGroups().filter((g) => used.has(g.key));
+    return allGroups;
   }
 
-  // Setzt für eine Variation genau einen Wert pro Attributtyp (oder entfernt ihn)
-  updateVariationAttributeByType(
+  /** Aktuell gewählte Attribut-ID für einen Typ (für ngModel am Select). */
+  getSelectedAttributeIdForType(
+    variation: ProductVariation,
+    attributeTypeKey: string,
+  ): string {
+    const attr = (variation.attributes || []).find(
+      (a) => this.normalizeType(a.attribute_type) === attributeTypeKey,
+    );
+    return attr ? String(attr.id) : '';
+  }
+
+  /** Setzt für eine Variation genau einen Wert pro Attributtyp (ngModelChange). */
+  setVariationAttributeByType(
     index: number,
     attributeTypeKey: string,
-    event: any,
-  ) {
-    const val = event.target.value;
+    value: string,
+  ): void {
     let attrs = this.product.variations![index].attributes || [];
-    // Entferne vorhandene Werte desselben, normalisierten Typs
     attrs = attrs.filter(
       (a) => this.normalizeType(a.attribute_type) !== attributeTypeKey,
     );
-    if (val !== '') {
-      const id = +val;
+    if (value !== '' && value != null) {
+      const id = +value;
       const found = this.availableAttributes.find((a) => a.id === id);
-      if (found) {
-        attrs.push(found);
-      }
+      if (found) attrs.push(found);
     }
     this.product.variations![index].attributes = attrs;
   }
@@ -513,7 +585,7 @@ export class ProductForm implements OnInit {
     attributeTypeKey: string,
     attrId: number,
   ): boolean {
-    return variation.attributes.some(
+    return (variation.attributes || []).some(
       (attr) =>
         attr.id === attrId &&
         this.normalizeType(attr.attribute_type) === attributeTypeKey,
