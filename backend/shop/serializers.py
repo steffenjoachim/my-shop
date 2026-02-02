@@ -41,25 +41,40 @@ class AttributeValueSerializer(serializers.ModelSerializer):
 
 
 class ProductVariationSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False, read_only=True)
     attributes = AttributeValueSerializer(many=True)
 
     class Meta:
         model = ProductVariation
         fields = ("id", "attributes", "stock")
 
+    def _attr_ids(self, attributes_data):
+        """Extract attribute IDs safely; items may be dicts with 'id' or primary keys."""
+        ids = []
+        for attr in attributes_data or []:
+            if isinstance(attr, dict):
+                aid = attr.get("id")
+            else:
+                aid = attr
+            if aid is not None:
+                ids.append(aid)
+        return ids
+
     def create(self, validated_data):
-        attributes_data = validated_data.pop('attributes')
+        attributes_data = validated_data.pop("attributes", [])
+        validated_data.pop("id", None)  # don't pass id to create()
         variation = ProductVariation.objects.create(**validated_data)
-        variation.attributes.set([attr['id'] for attr in attributes_data])
+        variation.attributes.set(self._attr_ids(attributes_data))
         return variation
 
     def update(self, instance, validated_data):
-        attributes_data = validated_data.pop('attributes', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        attributes_data = validated_data.pop("attributes", None)
+        validated_data.pop("id", None)
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
         instance.save()
         if attributes_data is not None:
-            instance.attributes.set([attr['id'] for attr in attributes_data])
+            instance.attributes.set(self._attr_ids(attributes_data))
         return instance
 
 
@@ -101,23 +116,33 @@ class ProductSerializer(serializers.ModelSerializer):
         
         # Handle variations
         existing_variations = {v.id: v for v in instance.variations.all()}
+        variation_serializer = ProductVariationSerializer()
+
         for variation_data in variations_data:
-            variation_id = variation_data.get('id')
+            variation_id = variation_data.get("id")
             if variation_id and variation_id in existing_variations:
                 # Update existing
                 variation = existing_variations[variation_id]
                 for key, value in variation_data.items():
-                    if key == 'attributes':
-                        variation.attributes.set([attr['id'] for attr in value])
+                    if key == "id":
+                        continue
+                    if key == "attributes":
+                        variation.attributes.set(
+                            variation_serializer._attr_ids(value)
+                        )
                     else:
                         setattr(variation, key, value)
                 variation.save()
             else:
-                # Create new
-                variation_data['product'] = instance
-                attributes = variation_data.pop('attributes', [])
+                # Create new: don't pass 'id' to create()
+                variation_data = dict(variation_data)
+                variation_data.pop("id", None)
+                variation_data["product"] = instance
+                attributes = variation_data.pop("attributes", [])
                 variation = ProductVariation.objects.create(**variation_data)
-                variation.attributes.set([attr['id'] for attr in attributes])
+                variation.attributes.set(
+                    variation_serializer._attr_ids(attributes)
+                )
         
         # Delete variations not in data
         new_ids = {v.get('id') for v in variations_data if v.get('id')}
