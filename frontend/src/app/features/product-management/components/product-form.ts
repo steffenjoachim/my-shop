@@ -169,7 +169,9 @@ interface Product {
           >
             <div class="mb-2">
               <strong>Variation {{ i + 1 }}:</strong>
-              <span *ngIf="(variation.attributes || []).length > 0; else noAttrs">
+              <span
+                *ngIf="(variation.attributes || []).length > 0; else noAttrs"
+              >
                 {{ getVariationDisplay(variation) }}
               </span>
               <ng-template #noAttrs>Keine Attribute</ng-template>
@@ -184,13 +186,12 @@ interface Product {
                   [name]="'attr_' + i + '_' + g.key"
                   class="border rounded px-3 py-2 w-full"
                   [ngModel]="getSelectedAttributeIdForType(variation, g.key)"
-                  (ngModelChange)="setVariationAttributeByType(i, g.key, $event)"
+                  (ngModelChange)="
+                    setVariationAttributeByType(i, g.key, $event)
+                  "
                 >
                   <option value="">Keine</option>
-                  <option
-                    *ngFor="let attr of g.values"
-                    [value]="attr.id"
-                  >
+                  <option *ngFor="let attr of g.values" [value]="attr.id">
                     {{ attr.value }}
                   </option>
                 </select>
@@ -272,7 +273,35 @@ export class ProductForm implements OnInit {
   // we temporarily store it here and try to resolve to an id once deliveryTimes are loaded
   productDeliveryTimeRaw: string | undefined = undefined;
 
+  private detectDevtoolsHooks() {
+    try {
+      const hooks: string[] = [];
+      const w = window as any;
+      if (w.__REACT_DEVTOOLS_GLOBAL_HOOK__) hooks.push('REACT_DEVTOOLS');
+      if (w.__VUE_DEVTOOLS_GLOBAL_HOOK__) hooks.push('VUE_DEVTOOLS');
+      if (w.__REDUX_DEVTOOLS_EXTENSION__) hooks.push('REDUX_DEVTOOLS');
+      try {
+        const sendStr =
+          (XMLHttpRequest.prototype as any).send?.toString?.() || '';
+        if (sendStr && !sendStr.includes('[native code]')) {
+          hooks.push('XMLHttpRequest.prototype.send patched');
+        }
+      } catch (e) {
+        /* ignore */
+      }
+      if (hooks.length) {
+        console.warn(
+          'Detected potential devtools/hooks that might patch XHR:',
+          hooks.join(', '),
+        );
+      }
+    } catch (e) {
+      // ignore detection errors
+    }
+  }
+
   ngOnInit() {
+    this.detectDevtoolsHooks();
     this.loadCategories();
     this.loadDeliveryTimes();
     this.loadAttributeValues();
@@ -319,18 +348,51 @@ export class ProductForm implements OnInit {
     });
   }
 
-  loadAttributeValues() {
-    this.http.get<AttributeValue[] | { results: AttributeValue[] }>(this.attributeValuesUrl).subscribe({
-      next: (data) => {
-        this.availableAttributes = Array.isArray(data) ? data : (data?.results ?? []);
-      },
-      error: (err: unknown) => {
-        const msg = err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : err;
-        const status = err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : '';
-        console.error('Error loading attribute values', status, msg);
-        this.availableAttributes = [];
-      },
-    });
+  async loadAttributeValues(): Promise<void> {
+    // Verwende zuerst fetch, um Interferenzen mit Extensions zu vermeiden, die XMLHttpRequest.send patchen
+    try {
+      const res = await fetch(this.attributeValuesUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        throw { status: res.status, message: await res.text() };
+      }
+      const data = await res.json();
+      this.availableAttributes = Array.isArray(data)
+        ? data
+        : (data?.results ?? []);
+    } catch (err) {
+      console.warn(
+        'Fetch failed for attribute values, falling back to HttpClient',
+        err,
+      );
+      // Fallback: vorhandene HttpClient-Logik beibehalten
+      this.http
+        .get<
+          AttributeValue[] | { results: AttributeValue[] }
+        >(this.attributeValuesUrl)
+        .subscribe({
+          next: (data) => {
+            this.availableAttributes = Array.isArray(data)
+              ? data
+              : (data?.results ?? []);
+          },
+          error: (err2: unknown) => {
+            const msg =
+              err2 && typeof err2 === 'object' && 'error' in err2
+                ? (err2 as { error?: unknown }).error
+                : err2;
+            const status =
+              err2 && typeof err2 === 'object' && 'status' in err2
+                ? (err2 as { status?: number }).status
+                : '';
+            console.error('Error loading attribute values', status, msg);
+            this.availableAttributes = [];
+          },
+        });
+    }
   }
 
   loadProduct(id: number) {
@@ -485,15 +547,29 @@ export class ProductForm implements OnInit {
     kleidung: ['color', 'colour', 'size', 'farbe', 'größe'],
     clothing: ['color', 'colour', 'size', 'farbe', 'größe'],
     bekleidung: ['color', 'colour', 'size', 'farbe', 'größe'],
-    elektronik: ['ram', 'screen size', 'screen_size', 'hard drive', 'hard_drive', 'watt'],
-    electronics: ['ram', 'screen size', 'screen_size', 'hard drive', 'hard_drive', 'watt'],
+    elektronik: [
+      'ram',
+      'screen size',
+      'screen_size',
+      'hard drive',
+      'hard_drive',
+      'watt',
+    ],
+    electronics: [
+      'ram',
+      'screen size',
+      'screen_size',
+      'hard drive',
+      'hard_drive',
+      'watt',
+    ],
   };
 
   private getCurrentCategoryName(): string | undefined {
     const id = this.product.category;
     if (id == null) return undefined;
     const cat = this.categories.find((c) => c.id === id);
-    return cat ? (cat.display_name || cat.name) : undefined;
+    return cat ? cat.display_name || cat.name : undefined;
   }
 
   // Übersetzt Attributtyp-Schlüssel ins Deutsche (Fallback: kapitalisierte Originalform)
