@@ -349,13 +349,45 @@ export class ProductForm implements OnInit {
   }
 
   async loadAttributeValues(): Promise<void> {
-    // Verwende zuerst fetch, um Interferenzen mit Extensions zu vermeiden, die XMLHttpRequest.send patchen
+    // Wenn bekannte DevTools-Hooks vorhanden sind, überspringe fetch —
+    // manche Extensions (z. B. React/Vue DevTools) können globale Methoden patchen
+    // und beim Zugriff Fehler werfen (installHook/overrideMethod). In diesem
+    // Fall verwenden wir direkt HttpClient und vermeiden unnötige Console-Fehler.
     try {
+      const w = window as any;
+      if (w.__REACT_DEVTOOLS_GLOBAL_HOOK__ || w.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
+        // Direkt mit HttpClient laden
+        this.http
+          .get<
+            AttributeValue[] | { results: AttributeValue[] }
+          >(this.attributeValuesUrl)
+          .subscribe({
+            next: (data) =>
+              (this.availableAttributes = Array.isArray(data)
+                ? data
+                : (data?.results ?? [])),
+            error: (err: unknown) => {
+              console.error('Error loading attribute values', err);
+              this.availableAttributes = [];
+            },
+          });
+        return;
+      }
+    } catch (e) {
+      // Defensive: falls Zugriff auf window.* unerwartet fehlschlägt, weiter versuchen
+    }
+
+    // Ansonsten sicheren Fetch-Versuch mit Timeout und robuster Fehlerbehandlung
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(this.attributeValuesUrl, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         credentials: 'include',
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       if (!res.ok) {
         throw { status: res.status, message: await res.text() };
       }
@@ -363,11 +395,26 @@ export class ProductForm implements OnInit {
       this.availableAttributes = Array.isArray(data)
         ? data
         : (data?.results ?? []);
-    } catch (err) {
-      console.warn(
-        'Fetch failed for attribute values, falling back to HttpClient',
-        err,
-      );
+    } catch (err: any) {
+      const msg = err && err.message ? String(err.message) : String(err);
+      // Bekannte Extension-Fehler (installHook / overrideMethod) still behandeln
+      if (
+        msg.includes('overrideMethod') ||
+        msg.includes('installHook') ||
+        msg.includes('Failed to fetch') ||
+        msg.includes('The user aborted a request')
+      ) {
+        console.warn(
+          'Fetch for attribute values failed (likely devtools hook) — falling back to HttpClient.',
+          err,
+        );
+      } else {
+        console.warn(
+          'Fetch failed for attribute values, falling back to HttpClient',
+          err,
+        );
+      }
+
       // Fallback: vorhandene HttpClient-Logik beibehalten
       this.http
         .get<
@@ -380,15 +427,15 @@ export class ProductForm implements OnInit {
               : (data?.results ?? []);
           },
           error: (err2: unknown) => {
-            const msg =
+            const msg2 =
               err2 && typeof err2 === 'object' && 'error' in err2
                 ? (err2 as { error?: unknown }).error
                 : err2;
-            const status =
+            const status2 =
               err2 && typeof err2 === 'object' && 'status' in err2
                 ? (err2 as { status?: number }).status
                 : '';
-            console.error('Error loading attribute values', status, msg);
+            console.error('Error loading attribute values', status2, msg2);
             this.availableAttributes = [];
           },
         });
