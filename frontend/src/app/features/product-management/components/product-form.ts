@@ -272,6 +272,8 @@ export class ProductForm implements OnInit {
   // If backend returns a delivery time as a string (e.g. "1-2 Werktagen")
   // we temporarily store it here and try to resolve to an id once deliveryTimes are loaded
   productDeliveryTimeRaw: string | undefined = undefined;
+  // Wenn true, wurde XMLHttpRequest.prototype.send gepatcht (DevTools/Extensions)
+  private xhrPatched = false;
 
   private detectDevtoolsHooks() {
     try {
@@ -285,6 +287,7 @@ export class ProductForm implements OnInit {
           (XMLHttpRequest.prototype as any).send?.toString?.() || '';
         if (sendStr && !sendStr.includes('[native code]')) {
           hooks.push('XMLHttpRequest.prototype.send patched');
+          this.xhrPatched = true;
         }
       } catch (e) {
         /* ignore */
@@ -313,6 +316,24 @@ export class ProductForm implements OnInit {
   }
 
   loadCategories() {
+    if (this.xhrPatched) {
+      (async () => {
+        try {
+          const res = await fetch(this.categoriesUrl, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            credentials: 'include',
+          });
+          if (!res.ok) throw { status: res.status, message: await res.text() };
+          const data = await res.json();
+          this.categories = Array.isArray(data) ? data : (data?.results ?? []);
+        } catch (err) {
+          console.error('Error loading categories (fetch fallback)', err);
+        }
+      })();
+      return;
+    }
+
     this.http.get<Category[]>(this.categoriesUrl).subscribe({
       next: (data) => (this.categories = data),
       error: (err: unknown) => console.error('Error loading categories', err),
@@ -320,6 +341,45 @@ export class ProductForm implements OnInit {
   }
 
   loadDeliveryTimes() {
+    if (this.xhrPatched) {
+      (async () => {
+        try {
+          const res = await fetch(this.deliveryTimesUrl, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            credentials: 'include',
+          });
+          if (!res.ok) throw { status: res.status, message: await res.text() };
+          const data = await res.json();
+          this.deliveryTimes = Array.isArray(data)
+            ? data
+            : (data?.results ?? []);
+          // Try to resolve any raw delivery time now
+          if (this.productDeliveryTimeRaw) {
+            const matched = this.deliveryTimes.find(
+              (d) =>
+                d.name === this.productDeliveryTimeRaw ||
+                this.productDeliveryTimeRaw!.includes(d.name) ||
+                this.productDeliveryTimeRaw ===
+                  `${d.min_days}-${d.max_days} Tage` ||
+                this.productDeliveryTimeRaw ===
+                  `${d.min_days}-${d.max_days} Werktagen` ||
+                this.productDeliveryTimeRaw!.includes(
+                  `${d.min_days}-${d.max_days}`,
+                ),
+            );
+            if (matched) {
+              this.product.delivery_time = matched.id;
+              this.productDeliveryTimeRaw = undefined;
+            }
+          }
+        } catch (err) {
+          console.error('Error loading delivery times (fetch fallback)', err);
+        }
+      })();
+      return;
+    }
+
     this.http.get<DeliveryTime[]>(this.deliveryTimesUrl).subscribe({
       next: (data) => {
         this.deliveryTimes = data;
@@ -355,7 +415,12 @@ export class ProductForm implements OnInit {
     // Fall verwenden wir direkt HttpClient und vermeiden unnötige Console-Fehler.
     try {
       const w = window as any;
-      if (w.__REACT_DEVTOOLS_GLOBAL_HOOK__ || w.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
+      // Use HttpClient directly only when known devtools hooks exist AND XHR is NOT patched.
+      // If XHR is patched, HttpClient (which uses XHR) may trigger installHook/overrideMethod errors.
+      if (
+        (w.__REACT_DEVTOOLS_GLOBAL_HOOK__ || w.__VUE_DEVTOOLS_GLOBAL_HOOK__) &&
+        !this.xhrPatched
+      ) {
         // Direkt mit HttpClient laden
         this.http
           .get<
@@ -416,81 +481,105 @@ export class ProductForm implements OnInit {
       }
 
       // Fallback: vorhandene HttpClient-Logik beibehalten
-      this.http
-        .get<
-          AttributeValue[] | { results: AttributeValue[] }
-        >(this.attributeValuesUrl)
-        .subscribe({
-          next: (data) => {
-            this.availableAttributes = Array.isArray(data)
-              ? data
-              : (data?.results ?? []);
-          },
-          error: (err2: unknown) => {
-            const msg2 =
-              err2 && typeof err2 === 'object' && 'error' in err2
-                ? (err2 as { error?: unknown }).error
-                : err2;
-            const status2 =
-              err2 && typeof err2 === 'object' && 'status' in err2
-                ? (err2 as { status?: number }).status
-                : '';
-            console.error('Error loading attribute values', status2, msg2);
-            this.availableAttributes = [];
-          },
-        });
+      try {
+        this.http
+          .get<
+            AttributeValue[] | { results: AttributeValue[] }
+          >(this.attributeValuesUrl)
+          .subscribe({
+            next: (data) => {
+              this.availableAttributes = Array.isArray(data)
+                ? data
+                : (data?.results ?? []);
+            },
+            error: (err2: unknown) => {
+              const msg2 =
+                err2 && typeof err2 === 'object' && 'error' in err2
+                  ? (err2 as { error?: unknown }).error
+                  : err2;
+              const status2 =
+                err2 && typeof err2 === 'object' && 'status' in err2
+                  ? (err2 as { status?: number }).status
+                  : '';
+              console.error('Error loading attribute values', status2, msg2);
+              this.availableAttributes = [];
+            },
+          });
+      } catch (syncErr) {
+        console.error('Sync error calling HttpClient fallback', syncErr);
+        this.availableAttributes = [];
+      }
     }
   }
 
   loadProduct(id: number) {
-    this.http.get<any>(`${this.apiUrl}${id}/`).subscribe({
-      next: (data) => {
-        // Resolve delivery_time: can be id (number), object with id, or a string name
-        let deliveryId: number | undefined;
-        if (data.delivery_time == null) {
-          deliveryId = undefined;
-        } else if (typeof data.delivery_time === 'number') {
-          deliveryId = data.delivery_time;
-        } else if (typeof data.delivery_time === 'object') {
-          deliveryId = data.delivery_time.id ?? undefined;
-        } else if (typeof data.delivery_time === 'string') {
-          const matched = this.deliveryTimes.find(
-            (d) =>
-              d.name === data.delivery_time ||
-              (typeof data.delivery_time === 'string' &&
-                data.delivery_time.includes(d.name)) ||
-              data.delivery_time === `${d.min_days}-${d.max_days} Tage` ||
-              data.delivery_time === `${d.min_days}-${d.max_days} Werktagen` ||
-              (typeof data.delivery_time === 'string' &&
-                data.delivery_time.includes(`${d.min_days}-${d.max_days}`)),
-          );
-          if (matched) {
-            deliveryId = matched.id;
-          } else {
-            deliveryId = undefined;
-            this.productDeliveryTimeRaw = data.delivery_time;
-          }
+    if (this.xhrPatched) {
+      // Fallback: verwende fetch wenn XHR gepatcht ist (vermeidet installHook/overrideMethod-Fehler)
+      (async () => {
+        try {
+          const res = await fetch(`${this.apiUrl}${id}/`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            credentials: 'include',
+          });
+          if (!res.ok) throw { status: res.status, message: await res.text() };
+          const data = await res.json();
+          this.applyLoadedProduct(data);
+        } catch (err) {
+          console.error('Error loading product (fetch fallback)', err);
         }
+      })();
+      return;
+    }
 
-        const mapped: Product = {
-          id: data.id,
-          title: data.title || '',
-          description: data.description || '',
-          price: data.price || 0,
-          category: data.category
-            ? (data.category.id ?? data.category)
-            : undefined,
-          main_image: data.main_image || '',
-          external_image: data.external_image || '',
-          delivery_time: deliveryId,
-          images: data.images || [],
-          variations: data.variations || [],
-        };
-
-        this.product = mapped;
-      },
+    this.http.get<any>(`${this.apiUrl}${id}/`).subscribe({
+      next: (data) => this.applyLoadedProduct(data),
       error: (err: unknown) => console.error('Error loading product', err),
     });
+  }
+
+  private applyLoadedProduct(data: any) {
+    // Resolve delivery_time: can be id (number), object with id, or a string name
+    let deliveryId: number | undefined;
+    if (data.delivery_time == null) {
+      deliveryId = undefined;
+    } else if (typeof data.delivery_time === 'number') {
+      deliveryId = data.delivery_time;
+    } else if (typeof data.delivery_time === 'object') {
+      deliveryId = data.delivery_time.id ?? undefined;
+    } else if (typeof data.delivery_time === 'string') {
+      const matched = this.deliveryTimes.find(
+        (d) =>
+          d.name === data.delivery_time ||
+          (typeof data.delivery_time === 'string' &&
+            data.delivery_time.includes(d.name)) ||
+          data.delivery_time === `${d.min_days}-${d.max_days} Tage` ||
+          data.delivery_time === `${d.min_days}-${d.max_days} Werktagen` ||
+          (typeof data.delivery_time === 'string' &&
+            data.delivery_time.includes(`${d.min_days}-${d.max_days}`)),
+      );
+      if (matched) {
+        deliveryId = matched.id;
+      } else {
+        deliveryId = undefined;
+        this.productDeliveryTimeRaw = data.delivery_time;
+      }
+    }
+
+    const mapped: Product = {
+      id: data.id,
+      title: data.title || '',
+      description: data.description || '',
+      price: data.price || 0,
+      category: data.category ? (data.category.id ?? data.category) : undefined,
+      main_image: data.main_image || '',
+      external_image: data.external_image || '',
+      delivery_time: deliveryId,
+      images: data.images || [],
+      variations: data.variations || [],
+    };
+
+    this.product = mapped;
   }
 
   lastSaveError: any = null;

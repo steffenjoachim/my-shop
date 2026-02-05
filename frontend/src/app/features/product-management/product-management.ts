@@ -53,6 +53,8 @@ export class ProductManagement implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private apiUrl = `${environment.apiBaseUrl}products/`;
+  // detect XHR patching (devtools/extensions) to choose fetch fallback
+  private xhrPatched = false;
 
   products: Product[] = [];
   searchTerm: string = '';
@@ -61,7 +63,18 @@ export class ProductManagement implements OnInit {
   productToDelete: number | null = null;
 
   ngOnInit() {
+    this.detectXhrPatch();
     this.loadProducts();
+  }
+
+  private detectXhrPatch() {
+    try {
+      const sendStr =
+        (XMLHttpRequest.prototype as any).send?.toString?.() || '';
+      if (sendStr && !sendStr.includes('[native code]')) this.xhrPatched = true;
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   get filteredProducts(): Product[] {
@@ -78,6 +91,24 @@ export class ProductManagement implements OnInit {
   }
 
   loadProducts() {
+    if (this.xhrPatched) {
+      (async () => {
+        try {
+          const res = await fetch(this.apiUrl, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            credentials: 'include',
+          });
+          if (!res.ok) throw { status: res.status, message: await res.text() };
+          const data = await res.json();
+          this.products = Array.isArray(data) ? data : (data?.results ?? []);
+        } catch (err) {
+          console.error('Error loading products (fetch fallback)', err);
+        }
+      })();
+      return;
+    }
+
     this.http.get<Product[]>(this.apiUrl).subscribe({
       next: (data) => (this.products = data),
       error: (err) => console.error('Error loading products', err),
