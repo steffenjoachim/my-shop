@@ -316,70 +316,29 @@ export class ProductForm implements OnInit {
   }
 
   loadCategories() {
-    if (this.xhrPatched) {
-      (async () => {
-        try {
-          const res = await fetch(this.categoriesUrl, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            credentials: 'include',
-          });
-          if (!res.ok) throw { status: res.status, message: await res.text() };
-          const data = await res.json();
-          this.categories = Array.isArray(data) ? data : (data?.results ?? []);
-        } catch (err) {
-          console.error('Error loading categories (fetch fallback)', err);
-        }
-      })();
-      return;
-    }
-
+    // Simplified approach: always use HttpClient
+    // Filter out known devtools hook errors to reduce console noise
     this.http.get<Category[]>(this.categoriesUrl).subscribe({
-      next: (data) => (this.categories = data),
-      error: (err: unknown) => console.error('Error loading categories', err),
+      next: (data) => {
+        this.categories = data;
+      },
+      error: (err: unknown) => {
+        const errStr = String(err);
+        // Only log non-devtools hook errors
+        if (
+          !errStr.includes('overrideMethod') &&
+          !errStr.includes('installHook')
+        ) {
+          console.warn('Error loading categories', err);
+        }
+        this.categories = [];
+      },
     });
   }
 
   loadDeliveryTimes() {
-    if (this.xhrPatched) {
-      (async () => {
-        try {
-          const res = await fetch(this.deliveryTimesUrl, {
-            method: 'GET',
-            headers: { Accept: 'application/json' },
-            credentials: 'include',
-          });
-          if (!res.ok) throw { status: res.status, message: await res.text() };
-          const data = await res.json();
-          this.deliveryTimes = Array.isArray(data)
-            ? data
-            : (data?.results ?? []);
-          // Try to resolve any raw delivery time now
-          if (this.productDeliveryTimeRaw) {
-            const matched = this.deliveryTimes.find(
-              (d) =>
-                d.name === this.productDeliveryTimeRaw ||
-                this.productDeliveryTimeRaw!.includes(d.name) ||
-                this.productDeliveryTimeRaw ===
-                  `${d.min_days}-${d.max_days} Tage` ||
-                this.productDeliveryTimeRaw ===
-                  `${d.min_days}-${d.max_days} Werktagen` ||
-                this.productDeliveryTimeRaw!.includes(
-                  `${d.min_days}-${d.max_days}`,
-                ),
-            );
-            if (matched) {
-              this.product.delivery_time = matched.id;
-              this.productDeliveryTimeRaw = undefined;
-            }
-          }
-        } catch (err) {
-          console.error('Error loading delivery times (fetch fallback)', err);
-        }
-      })();
-      return;
-    }
-
+    // Simplified approach: always use HttpClient
+    // Filter out known devtools hook errors to reduce console noise
     this.http.get<DeliveryTime[]>(this.deliveryTimesUrl).subscribe({
       next: (data) => {
         this.deliveryTimes = data;
@@ -403,112 +362,75 @@ export class ProductForm implements OnInit {
           }
         }
       },
-      error: (err: unknown) =>
-        console.error('Error loading delivery times', err),
+      error: (err: unknown) => {
+        const errStr = String(err);
+        // Only log non-devtools hook errors
+        if (
+          !errStr.includes('overrideMethod') &&
+          !errStr.includes('installHook')
+        ) {
+          console.warn('Error loading delivery times', err);
+        }
+        this.deliveryTimes = [];
+      },
     });
   }
 
   async loadAttributeValues(): Promise<void> {
-    // Wenn bekannte DevTools-Hooks vorhanden sind, überspringe fetch —
-    // manche Extensions (z. B. React/Vue DevTools) können globale Methoden patchen
-    // und beim Zugriff Fehler werfen (installHook/overrideMethod). In diesem
-    // Fall verwenden wir direkt HttpClient und vermeiden unnötige Console-Fehler.
-    try {
-      const w = window as any;
-      // Use HttpClient directly only when known devtools hooks exist AND XHR is NOT patched.
-      // If XHR is patched, HttpClient (which uses XHR) may trigger installHook/overrideMethod errors.
-      if (
-        (w.__REACT_DEVTOOLS_GLOBAL_HOOK__ || w.__VUE_DEVTOOLS_GLOBAL_HOOK__) &&
-        !this.xhrPatched
-      ) {
-        // Direkt mit HttpClient laden
-        this.http
-          .get<
-            AttributeValue[] | { results: AttributeValue[] }
-          >(this.attributeValuesUrl)
-          .subscribe({
-            next: (data) =>
-              (this.availableAttributes = Array.isArray(data)
-                ? data
-                : (data?.results ?? [])),
-            error: (err: unknown) => {
-              console.error('Error loading attribute values', err);
-              this.availableAttributes = [];
-            },
-          });
-        return;
-      }
-    } catch (e) {
-      // Defensive: falls Zugriff auf window.* unerwartet fehlschlägt, weiter versuchen
-    }
-
-    // Ansonsten sicheren Fetch-Versuch mit Timeout und robuster Fehlerbehandlung
+    // Try to load attribute values. Skip known devtools hook errors silently.
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
+
       const res = await fetch(this.attributeValuesUrl, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         credentials: 'include',
         signal: controller.signal,
       });
+
       clearTimeout(timeout);
+
       if (!res.ok) {
         throw { status: res.status, message: await res.text() };
       }
+
       const data = await res.json();
       this.availableAttributes = Array.isArray(data)
         ? data
         : (data?.results ?? []);
     } catch (err: any) {
       const msg = err && err.message ? String(err.message) : String(err);
-      // Bekannte Extension-Fehler (installHook / overrideMethod) still behandeln
-      if (
+      const isDevtoolsError =
         msg.includes('overrideMethod') ||
         msg.includes('installHook') ||
         msg.includes('Failed to fetch') ||
-        msg.includes('The user aborted a request')
-      ) {
-        console.warn(
-          'Fetch for attribute values failed (likely devtools hook) — falling back to HttpClient.',
-          err,
-        );
-      } else {
+        msg.includes('The user aborted a request');
+
+      // Only log non-devtools errors to reduce console noise
+      if (!isDevtoolsError) {
         console.warn(
           'Fetch failed for attribute values, falling back to HttpClient',
           err,
         );
       }
 
-      // Fallback: vorhandene HttpClient-Logik beibehalten
-      try {
-        this.http
-          .get<
-            AttributeValue[] | { results: AttributeValue[] }
-          >(this.attributeValuesUrl)
-          .subscribe({
-            next: (data) => {
-              this.availableAttributes = Array.isArray(data)
-                ? data
-                : (data?.results ?? []);
-            },
-            error: (err2: unknown) => {
-              const msg2 =
-                err2 && typeof err2 === 'object' && 'error' in err2
-                  ? (err2 as { error?: unknown }).error
-                  : err2;
-              const status2 =
-                err2 && typeof err2 === 'object' && 'status' in err2
-                  ? (err2 as { status?: number }).status
-                  : '';
-              console.error('Error loading attribute values', status2, msg2);
-              this.availableAttributes = [];
-            },
-          });
-      } catch (syncErr) {
-        console.error('Sync error calling HttpClient fallback', syncErr);
-        this.availableAttributes = [];
-      }
+      // Fallback to HttpClient - silently handle to avoid duplicate errors
+      this.http
+        .get<
+          AttributeValue[] | { results: AttributeValue[] }
+        >(this.attributeValuesUrl)
+        .subscribe({
+          next: (data) => {
+            this.availableAttributes = Array.isArray(data)
+              ? data
+              : (data?.results ?? []);
+          },
+          error: (err2: unknown) => {
+            // Silently fail - availableAttributes stays empty, which is safe
+            this.availableAttributes = [];
+          },
+        });
     }
   }
 
