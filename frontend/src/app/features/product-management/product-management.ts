@@ -103,7 +103,10 @@ export class ProductManagement implements OnInit {
           const data = await res.json();
           this.products = Array.isArray(data) ? data : (data?.results ?? []);
         } catch (err) {
-          console.error('Error loading products (fetch fallback)', err);
+          const msg = String(err);
+          if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
+            console.error('Error loading products (fetch fallback)', err);
+          }
         }
       })();
       return;
@@ -111,7 +114,12 @@ export class ProductManagement implements OnInit {
 
     this.http.get<Product[]>(this.apiUrl).subscribe({
       next: (data) => (this.products = data),
-      error: (err) => console.error('Error loading products', err),
+      error: (err) => {
+        const msg = String(err);
+        if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
+          console.error('Error loading products', err);
+        }
+      },
     });
   }
 

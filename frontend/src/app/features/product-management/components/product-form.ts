@@ -307,7 +307,10 @@ export class ProductForm implements OnInit {
     this.detectDevtoolsHooks();
     this.loadCategories();
     this.loadDeliveryTimes();
-    this.loadAttributeValues();
+    this.loadAttributeValues().catch(() => {
+      // Silently handle all attribute loading errors
+      this.availableAttributes = [];
+    });
     const id = this.route.snapshot.params['id'];
     if (id) {
       this.isEdit = true;
@@ -416,21 +419,25 @@ export class ProductForm implements OnInit {
       }
 
       // Fallback to HttpClient - silently handle to avoid duplicate errors
-      this.http
-        .get<
-          AttributeValue[] | { results: AttributeValue[] }
-        >(this.attributeValuesUrl)
-        .subscribe({
-          next: (data) => {
-            this.availableAttributes = Array.isArray(data)
-              ? data
-              : (data?.results ?? []);
-          },
-          error: (err2: unknown) => {
-            // Silently fail - availableAttributes stays empty, which is safe
-            this.availableAttributes = [];
-          },
-        });
+      return new Promise<void>((resolve) => {
+        this.http
+          .get<
+            AttributeValue[] | { results: AttributeValue[] }
+          >(this.attributeValuesUrl)
+          .subscribe({
+            next: (data) => {
+              this.availableAttributes = Array.isArray(data)
+                ? data
+                : (data?.results ?? []);
+              resolve();
+            },
+            error: (err2: unknown) => {
+              // Silently fail - availableAttributes stays empty, which is safe
+              this.availableAttributes = [];
+              resolve();
+            },
+          });
+      });
     }
   }
 
@@ -448,7 +455,10 @@ export class ProductForm implements OnInit {
           const data = await res.json();
           this.applyLoadedProduct(data);
         } catch (err) {
-          console.error('Error loading product (fetch fallback)', err);
+          const msg = String(err);
+          if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
+            console.error('Error loading product (fetch fallback)', err);
+          }
         }
       })();
       return;
@@ -456,7 +466,12 @@ export class ProductForm implements OnInit {
 
     this.http.get<any>(`${this.apiUrl}${id}/`).subscribe({
       next: (data) => this.applyLoadedProduct(data),
-      error: (err: unknown) => console.error('Error loading product', err),
+      error: (err: unknown) => {
+        const msg = String(err);
+        if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
+          console.error('Error loading product', err);
+        }
+      },
     });
   }
 
@@ -546,8 +561,11 @@ export class ProductForm implements OnInit {
     request.subscribe({
       next: () => this.router.navigate(['/product-management']),
       error: (err: any) => {
-        console.error('Error saving product', err, err.error);
-        this.lastSaveError = err.error || err;
+        const msg = String(err);
+        if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
+          console.error('Error saving product', err, err.error);
+          this.lastSaveError = err.error || err;
+        }
       },
     });
   }
