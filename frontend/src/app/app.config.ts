@@ -2,6 +2,7 @@ import {
   ApplicationConfig,
   LOCALE_ID,
   importProvidersFrom,
+  ErrorHandler,
 } from '@angular/core';
 import {
   provideHttpClient,
@@ -18,6 +19,25 @@ import { routes } from './app.routes';
 // 🇩🇪 Deutsches Locale registrieren
 registerLocaleData(localeDe);
 
+// Global error handler to filter out known devtools hook errors
+class GlobalErrorHandler implements ErrorHandler {
+  handleError(error: any): void {
+    const msg = String(error?.message || error?.toString?.() || error || '');
+
+    // Silently ignore devtools hook errors from browser extensions
+    if (
+      msg.includes('overrideMethod') ||
+      msg.includes('installHook') ||
+      msg.includes('[native code]')
+    ) {
+      return;
+    }
+
+    // Log all other errors normally
+    console.error('Angular Error:', error);
+  }
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
@@ -26,9 +46,11 @@ export const appConfig: ApplicationConfig = {
         cookieName: 'csrftoken',
         headerName: 'X-CSRFToken',
       }),
-      withInterceptors([csrfInterceptor])
+      withInterceptors([csrfInterceptor]),
     ),
     // 🇩🇪 Locale-Provider hinzufügen
     { provide: LOCALE_ID, useValue: 'de-DE' },
+    // Global error handler
+    { provide: ErrorHandler, useClass: GlobalErrorHandler },
   ],
 };
