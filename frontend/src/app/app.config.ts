@@ -23,12 +23,16 @@ registerLocaleData(localeDe);
 class GlobalErrorHandler implements ErrorHandler {
   handleError(error: any): void {
     const msg = String(error?.message || error?.toString?.() || error || '');
+    const stack = String(error?.stack || '');
 
     // Silently ignore devtools hook errors from browser extensions
     if (
       msg.includes('overrideMethod') ||
       msg.includes('installHook') ||
-      msg.includes('[native code]')
+      msg.includes('[native code]') ||
+      stack.includes('overrideMethod') ||
+      stack.includes('installHook') ||
+      stack.includes('installHook.js')
     ) {
       return;
     }

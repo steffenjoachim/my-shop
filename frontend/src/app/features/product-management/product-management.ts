@@ -145,7 +145,12 @@ export class ProductManagement implements OnInit {
           this.loadProducts();
           this.productToDelete = null;
         },
-        error: (err) => console.error('Error deleting product', err),
+        error: (err) => {
+          const msg = String(err);
+          if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
+            console.error('Error deleting product', err);
+          }
+        },
       });
     }
     this.showConfirmPopup = false;
