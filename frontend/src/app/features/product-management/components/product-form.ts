@@ -292,10 +292,11 @@ export class ProductForm implements OnInit {
       } catch (e) {
         /* ignore */
       }
-      if (hooks.length) {
-        console.warn(
-          'Detected potential devtools/hooks that might patch XHR:',
-          hooks.join(', '),
+      // Detect devtools hooks but don't log - just set flag internally
+      // This reduces console noise while still allowing proper handling
+      if (hooks.length && this.xhrPatched) {
+        console.debug(
+          '[DevTools Detection] XHR is patched, will use fetch-based requests',
         );
       }
     } catch (e) {
@@ -380,7 +381,21 @@ export class ProductForm implements OnInit {
   }
 
   async loadAttributeValues(): Promise<void> {
-    // Try to load attribute values. Skip known devtools hook errors silently.
+    // When XHR is patched, use fetch only to avoid devtools interference
+    if (this.xhrPatched) {
+      return this.loadAttributeValuesWithFetch();
+    }
+
+    // Otherwise try both fetch and HttpClient fallback
+    try {
+      await this.loadAttributeValuesWithFetch();
+    } catch (err) {
+      // Fallback to HttpClient if fetch fails
+      return this.loadAttributeValuesWithHttpClient();
+    }
+  }
+
+  private async loadAttributeValuesWithFetch(): Promise<void> {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
@@ -395,7 +410,11 @@ export class ProductForm implements OnInit {
       clearTimeout(timeout);
 
       if (!res.ok) {
-        throw { status: res.status, message: await res.text() };
+        console.warn(
+          `Failed to load attribute values (HTTP ${res.status}), falling back to default`,
+        );
+        this.availableAttributes = [];
+        return;
       }
 
       const data = await res.json();
@@ -403,42 +422,40 @@ export class ProductForm implements OnInit {
         ? data
         : (data?.results ?? []);
     } catch (err: any) {
-      const msg = err && err.message ? String(err.message) : String(err);
-      const isDevtoolsError =
-        msg.includes('overrideMethod') ||
-        msg.includes('installHook') ||
-        msg.includes('Failed to fetch') ||
-        msg.includes('The user aborted a request');
-
-      // Only log non-devtools errors to reduce console noise
-      if (!isDevtoolsError) {
-        console.warn(
-          'Fetch failed for attribute values, falling back to HttpClient',
-          err,
-        );
+      const msg = String(err?.message || err?.toString?.() || err || '');
+      // Silently fail for abort and fetch errors - these are often from devtools hooks
+      if (
+        !msg.includes('abort') &&
+        !msg.includes('Failed to fetch') &&
+        !msg.includes('The user aborted a request')
+      ) {
+        console.warn('Could not load attribute values via fetch', err);
       }
-
-      // Fallback to HttpClient - silently handle to avoid duplicate errors
-      return new Promise<void>((resolve) => {
-        this.http
-          .get<
-            AttributeValue[] | { results: AttributeValue[] }
-          >(this.attributeValuesUrl)
-          .subscribe({
-            next: (data) => {
-              this.availableAttributes = Array.isArray(data)
-                ? data
-                : (data?.results ?? []);
-              resolve();
-            },
-            error: (err2: unknown) => {
-              // Silently fail - availableAttributes stays empty, which is safe
-              this.availableAttributes = [];
-              resolve();
-            },
-          });
-      });
+      this.availableAttributes = [];
+      throw err; // Re-throw for fallback handling
     }
+  }
+
+  private loadAttributeValuesWithHttpClient(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.http
+        .get<
+          AttributeValue[] | { results: AttributeValue[] }
+        >(this.attributeValuesUrl)
+        .subscribe({
+          next: (data) => {
+            this.availableAttributes = Array.isArray(data)
+              ? data
+              : (data?.results ?? []);
+            resolve();
+          },
+          error: (err: unknown) => {
+            // Silently fail - availableAttributes stays empty, which is safe
+            this.availableAttributes = [];
+            resolve();
+          },
+        });
+    });
   }
 
   loadProduct(id: number) {

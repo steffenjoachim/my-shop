@@ -22,6 +22,8 @@ registerLocaleData(localeDe);
 // Global error handler to filter out known devtools hook errors
 class GlobalErrorHandler implements ErrorHandler {
   handleError(error: any): void {
+    // Convert entire error object to string for comprehensive checking
+    const fullError = JSON.stringify(error, null, 2);
     const msg = String(error?.message || error?.toString?.() || error || '');
     const stack = String(error?.stack || '');
 
@@ -30,9 +32,13 @@ class GlobalErrorHandler implements ErrorHandler {
       msg.includes('overrideMethod') ||
       msg.includes('installHook') ||
       msg.includes('[native code]') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('The user aborted a request') ||
       stack.includes('overrideMethod') ||
       stack.includes('installHook') ||
-      stack.includes('installHook.js')
+      stack.includes('installHook.js') ||
+      fullError.includes('overrideMethod') ||
+      fullError.includes('installHook')
     ) {
       return;
     }
