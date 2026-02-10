@@ -22,10 +22,24 @@ registerLocaleData(localeDe);
 // Global error handler to filter out known devtools hook errors
 class GlobalErrorHandler implements ErrorHandler {
   handleError(error: any): void {
-    // Convert entire error object to string for comprehensive checking
-    const fullError = JSON.stringify(error, null, 2);
-    const msg = String(error?.message || error?.toString?.() || error || '');
-    const stack = String(error?.stack || '');
+    // Safely convert error to string while avoiding throws from circular structures
+    let fullError = '';
+    try {
+      fullError = JSON.stringify(error, null, 2);
+    } catch (_e) {
+      try {
+        fullError = String(error);
+      } catch (_e2) {
+        fullError = '';
+      }
+    }
+
+    const msg = String(
+      (error && (error.message || (error.toString && error.toString()))) ||
+        fullError ||
+        '',
+    );
+    const stack = String((error && error.stack) || '');
 
     // Silently ignore devtools hook errors from browser extensions
     if (
