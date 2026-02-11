@@ -42,18 +42,24 @@ class GlobalErrorHandler implements ErrorHandler {
     const stack = String((error && error.stack) || '');
 
     // Silently ignore devtools hook errors from browser extensions
-    if (
+    // Check message, stack, error object, and common extension patterns
+    const isExtensionError =
       msg.includes('overrideMethod') ||
       msg.includes('installHook') ||
       msg.includes('[native code]') ||
       msg.includes('Failed to fetch') ||
       msg.includes('The user aborted a request') ||
+      msg.includes('listener indicated an asynchronous response') ||
+      msg.includes('message channel closed') ||
       stack.includes('overrideMethod') ||
       stack.includes('installHook') ||
       stack.includes('installHook.js') ||
+      stack.includes('chrome-extension://') ||
+      stack.includes('moz-extension://') ||
       fullError.includes('overrideMethod') ||
-      fullError.includes('installHook')
-    ) {
+      fullError.includes('installHook');
+
+    if (isExtensionError) {
       return;
     }
 

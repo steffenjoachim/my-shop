@@ -308,10 +308,8 @@ export class ProductForm implements OnInit {
     this.detectDevtoolsHooks();
     this.loadCategories();
     this.loadDeliveryTimes();
-    this.loadAttributeValues().catch(() => {
-      // Silently handle all attribute loading errors
-      this.availableAttributes = [];
-    });
+    // loadAttributeValues() handles all errors internally and never rejects
+    this.loadAttributeValues();
     const id = this.route.snapshot.params['id'];
     if (id) {
       this.isEdit = true;
@@ -383,7 +381,8 @@ export class ProductForm implements OnInit {
   async loadAttributeValues(): Promise<void> {
     // When XHR is patched, use fetch only to avoid devtools interference
     if (this.xhrPatched) {
-      return this.loadAttributeValuesWithFetch();
+      await this.loadAttributeValuesWithFetch();
+      return;
     }
 
     // Otherwise try both fetch and HttpClient fallback
@@ -432,7 +431,11 @@ export class ProductForm implements OnInit {
         console.warn('Could not load attribute values via fetch', err);
       }
       this.availableAttributes = [];
-      throw err; // Re-throw for fallback handling
+      // Don't re-throw here when xhrPatched - just settle gracefully
+      // This prevents unhandled promise rejections from devtools hooks
+      if (!this.xhrPatched) {
+        throw err; // Re-throw for fallback handling only when using HttpClient
+      }
     }
   }
 
