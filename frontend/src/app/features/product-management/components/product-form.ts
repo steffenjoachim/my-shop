@@ -309,7 +309,10 @@ export class ProductForm implements OnInit {
     this.loadCategories();
     this.loadDeliveryTimes();
     // loadAttributeValues() handles all errors internally and never rejects
-    this.loadAttributeValues();
+    this.loadAttributeValues().catch(() => {
+      // Silently ignore errors - attributes are optional for form display
+      this.availableAttributes = [];
+    });
     const id = this.route.snapshot.params['id'];
     if (id) {
       this.isEdit = true;
@@ -381,7 +384,12 @@ export class ProductForm implements OnInit {
   async loadAttributeValues(): Promise<void> {
     // When XHR is patched, use fetch only to avoid devtools interference
     if (this.xhrPatched) {
-      await this.loadAttributeValuesWithFetch();
+      try {
+        await this.loadAttributeValuesWithFetch();
+      } catch (err) {
+        // Silently fail when xhrPatched - just settle gracefully
+        this.availableAttributes = [];
+      }
       return;
     }
 
