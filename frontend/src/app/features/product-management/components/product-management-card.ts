@@ -67,6 +67,7 @@ export class ProductManagementCard {
   }
 
   onEdit() {
+    console.log(this.product.id);
     this.edit.emit(this.product.id);
   }
 
