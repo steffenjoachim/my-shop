@@ -531,6 +531,25 @@ export class ProductForm implements OnInit {
       }
     }
 
+    // Normalize images and variations -> ensure arrays and attributes exist (never undefined)
+    const normalizedImages: ProductImage[] = Array.isArray(data.images)
+      ? data.images.map((img: any) => ({
+          image: img?.image,
+          external_image: img?.external_image,
+          id: img?.id,
+        }))
+      : [];
+
+    const normalizedVariations: ProductVariation[] = Array.isArray(
+      data.variations,
+    )
+      ? data.variations.map((v: any) => ({
+          id: v?.id,
+          stock: v?.stock ?? 0,
+          attributes: Array.isArray(v?.attributes) ? v.attributes : [],
+        }))
+      : [];
+
     const mapped: Product = {
       id: data.id,
       title: data.title || '',
@@ -540,8 +559,8 @@ export class ProductForm implements OnInit {
       main_image: data.main_image || '',
       external_image: data.external_image || '',
       delivery_time: deliveryId,
-      images: data.images || [],
-      variations: data.variations || [],
+      images: normalizedImages,
+      variations: normalizedVariations,
     };
 
     this.product = mapped;
