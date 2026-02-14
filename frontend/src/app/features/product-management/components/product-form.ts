@@ -430,7 +430,16 @@ export class ProductForm implements OnInit {
         : (data?.results ?? []);
     } catch (err: any) {
       const msg = String(err?.message || err?.toString?.() || err || '');
-      // Silently fail for abort and fetch errors - these are often from devtools hooks
+      // Ignore known DevTools/extension hook errors (they commonly throw "overrideMethod"/installHook)
+      if (msg.includes('overrideMethod') || msg.includes('installHook')) {
+        console.debug(
+          '[DevTools] Ignored installHook/overrideMethod error while fetching attribute values',
+        );
+        this.availableAttributes = [];
+        return; // swallow devtools errors
+      }
+
+      // Silently fail for abort and fetch errors - these are often from transient network/devtools hooks
       if (
         !msg.includes('abort') &&
         !msg.includes('Failed to fetch') &&
@@ -438,12 +447,14 @@ export class ProductForm implements OnInit {
       ) {
         console.warn('Could not load attribute values via fetch', err);
       }
+
       this.availableAttributes = [];
-      // Don't re-throw here when xhrPatched - just settle gracefully
-      // This prevents unhandled promise rejections from devtools hooks
+      // Re-throw for fallback handling only when using HttpClient (preserve existing fallback behavior)
       if (!this.xhrPatched) {
-        throw err; // Re-throw for fallback handling only when using HttpClient
+        throw err;
       }
+      // otherwise swallow the error
+      return;
     }
   }
 
