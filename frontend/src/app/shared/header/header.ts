@@ -17,7 +17,7 @@ import { filter } from 'rxjs/operators';
     >
       <!-- LOGO -->
       <h1 
-        class="font-bold text-4xl cursor-pointer" 
+        class="font-bold text-5xl cursor-pointer" 
         [routerLink]="isProductManager() ? '/product-management' : '/'"
       >
         MyShop
