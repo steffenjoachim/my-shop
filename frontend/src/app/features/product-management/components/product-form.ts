@@ -163,6 +163,19 @@ interface Product {
         </div>
         <div>
           <label class="block text-sm font-medium">Variationen</label>
+          <p *ngIf="loadingAttributes" class="text-sm text-gray-600 mt-1">
+            Attribute werden geladen…
+          </p>
+          <p *ngIf="attributeLoadFailed" class="text-sm text-red-700 mt-1">
+            Attribute konnten nicht geladen werden.
+            <button
+              type="button"
+              (click)="reloadAttributeValues()"
+              class="underline ml-2"
+            >
+              Erneut laden
+            </button>
+          </p>
           <div
             *ngFor="let variation of product.variations; let i = index"
             class="border p-2 mb-2"
@@ -268,6 +281,8 @@ export class ProductForm implements OnInit {
   categories: Category[] = [];
   deliveryTimes: DeliveryTime[] = [];
   availableAttributes: AttributeValue[] = [];
+  loadingAttributes = false;
+  attributeLoadFailed = false;
   isEdit = false;
   // If backend returns a delivery time as a string (e.g. "1-2 Werktagen")
   // we temporarily store it here and try to resolve to an id once deliveryTimes are loaded
@@ -382,23 +397,36 @@ export class ProductForm implements OnInit {
   }
 
   async loadAttributeValues(): Promise<void> {
-    // When XHR is patched, use fetch only to avoid devtools interference
-    if (this.xhrPatched) {
+    this.loadingAttributes = true;
+    this.attributeLoadFailed = false;
+
+    try {
+      // When XHR is patched, use fetch only to avoid devtools interference
+      if (this.xhrPatched) {
+        try {
+          await this.loadAttributeValuesWithFetch();
+        } catch (err: any) {
+          // If fetch failed with a non-devtools error, mark as failed
+          const msg = String(err?.message || err || '');
+          if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
+            this.attributeLoadFailed = true;
+          }
+          this.availableAttributes = [];
+        }
+        return;
+      }
+
+      // Otherwise try fetch then fallback to HttpClient
       try {
         await this.loadAttributeValuesWithFetch();
       } catch (err) {
-        // Silently fail when xhrPatched - just settle gracefully
-        this.availableAttributes = [];
+        // fallback
+        await this.loadAttributeValuesWithHttpClient();
+        // If fallback didn't populate attributes, mark failure
+        if (!this.availableAttributes.length) this.attributeLoadFailed = true;
       }
-      return;
-    }
-
-    // Otherwise try both fetch and HttpClient fallback
-    try {
-      await this.loadAttributeValuesWithFetch();
-    } catch (err) {
-      // Fallback to HttpClient if fetch fails
-      return this.loadAttributeValuesWithHttpClient();
+    } finally {
+      this.loadingAttributes = false;
     }
   }
 
@@ -440,15 +468,18 @@ export class ProductForm implements OnInit {
       }
 
       // Silently fail for abort and fetch errors - these are often from transient network/devtools hooks
-      if (
-        !msg.includes('abort') &&
-        !msg.includes('Failed to fetch') &&
-        !msg.includes('The user aborted a request')
-      ) {
+      const isAbort =
+        msg.includes('abort') ||
+        msg.includes('Failed to fetch') ||
+        msg.includes('The user aborted a request');
+      if (!isAbort) {
         console.warn('Could not load attribute values via fetch', err);
       }
 
       this.availableAttributes = [];
+      // mark failure for non-devtools/non-abort errors
+      if (!isAbort) this.attributeLoadFailed = true;
+
       // Re-throw for fallback handling only when using HttpClient (preserve existing fallback behavior)
       if (!this.xhrPatched) {
         throw err;
@@ -474,6 +505,7 @@ export class ProductForm implements OnInit {
           error: (err: unknown) => {
             // Silently fail - availableAttributes stays empty, which is safe
             this.availableAttributes = [];
+            this.attributeLoadFailed = true;
             resolve();
           },
         });
@@ -646,6 +678,14 @@ export class ProductForm implements OnInit {
 
   cancel() {
     this.router.navigate(['/product-management']);
+  }
+
+  // Retry loading attribute values (used by UI)
+  reloadAttributeValues() {
+    this.attributeLoadFailed = false;
+    this.loadAttributeValues().catch(() => {
+      /* swallow - attributeLoadFailed will be set by loader */
+    });
   }
 
   getVariationDisplay(variation: ProductVariation): string {
