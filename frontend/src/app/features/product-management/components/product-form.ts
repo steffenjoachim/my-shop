@@ -176,6 +176,11 @@ interface Product {
               Erneut laden
             </button>
           </p>
+          <pre
+            *ngIf="attributeLoadErrorDetails"
+            class="text-xs bg-gray-100 p-2 rounded mt-2 whitespace-pre-wrap"
+            >{{ attributeLoadErrorDetails | json }}</pre
+          >
           <div
             *ngFor="let variation of product.variations; let i = index"
             class="border p-2 mb-2"
@@ -283,6 +288,7 @@ export class ProductForm implements OnInit {
   availableAttributes: AttributeValue[] = [];
   loadingAttributes = false;
   attributeLoadFailed = false;
+  attributeLoadErrorDetails: any = null;
   isEdit = false;
   // If backend returns a delivery time as a string (e.g. "1-2 Werktagen")
   // we temporarily store it here and try to resolve to an id once deliveryTimes are loaded
@@ -399,6 +405,7 @@ export class ProductForm implements OnInit {
   async loadAttributeValues(): Promise<void> {
     this.loadingAttributes = true;
     this.attributeLoadFailed = false;
+    this.attributeLoadErrorDetails = null;
 
     try {
       // When XHR is patched, use fetch only to avoid devtools interference
@@ -410,6 +417,19 @@ export class ProductForm implements OnInit {
           const msg = String(err?.message || err || '');
           if (!msg.includes('overrideMethod') && !msg.includes('installHook')) {
             this.attributeLoadFailed = true;
+            // capture details for diagnostics
+            let raw: any;
+            try {
+              raw = JSON.parse(JSON.stringify(err));
+            } catch {
+              raw = String(err);
+            }
+            this.attributeLoadErrorDetails = {
+              source: 'fetch-fallback-xhrPatched',
+              message: msg,
+              stack: err?.stack,
+              raw,
+            };
           }
           this.availableAttributes = [];
         }
@@ -419,7 +439,21 @@ export class ProductForm implements OnInit {
       // Otherwise try fetch then fallback to HttpClient
       try {
         await this.loadAttributeValuesWithFetch();
-      } catch (err) {
+      } catch (err: any) {
+        // capture diagnostics for fetch failure
+        let raw: any;
+        try {
+          raw = JSON.parse(JSON.stringify(err));
+        } catch {
+          raw = String(err);
+        }
+        this.attributeLoadErrorDetails = {
+          source: 'fetch-attempt',
+          message: String(err?.message || err || ''),
+          stack: err?.stack,
+          raw,
+        };
+
         // fallback
         await this.loadAttributeValuesWithHttpClient();
         // If fallback didn't populate attributes, mark failure
@@ -458,6 +492,26 @@ export class ProductForm implements OnInit {
         : (data?.results ?? []);
     } catch (err: any) {
       const msg = String(err?.message || err?.toString?.() || err || '');
+
+      // Build structured diagnostics for easier inspection
+      let rawErr: any;
+      try {
+        rawErr = JSON.parse(JSON.stringify(err));
+      } catch {
+        rawErr = String(err);
+      }
+      const diag = {
+        message: msg,
+        stack: err?.stack,
+        name: err?.name,
+        typeof: typeof err,
+        raw: rawErr,
+      };
+
+      // Always emit structured debug so developer can inspect the exact payload
+      console.debug('[Diagnostics] loadAttributeValuesWithFetch error:', diag);
+      this.attributeLoadErrorDetails = diag;
+
       // Ignore known DevTools/extension hook errors (they commonly throw "overrideMethod"/installHook)
       if (msg.includes('overrideMethod') || msg.includes('installHook')) {
         console.debug(
@@ -506,6 +560,19 @@ export class ProductForm implements OnInit {
             // Silently fail - availableAttributes stays empty, which is safe
             this.availableAttributes = [];
             this.attributeLoadFailed = true;
+            // capture diagnostics for HttpClient fallback failure
+            let raw: any;
+            try {
+              raw = JSON.parse(JSON.stringify(err));
+            } catch {
+              raw = String(err);
+            }
+            this.attributeLoadErrorDetails = {
+              source: 'httpClient-fallback',
+              message: String((err as any)?.message || err || ''),
+              stack: (err as any)?.stack,
+              raw,
+            };
             resolve();
           },
         });
